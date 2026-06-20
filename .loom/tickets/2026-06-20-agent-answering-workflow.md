@@ -1,4 +1,4 @@
-Status: blocked
+Status: done
 Created: 2026-06-20
 Updated: 2026-06-20
 Parent: .loom/tickets/2026-06-20-turbopuffer-jellyfish-rag-plan.md
@@ -34,8 +34,11 @@ Out of scope:
 ## Progress and notes
 
 - 2026-06-20: Ticket created only.
+- 2026-06-20: Activated for execution under `/loom-driver` after live retrieval validation completed.
+- 2026-06-20: Added `docs/agent-answering-workflow.md` and linked it from `README.md`. The workflow documents safe dry-run and approved live retrieval commands, env var requirements, safe Proton Pass handling without secret values, expected output fields, citation behavior, insufficient-context guardrails, and an example based on existing live retrieval evidence.
+- 2026-06-20: Validated docs workflow with CLI help and no-credential dry-run retrieval. Evidence: `.loom/evidence/2026-06-20-agent-answering-workflow-validation.md`.
+- 2026-06-20: Acceptance met; ticket closed as done.
 
 ## Blockers
 
-- User approval to implement.
-- Retrieval client output shape must be stable.
+- None.

@@ -1,7 +1,7 @@
-Status: open
+Status: done
 Created: 2026-06-20
 Updated: 2026-06-20
-Depends-On: .loom/research/2026-06-20-turbopuffer-markdown-rag-research.md, .loom/specs/turbopuffer-jellyfish-rag.md, .loom/evidence/2026-06-20-jellyfish-site-docs-inventory.md
+Depends-On: .loom/research/2026-06-20-turbopuffer-markdown-rag-research.md, .loom/specs/turbopuffer-jellyfish-rag.md, .loom/evidence/2026-06-20-jellyfish-site-docs-inventory.md, .loom/decisions/turbopuffer-jellyfish-rag-baseline.md
 
 # Plan: turbopuffer hybrid RAG over Jellyfish site docs
 
@@ -48,6 +48,10 @@ This parent ticket is an orchestration plan only. It should not be executed dire
    - Add smoke tests/evals to validate retrieval quality and prevent regressions.
    - Depends on indexer and retrieval client.
 
+7. `.loom/tickets/2026-06-20-fix-index-missing-corpus-error.md`
+   - Follow-up fix opened from review to make missing corpus paths fail clearly.
+   - Depends on `.loom/reviews/2026-06-20-turbopuffer-rag-diff-review.md`.
+
 ## Parallelization
 
 After approval:
@@ -64,14 +68,22 @@ After approval:
 - The agent has a documented procedure for answering future questions using the retrieval command.
 - Smoke/eval evidence exists showing the retrieval loop works.
 
-## Progress and notes
+## Current State
+
+Done. The Jellyfish Markdown corpus has been indexed into turbopuffer namespace `jellyfish-site-docs-v1` in `gcp-us-central1`, and the local Python/uv CLI can index, retrieve, and run smoke evals. Future agents should use `docs/agent-answering-workflow.md` before answering Jellyfish-docs questions.
+
+## Journal
 
 - 2026-06-20: Created plan and child tickets only. No credentials accessed. No code written. No turbopuffer API calls made.
 - 2026-06-20: Research captured in `.loom/research/2026-06-20-turbopuffer-markdown-rag-research.md`.
+- 2026-06-20: User resolved planning defaults via question tool: `gcp-us-central1`, `jellyfish-site-docs-v1`, Proton Pass item search when execution is approved, and Python/uv + local BGE.
+- 2026-06-20: Completed config, scaffold, indexer, retrieval, answering workflow, and smoke-eval child tickets.
+- 2026-06-20: Live indexing wrote and verified `12721` rows. Evidence: `.loom/evidence/2026-06-20-jellyfish-live-indexing.md`.
+- 2026-06-20: Live retrieval validated citation-bearing `server_rrf` results. Evidence: `.loom/evidence/2026-06-20-jellyfish-live-retrieval.md`.
+- 2026-06-20: Smoke evals passed 5/5. Evidence: `.loom/evidence/2026-06-20-retrieval-smoke-evals.md`.
+- 2026-06-20: Bounded review found one low-severity missing-corpus behavior issue. Fixed under `.loom/tickets/2026-06-20-fix-index-missing-corpus-error.md`.
+- 2026-06-20: Final local validation passed 17 tests, compileall, and missing-corpus exit-status check. Evidence: `.loom/evidence/2026-06-20-turbopuffer-jellyfish-rag-plan-completion.md`.
 
 ## Blockers
 
-- User approval to execute implementation.
-- Confirm turbopuffer region or accept default `gcp-us-central1`.
-- Confirm Proton Pass item/vault or approve searching accessible Proton Pass items.
-- Confirm Python/uv + local BGE as the implementation baseline.
+- None.

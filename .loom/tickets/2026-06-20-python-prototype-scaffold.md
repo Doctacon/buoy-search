@@ -1,8 +1,8 @@
-Status: blocked
+Status: done
 Created: 2026-06-20
 Updated: 2026-06-20
 Parent: .loom/tickets/2026-06-20-turbopuffer-jellyfish-rag-plan.md
-Depends-On: .loom/specs/turbopuffer-jellyfish-rag.md, .loom/research/2026-06-20-turbopuffer-markdown-rag-research.md
+Depends-On: .loom/specs/turbopuffer-jellyfish-rag.md, .loom/research/2026-06-20-turbopuffer-markdown-rag-research.md, .loom/decisions/turbopuffer-jellyfish-rag-baseline.md
 
 # Create Python/uv prototype scaffold
 
@@ -40,8 +40,11 @@ Out of scope:
 ## Progress and notes
 
 - 2026-06-20: Ticket created only. No files changed outside `.loom/`.
+- 2026-06-20: User confirmed Python/uv + local BGE as the implementation baseline.
+- 2026-06-20: Activated for execution under `/loom-driver` after config ticket completed.
+- 2026-06-20: Added minimal `uv` Python scaffold with `src/turbo_search/` package, dry-run CLI commands, non-secret README setup docs, `.gitignore`, and stdlib CLI tests.
+- 2026-06-20: Validated safe module help, dry-run index/retrieve commands, unittest suite, and syntax compilation without credential access or turbopuffer API calls. Evidence: `.loom/evidence/2026-06-20-python-prototype-scaffold-validation.md`.
 
 ## Blockers
 
-- User approval to start implementation.
-- Confirm Python/uv is acceptable. Recommended default is Python/uv because turbopuffer and sentence-transformers examples are Python-first.
+- None.

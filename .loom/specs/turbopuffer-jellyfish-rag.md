@@ -1,4 +1,4 @@
-Status: draft
+Status: active
 Created: 2026-06-20
 Updated: 2026-06-20
 
@@ -83,9 +83,13 @@ When the agent answers a question using this retrieval layer, it should:
 - Keep implementation small and inspectable; this is a turbopuffer evaluation prototype, not a production search service.
 - Do not execute credential retrieval, indexing, or turbopuffer writes until the user approves.
 
-## Open questions
+## Resolved defaults
 
-- Final implementation language: recommended Python/uv, but user can choose TypeScript.
-- Turbopuffer region: default from docs is `gcp-us-central1`, but the subscription may have a preferred region.
-- Proton Pass item lookup: user should provide vault/item title or approve item search.
-- Whether to add a local reranker in the first pass or defer until after baseline evals.
+Recorded in `.loom/decisions/turbopuffer-jellyfish-rag-baseline.md`:
+
+- Implementation language/tooling: Python with `uv`.
+- Embeddings: local `BAAI/bge-small-en-v1.5` via `sentence-transformers`.
+- Turbopuffer region: `gcp-us-central1`.
+- Turbopuffer namespace: `jellyfish-site-docs-v1`.
+- Proton Pass lookup: search accessible items for the turbopuffer credential when execution is approved.
+- Reranker: defer; MVP should use hybrid ANN + BM25 + RRF first.

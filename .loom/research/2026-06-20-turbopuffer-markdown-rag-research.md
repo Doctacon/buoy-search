@@ -159,9 +159,12 @@ Recommended plan:
 6. Add smoke/eval commands before relying on the index for answer generation.
 7. Do not retrieve or persist the turbopuffer API key until the user explicitly approves execution; when approved, retrieve it from Proton Pass into an environment variable only.
 
-## Open questions before execution
+## Resolved after research
 
-- Which turbopuffer region did the subscription/API key target, or should we default to `gcp-us-central1`?
-- What is the Proton Pass vault/item title for the turbopuffer API key, or should the agent search accessible Proton Pass items after approval?
-- Should the first implementation stop at retrieval-only JSON/CLI output, or also add an answer-generation wrapper that formats retrieved context for the agent?
-- Is local model download acceptable (`BAAI/bge-small-en-v1.5`, about 130 MB, plus optional reranker later), or should dependencies stay minimal for now?
+The user resolved the main planning defaults on 2026-06-20. See `.loom/decisions/turbopuffer-jellyfish-rag-baseline.md`.
+
+- Region: `gcp-us-central1`.
+- Namespace: `jellyfish-site-docs-v1`.
+- Proton Pass lookup: search accessible Proton Pass items for the turbopuffer credential when execution is approved.
+- Implementation baseline: Python/uv + local `BAAI/bge-small-en-v1.5` embeddings.
+- Answering workflow remains in scope as a child ticket after retrieval client output is stable.

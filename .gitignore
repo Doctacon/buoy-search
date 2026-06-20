@@ -1,0 +1,34 @@
+# Python bytecode and test caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments and local tooling state
+.venv/
+venv/
+ENV/
+
+# Local environment/secrets files
+.env
+.env.*
+!.env.example
+local.env
+
+# Local model/cache artifacts
+.cache/
+.huggingface/
+.hf_home/
+models/
+model-cache/
+sentence_transformers/
+
+# Generated prototype outputs
+outputs/
+generated/
+artifacts/
+*.log

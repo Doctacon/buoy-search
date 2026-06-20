@@ -1,8 +1,8 @@
-Status: blocked
+Status: done
 Created: 2026-06-20
 Updated: 2026-06-20
 Parent: .loom/tickets/2026-06-20-turbopuffer-jellyfish-rag-plan.md
-Depends-On: .loom/tickets/2026-06-20-python-prototype-scaffold.md, .loom/tickets/2026-06-20-proton-pass-turbopuffer-config.md, .loom/specs/turbopuffer-jellyfish-rag.md, .loom/research/2026-06-20-turbopuffer-markdown-rag-research.md, .loom/evidence/2026-06-20-jellyfish-site-docs-inventory.md
+Depends-On: .loom/tickets/2026-06-20-python-prototype-scaffold.md, .loom/tickets/2026-06-20-proton-pass-turbopuffer-config.md, .loom/specs/turbopuffer-jellyfish-rag.md, .loom/research/2026-06-20-turbopuffer-markdown-rag-research.md, .loom/evidence/2026-06-20-jellyfish-site-docs-inventory.md, .loom/decisions/turbopuffer-jellyfish-rag-baseline.md
 
 # Implement Jellyfish Markdown indexer
 
@@ -59,9 +59,14 @@ Start with approximately 300-token chunks and two-sentence overlap, respecting M
 ## Progress and notes
 
 - 2026-06-20: Ticket created only. No indexing run. No turbopuffer writes.
+- 2026-06-20: Baseline decisions resolved: Python/uv + BGE, region `gcp-us-central1`, namespace `jellyfish-site-docs-v1`.
+- 2026-06-20: Activated for execution under `/loom-driver` after config and scaffold tickets completed.
+- 2026-06-20: Implemented Markdown discovery, frontmatter parsing, conservative chrome normalization, heading-aware chunking, deterministic chunk IDs, doc kind/tags, row construction, local BGE write-mode embedding, and batched turbopuffer upserts behind explicit `--write`.
+- 2026-06-20: Validated unit tests, syntax compilation, small dry-run, and full-corpus dry-run over all 1124 Markdown files. Full dry-run generated 12721 chunks, skipped 1 empty file, reported 0 file errors, wrote 0 rows, and made 0 API calls. Evidence: `.loom/evidence/2026-06-20-jellyfish-markdown-indexer-validation.md`.
+- 2026-06-20: Ticket intentionally remained active after dry-run implementation because live turbopuffer writes/schema/row-count validation had not yet been run.
+- 2026-06-20: Ran approved live write with the turbopuffer API key retrieved from Proton Pass into shell memory only. Target: `TURBOPUFFER_REGION=gcp-us-central1`, `TURBOPUFFER_NAMESPACE=jellyfish-site-docs-v1`, batch size 128. Live run processed 1124 discovered Markdown files, skipped 1 empty file, generated 12721 chunks, wrote 12721 rows, and reported 0 file errors.
+- 2026-06-20: Verified target namespace with non-secret turbopuffer SDK calls. Aggregate row count returned 12721 rows, matching `rows_written`; schema confirmed ANN on `vector` and full-text search on `content`, `title`, and `section_path`. Evidence: `.loom/evidence/2026-06-20-jellyfish-live-indexing.md`.
 
 ## Blockers
 
-- User approval to implement and execute.
-- Scaffold ticket complete.
-- Config/credential ticket complete for real writes; dry-run can proceed after scaffold if approved.
+- None.

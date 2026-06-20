@@ -1,8 +1,8 @@
-Status: blocked
+Status: done
 Created: 2026-06-20
 Updated: 2026-06-20
 Parent: .loom/tickets/2026-06-20-turbopuffer-jellyfish-rag-plan.md
-Depends-On: .loom/tickets/2026-06-20-python-prototype-scaffold.md, .loom/tickets/2026-06-20-proton-pass-turbopuffer-config.md, .loom/specs/turbopuffer-jellyfish-rag.md, .loom/research/2026-06-20-turbopuffer-markdown-rag-research.md
+Depends-On: .loom/tickets/2026-06-20-python-prototype-scaffold.md, .loom/tickets/2026-06-20-proton-pass-turbopuffer-config.md, .loom/specs/turbopuffer-jellyfish-rag.md, .loom/research/2026-06-20-turbopuffer-markdown-rag-research.md, .loom/decisions/turbopuffer-jellyfish-rag-baseline.md
 
 # Implement turbopuffer hybrid retrieval client
 
@@ -65,10 +65,14 @@ SDK response shape should be verified during implementation against installed `t
 ## Progress and notes
 
 - 2026-06-20: Ticket created only. No retrieval run.
+- 2026-06-20: Baseline decisions resolved: Python/uv + BGE, region `gcp-us-central1`, namespace `jellyfish-site-docs-v1`.
+- 2026-06-20: Activated for implementation under `/loom-driver` after scaffold completed and indexer implementation/dry-run existed.
+- 2026-06-20: Implemented hybrid retrieval module and CLI. Live mode is gated by `--live` and reads `TURBOPUFFER_API_KEY` from the environment only. Default/`--dry-run` mode prints the ANN + boosted BM25 + RRF plan without credentials, embeddings, or turbopuffer calls.
+- 2026-06-20: Validated unit tests, syntax compilation, and no-credential dry-run retrieve command. No live turbopuffer queries were run. Evidence: `.loom/evidence/2026-06-20-turbopuffer-hybrid-retrieval-client-validation.md`.
+- 2026-06-20: Ticket intentionally remains active because live retrieval relevance/citation evidence against an indexed namespace was not run under this worker's hard constraints.
+- 2026-06-20: Ran approved live retrieval against indexed namespace `jellyfish-site-docs-v1` in region `gcp-us-central1` using the turbopuffer API key retrieved from Proton Pass into shell memory only. Two smoke queries succeeded with `--live --json --top-k 3 --candidates 30`; output included citation fields and score info, omitted vectors, and reported `fusion: server_rrf`. Evidence: `.loom/evidence/2026-06-20-jellyfish-live-retrieval.md`.
+- 2026-06-20: Acceptance met; ticket closed as done.
 
 ## Blockers
 
-- User approval to implement and execute.
-- Scaffold ticket complete.
-- Config ticket complete for real queries.
-- Indexed namespace needed for end-to-end validation.
+- None.
