@@ -14,11 +14,13 @@ from turbo_search.applied_state import AppliedStateError, load_applied_state
 from turbo_search.apply import ApplyPlanError, apply_preflight_summary, load_verified_apply_plan, run_approved_apply
 from turbo_search.config import load_config
 from turbo_search.crawler import (
+    CRAWL_STRATEGIES,
     DEFAULT_CRAWL_CONCURRENT_REQUESTS,
     DEFAULT_CRAWL_CONCURRENT_REQUESTS_PER_DOMAIN,
     DEFAULT_CRAWL_DOWNLOAD_DELAY,
     DEFAULT_CRAWL_MAX_CHUNKS,
     DEFAULT_CRAWL_MAX_PAGES,
+    DEFAULT_CRAWL_STRATEGY,
     CrawlOptions,
     crawl_site,
     default_out_dir,
@@ -164,6 +166,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Polite delay between crawl requests in seconds.",
     )
     crawl_parser.add_argument(
+        "--crawl-strategy",
+        choices=CRAWL_STRATEGIES,
+        default=DEFAULT_CRAWL_STRATEGY,
+        help=(
+            "Discovery mode. Default: hybrid, which merges sitemap pages with same-site link discovery. "
+            "sitemap trusts sitemap pages with link fallback only when empty; link ignores sitemaps."
+        ),
+    )
+    crawl_parser.add_argument(
         "--css-selector",
         default=None,
         help=(
@@ -201,9 +212,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     plan_parser.add_argument(
-        "--base-url",
-        required=True,
+        "url",
+        nargs="?",
         help="Absolute http(s) URL to crawl and plan.",
+    )
+    plan_parser.add_argument(
+        "--base-url",
+        dest="base_url",
+        default=None,
+        help="Absolute http(s) URL to crawl and plan. Kept for backwards compatibility; positional URL is preferred.",
     )
     plan_parser.add_argument(
         "--out-dir",
@@ -251,6 +268,15 @@ def build_parser() -> argparse.ArgumentParser:
         type=nonnegative_float,
         default=DEFAULT_CRAWL_DOWNLOAD_DELAY,
         help="Polite delay between crawl requests in seconds.",
+    )
+    plan_parser.add_argument(
+        "--crawl-strategy",
+        choices=CRAWL_STRATEGIES,
+        default=DEFAULT_CRAWL_STRATEGY,
+        help=(
+            "Discovery mode. Default: hybrid, which merges sitemap pages with same-site link discovery. "
+            "sitemap trusts sitemap pages with link fallback only when empty; link ignores sitemaps."
+        ),
     )
     plan_parser.add_argument(
         "--css-selector",
@@ -572,6 +598,7 @@ def _run_crawl(args: argparse.Namespace) -> int:
         concurrent_requests=args.concurrent_requests,
         concurrent_requests_per_domain=args.concurrent_requests_per_domain,
         download_delay=args.download_delay,
+        crawl_strategy=args.crawl_strategy,
         css_selector=args.css_selector,
         target_tokens=args.target_tokens,
         overlap_sentences=args.overlap_sentences,
@@ -590,8 +617,15 @@ def _run_crawl(args: argparse.Namespace) -> int:
 
 
 def _run_plan(args: argparse.Namespace) -> int:
+    if args.url and args.base_url and args.url != args.base_url:
+        print("Provide either positional URL or --base-url, not conflicting values.", file=sys.stderr)
+        return 2
+    requested_url = args.base_url or args.url
+    if not requested_url:
+        print("base URL is required; pass it as `turbo-search plan <url>` or with --base-url.", file=sys.stderr)
+        return 2
     try:
-        base_url = validate_base_url(args.base_url)
+        base_url = validate_base_url(requested_url)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -607,6 +641,7 @@ def _run_plan(args: argparse.Namespace) -> int:
         concurrent_requests=args.concurrent_requests,
         concurrent_requests_per_domain=args.concurrent_requests_per_domain,
         download_delay=args.download_delay,
+        crawl_strategy=args.crawl_strategy,
         css_selector=args.css_selector,
         target_tokens=args.target_tokens,
         overlap_sentences=args.overlap_sentences,
@@ -675,6 +710,7 @@ def plan_crawl_options(args: argparse.Namespace) -> dict[str, object]:
         "concurrent_requests": args.concurrent_requests,
         "concurrent_requests_per_domain": args.concurrent_requests_per_domain,
         "download_delay": args.download_delay,
+        "crawl_strategy": args.crawl_strategy,
         "css_selector": args.css_selector,
     }
 

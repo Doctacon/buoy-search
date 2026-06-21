@@ -50,7 +50,8 @@ def fake_plan_crawl_summary(options: CrawlOptions) -> dict[str, object]:
         "base_url": options.base_url,
         "allowed_host": "example.com",
         "namespace_candidate": "site-example-com-v1",
-        "crawl_strategy": "sitemap",
+        "crawl_strategy": options.crawl_strategy,
+        "requested_crawl_strategy": options.crawl_strategy,
         "sitemap_seed_urls": [],
         "out_dir": str(options.out_dir),
         "pages_dir": str(options.out_dir / "pages"),
@@ -177,7 +178,8 @@ class CliTests(unittest.TestCase):
                 "base_url": "https://scrapling.readthedocs.io/en/latest/",
                 "allowed_host": "scrapling.readthedocs.io",
                 "namespace_candidate": "site-scrapling-readthedocs-io-v1",
-                "crawl_strategy": "sitemap",
+                "crawl_strategy": "hybrid",
+                "requested_crawl_strategy": "hybrid",
                 "out_dir": str(out_dir),
                 "pages_dir": str(out_dir / "pages"),
                 "max_pages": 3,
@@ -234,7 +236,29 @@ class CliTests(unittest.TestCase):
         self.assertIsInstance(options, CrawlOptions)
         self.assertEqual(options.max_pages, 3)
         self.assertEqual(options.max_chunks, 5)
+        self.assertEqual(options.crawl_strategy, "hybrid")
         self.assertEqual(options.css_selector, ".md-content__inner")
+
+    def test_crawl_command_defaults_to_hybrid_strategy(self) -> None:
+        def fake_crawl(options: CrawlOptions) -> dict[str, object]:
+            self.assertEqual(options.crawl_strategy, "hybrid")
+            return fake_plan_crawl_summary(options)
+
+        stdout = StringIO()
+        with patch("turbo_search.cli.crawl_site", side_effect=fake_crawl):
+            with redirect_stdout(stdout):
+                result = main(
+                    [
+                        "crawl",
+                        "--base-url",
+                        "https://example.com/docs/",
+                        "--json",
+                    ]
+                )
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(result, 0)
+        self.assertEqual(payload["crawl_strategy"], "hybrid")
 
     def test_plan_command_writes_artifacts_and_first_apply_diff_without_credentials(self) -> None:
         tmp = tempfile.TemporaryDirectory()
@@ -253,7 +277,6 @@ class CliTests(unittest.TestCase):
                 result = main(
                     [
                         "plan",
-                        "--base-url",
                         "https://example.com/docs/",
                         "--out-dir",
                         str(out_dir),
@@ -281,6 +304,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["diff"]["chunks_to_embed"], 1)
         self.assertEqual(payload["diff"]["stale_rows"], 0)
         self.assertEqual(payload["namespace"], "site-example-com-v1")
+        self.assertEqual(payload["crawl_strategy"], "hybrid")
         self.assertTrue((out_dir / "plan.json").exists())
         self.assertTrue((out_dir / "manifest.json").exists())
         self.assertTrue((out_dir / "chunks.jsonl").exists())
@@ -290,6 +314,7 @@ class CliTests(unittest.TestCase):
         manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
         chunks = [json.loads(line) for line in (out_dir / "chunks.jsonl").read_text(encoding="utf-8").splitlines()]
         self.assertEqual(plan["diff"]["rows_to_upsert"], 1)
+        self.assertEqual(plan["crawl_options"]["crawl_strategy"], "hybrid")
         self.assertEqual(plan["state_path"], str(state_root / "state/example-com/site-example-com-v1/last-applied.json"))
         self.assertEqual(len(manifest["pages"]), 1)
         self.assertEqual(len(chunks), 1)
@@ -367,11 +392,31 @@ class CliTests(unittest.TestCase):
         stdout = StringIO()
         stderr = StringIO()
         with redirect_stdout(stdout), redirect_stderr(stderr):
-            result = main(["plan", "--base-url", "/relative", "--json"])
+            result = main(["plan", "/relative", "--json"])
 
         self.assertEqual(result, 2)
         self.assertEqual(stdout.getvalue(), "")
         self.assertIn("base URL must be an absolute http(s) URL", stderr.getvalue())
+
+    def test_plan_command_rejects_conflicting_positional_and_flag_urls(self) -> None:
+        stdout = StringIO()
+        stderr = StringIO()
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            result = main(["plan", "https://example.com/a", "--base-url", "https://example.com/b", "--json"])
+
+        self.assertEqual(result, 2)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("either positional URL or --base-url", stderr.getvalue())
+
+    def test_plan_command_requires_url(self) -> None:
+        stdout = StringIO()
+        stderr = StringIO()
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            result = main(["plan", "--json"])
+
+        self.assertEqual(result, 2)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("base URL is required", stderr.getvalue())
 
     def test_retrieve_command_dry_run_plan_needs_no_credentials(self) -> None:
         stdout = StringIO()

@@ -67,13 +67,13 @@ uv run turbo-search crawl \
   --json
 ```
 
-The crawl command prefers robots/sitemap discovery first and falls back to capped same-domain link crawling if no sitemap pages are scraped. It reports a namespace candidate such as `site-scrapling-readthedocs-io-v1`; it never creates that namespace.
+The crawl command defaults to hybrid discovery: robots/sitemap pages plus capped same-domain link crawling from the base URL. If you want a lighter crawl that trusts the sitemap, use `--crawl-strategy sitemap`; use `--crawl-strategy link` to ignore sitemaps. It reports a namespace candidate such as `site-scrapling-readthedocs-io-v1`; it never creates that namespace.
 
 Create a Terraform-like local website RAG plan. This reuses the same Scrapling crawl/extract/chunk path, loads local applied state from `.turbo-search/` when present, writes review artifacts, and still does not read credentials, embed text, create namespaces, or contact turbopuffer:
 
 ```bash
 uv run turbo-search plan \
-  --base-url "https://scrapling.readthedocs.io/en/latest/" \
+  "https://scrapling.readthedocs.io/en/latest/" \
   --out-dir artifacts/site-crawls/scrapling-readthedocs-io-plan \
   --max-pages 1000 \
   --max-chunks 10000 \

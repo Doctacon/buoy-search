@@ -16,7 +16,7 @@ Stale deletes have an additional guardrail: stale rows are retained by default. 
 
 ```bash
 uv run turbo-search plan \
-  --base-url "https://scrapling.readthedocs.io/en/latest/" \
+  "https://scrapling.readthedocs.io/en/latest/" \
   --out-dir artifacts/site-crawls/scrapling-readthedocs-io-plan \
   --max-pages 1000 \
   --max-chunks 10000 \
@@ -35,6 +35,16 @@ pages/*.md
 ```
 
 The plan compares generated chunks to local applied state under `.turbo-search/state/...` unless `--state-root` is supplied. `.turbo-search/` is local state and is gitignored.
+
+### Crawl discovery strategy
+
+`plan` and `crawl` support `--crawl-strategy`:
+
+- `hybrid` (default): merge robots/sitemap pages with same-site link crawling from the base URL. This is best for RAG completeness and catches partial sitemaps.
+- `sitemap`: use robots/sitemap discovery; fall back to link crawling only when the sitemap path yields no pages. Use this for a lighter, sitemap-trusting crawl.
+- `link`: ignore sitemap URLs and crawl same-site links from the base URL.
+
+Hybrid/link crawling still obeys robots.txt, host restrictions, page caps, concurrency, and delay settings.
 
 ## Apply preflight
 

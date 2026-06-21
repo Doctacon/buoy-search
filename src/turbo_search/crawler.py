@@ -30,6 +30,8 @@ DEFAULT_CRAWL_CONCURRENT_REQUESTS = 2
 DEFAULT_CRAWL_CONCURRENT_REQUESTS_PER_DOMAIN = 1
 DEFAULT_CRAWL_DOWNLOAD_DELAY = 0.25
 DEFAULT_CRAWL_OUT_DIR = Path("artifacts/site-crawls")
+DEFAULT_CRAWL_STRATEGY = "hybrid"
+CRAWL_STRATEGIES = ("sitemap", "link", "hybrid")
 
 
 @dataclass(frozen=True)
@@ -43,6 +45,7 @@ class CrawlOptions:
     concurrent_requests: int = DEFAULT_CRAWL_CONCURRENT_REQUESTS
     concurrent_requests_per_domain: int = DEFAULT_CRAWL_CONCURRENT_REQUESTS_PER_DOMAIN
     download_delay: float = DEFAULT_CRAWL_DOWNLOAD_DELAY
+    crawl_strategy: str = DEFAULT_CRAWL_STRATEGY
     css_selector: str | None = None
     target_tokens: int = DEFAULT_TARGET_TOKENS
     overlap_sentences: int = DEFAULT_OVERLAP_SENTENCES
@@ -165,7 +168,10 @@ def crawled_page_from_response(response: Any, *, css_selector: str | None = None
 
     if getattr(response, "status", None) != 200:
         return None
-    markdown = markdown_from_response(response, css_selector=css_selector)
+    try:
+        markdown = markdown_from_response(response, css_selector=css_selector)
+    except ValueError:
+        return None
     if not markdown:
         return None
     title = response.css("title::text").get() or response.css("h1::text").get() or response.url
@@ -304,18 +310,52 @@ def run_scrapling_spider(spider_cls: type) -> tuple[list[CrawledPage], dict[str,
 
 
 def crawl_pages(options: CrawlOptions) -> tuple[list[CrawledPage], dict[str, object], str]:
-    """Crawl pages sitemap-first, then fallback to link crawling when needed."""
+    """Crawl pages using sitemap, link-only, or hybrid discovery."""
+
+    if options.crawl_strategy not in CRAWL_STRATEGIES:
+        raise ValueError(f"crawl strategy must be one of: {', '.join(CRAWL_STRATEGIES)}")
 
     allowed_host = host_from_url(options.base_url)
+    if options.crawl_strategy == "link":
+        link_spider = build_link_spider_class(options, allowed_host)
+        pages, stats = run_scrapling_spider(link_spider)
+        return pages[: options.max_pages], stats, "link"
+
     sitemap_spider = build_sitemap_spider_class(options, allowed_host)
-    pages, stats = run_scrapling_spider(sitemap_spider)
-    if pages:
-        return pages[: options.max_pages], stats, "sitemap"
+    sitemap_pages, sitemap_stats = run_scrapling_spider(sitemap_spider)
+    if options.crawl_strategy == "sitemap":
+        if sitemap_pages:
+            return sitemap_pages[: options.max_pages], sitemap_stats, "sitemap"
+        link_spider = build_link_spider_class(options, allowed_host)
+        fallback_pages, fallback_stats = run_scrapling_spider(link_spider)
+        combined_stats = combine_stats(sitemap_stats, fallback_stats)
+        return fallback_pages[: options.max_pages], combined_stats, "link_fallback"
 
     link_spider = build_link_spider_class(options, allowed_host)
-    fallback_pages, fallback_stats = run_scrapling_spider(link_spider)
-    combined_stats = combine_stats(stats, fallback_stats)
-    return fallback_pages[: options.max_pages], combined_stats, "link_fallback"
+    link_pages, link_stats = run_scrapling_spider(link_spider)
+    combined_stats = combine_stats(sitemap_stats, link_stats)
+    merged_pages = merge_unique_pages(sitemap_pages, link_pages)
+    return merged_pages[: options.max_pages], combined_stats, "hybrid"
+
+
+def merge_unique_pages(*page_groups: Sequence[CrawledPage]) -> list[CrawledPage]:
+    """Merge crawl results by URL while preserving first-seen order."""
+
+    pages: list[CrawledPage] = []
+    seen_urls: set[str] = set()
+    for group in page_groups:
+        for page in group:
+            key = page_identity_url(page.url)
+            if key in seen_urls:
+                continue
+            seen_urls.add(key)
+            pages.append(page)
+    return pages
+
+
+def page_identity_url(url: str) -> str:
+    parsed = urlparse(url)
+    return urlunparse(parsed._replace(fragment=""))
 
 
 def combine_stats(first: dict[str, object], second: dict[str, object]) -> dict[str, object]:
@@ -383,6 +423,7 @@ def build_summary(
         "allowed_host": host_from_url(options.base_url),
         "namespace_candidate": namespace_candidate(options.base_url),
         "crawl_strategy": crawl_strategy,
+        "requested_crawl_strategy": options.crawl_strategy,
         "sitemap_seed_urls": sitemap_seed_urls(options.base_url),
         "out_dir": str(options.out_dir),
         "pages_dir": str(pages_dir),
@@ -417,6 +458,7 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
         concurrent_requests=options.concurrent_requests,
         concurrent_requests_per_domain=options.concurrent_requests_per_domain,
         download_delay=options.download_delay,
+        crawl_strategy=options.crawl_strategy,
         css_selector=options.css_selector,
         target_tokens=options.target_tokens,
         overlap_sentences=options.overlap_sentences,

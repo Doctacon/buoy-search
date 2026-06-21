@@ -17,8 +17,9 @@ base URL
 
 ## Default crawl policy
 
-- Prefer sitemap discovery first.
-- Fall back to same-domain link crawling if sitemaps are absent or incomplete.
+- Default to hybrid discovery: sitemap/robots pages plus same-domain link crawling from the base URL.
+- Use `--crawl-strategy sitemap` only when a lighter, sitemap-trusting crawl is desired.
+- Use `--crawl-strategy link` to ignore sitemaps.
 - Obey robots.txt by default.
 - Restrict to the base URL host/domain unless the user approves otherwise.
 - Use conservative caps until the site shape is known:
@@ -45,7 +46,7 @@ Use `plan` for Terraform-like review/apply artifacts and incremental diffing aga
 
 ```bash
 uv run turbo-search plan \
-  --base-url "https://scrapling.readthedocs.io/en/latest/" \
+  "https://scrapling.readthedocs.io/en/latest/" \
   --out-dir artifacts/site-crawls/scrapling-readthedocs-io-plan \
   --max-pages 1000 \
   --max-chunks 10000 \

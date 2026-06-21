@@ -3,10 +3,14 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 from turbo_search.crawler import (
     CrawledPage,
+    CrawlOptions,
     allowed_domains_for_url,
+    crawl_pages,
+    crawled_page_from_response,
     default_out_dir,
     namespace_candidate,
     page_filename,
@@ -102,6 +106,92 @@ class CrawlerHelperTests(unittest.TestCase):
             self.assertEqual(plan.stats.chunks_generated, 1)
             self.assertEqual(plan.chunks[0].title, "Docs Page")
             self.assertEqual(plan.chunks[0].url, "https://example.com/docs/page")
+
+    def test_crawled_page_from_response_skips_unextractable_html(self) -> None:
+        class Response:
+            status = 200
+            url = "https://example.com/control-chars"
+
+        with patch("turbo_search.crawler.markdown_from_response", side_effect=ValueError("bad html")):
+            self.assertIsNone(crawled_page_from_response(Response()))
+
+    def test_hybrid_crawl_merges_sitemap_and_link_pages(self) -> None:
+        class SitemapSpider:
+            pass
+
+        class LinkSpider:
+            pass
+
+        sitemap_page = CrawledPage(
+            url="https://example.com/docs/",
+            title="Docs",
+            status=200,
+            markdown="Docs home",
+        )
+        duplicate_link_page = CrawledPage(
+            url="https://example.com/docs/#top",
+            title="Docs duplicate",
+            status=200,
+            markdown="Duplicate docs home",
+        )
+        link_only_page = CrawledPage(
+            url="https://example.com/docs/pinning",
+            title="Pinning",
+            status=200,
+            markdown="Pinning documentation",
+        )
+
+        def fake_run(spider_cls):
+            if spider_cls is SitemapSpider:
+                return [sitemap_page], {"requests_count": 2}
+            if spider_cls is LinkSpider:
+                return [duplicate_link_page, link_only_page], {"requests_count": 3}
+            raise AssertionError("unexpected spider")
+
+        options = CrawlOptions(
+            base_url="https://example.com/docs/",
+            out_dir=Path("unused"),
+            max_pages=10,
+            crawl_strategy="hybrid",
+        )
+        with patch("turbo_search.crawler.build_sitemap_spider_class", return_value=SitemapSpider):
+            with patch("turbo_search.crawler.build_link_spider_class", return_value=LinkSpider):
+                with patch("turbo_search.crawler.run_scrapling_spider", side_effect=fake_run):
+                    pages, stats, strategy = crawl_pages(options)
+
+        self.assertEqual(strategy, "hybrid")
+        self.assertEqual([page.url for page in pages], ["https://example.com/docs/", "https://example.com/docs/pinning"])
+        self.assertEqual(stats["requests_count"], 5)
+
+    def test_link_crawl_strategy_skips_sitemap(self) -> None:
+        class SitemapSpider:
+            pass
+
+        class LinkSpider:
+            pass
+
+        link_page = CrawledPage(
+            url="https://example.com/docs/pinning",
+            title="Pinning",
+            status=200,
+            markdown="Pinning documentation",
+        )
+
+        options = CrawlOptions(
+            base_url="https://example.com/docs/",
+            out_dir=Path("unused"),
+            max_pages=10,
+            crawl_strategy="link",
+        )
+        with patch("turbo_search.crawler.build_sitemap_spider_class", return_value=SitemapSpider) as sitemap_mock:
+            with patch("turbo_search.crawler.build_link_spider_class", return_value=LinkSpider):
+                with patch("turbo_search.crawler.run_scrapling_spider", return_value=([link_page], {"requests_count": 1})):
+                    pages, stats, strategy = crawl_pages(options)
+
+        self.assertEqual(strategy, "link")
+        self.assertEqual([page.url for page in pages], ["https://example.com/docs/pinning"])
+        self.assertEqual(stats["requests_count"], 1)
+        sitemap_mock.assert_not_called()
 
 
 if __name__ == "__main__":
