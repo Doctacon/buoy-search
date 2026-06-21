@@ -1,0 +1,108 @@
+from __future__ import annotations
+
+import tempfile
+from pathlib import Path
+import unittest
+
+from turbo_search.crawler import (
+    CrawledPage,
+    allowed_domains_for_url,
+    default_out_dir,
+    namespace_candidate,
+    page_filename,
+    sitemap_seed_urls,
+    validate_base_url,
+    write_markdown_corpus,
+)
+from turbo_search.indexer import process_corpus
+
+
+class CrawlerHelperTests(unittest.TestCase):
+    def test_validate_base_url_accepts_absolute_http_urls_and_strips_fragment(self) -> None:
+        self.assertEqual(
+            validate_base_url("https://example.com/docs/#section"),
+            "https://example.com/docs/",
+        )
+        self.assertEqual(validate_base_url("http://example.com"), "http://example.com")
+
+    def test_validate_base_url_rejects_relative_and_non_http_urls(self) -> None:
+        for url in ("/docs", "example.com/docs", "file:///tmp/page.html", "ftp://example.com"):
+            with self.subTest(url=url):
+                with self.assertRaises(ValueError):
+                    validate_base_url(url)
+
+    def test_namespace_candidate_and_default_out_dir_are_host_based(self) -> None:
+        url = "https://Scrapling.ReadTheDocs.io/en/latest/"
+
+        self.assertEqual(namespace_candidate(url), "site-scrapling-readthedocs-io-v1")
+        self.assertEqual(default_out_dir(url), Path("artifacts/site-crawls/scrapling-readthedocs-io"))
+
+    def test_allowed_domains_include_host_and_port_netloc(self) -> None:
+        self.assertEqual(
+            allowed_domains_for_url("https://example.com:8443/docs"),
+            {"example.com", "example.com:8443"},
+        )
+
+    def test_sitemap_seed_urls_include_robots_and_conventional_sitemaps(self) -> None:
+        self.assertEqual(
+            sitemap_seed_urls("https://example.com/docs/page"),
+            [
+                "https://example.com/robots.txt",
+                "https://example.com/sitemap.xml",
+                "https://example.com/sitemap_index.xml",
+            ],
+        )
+
+    def test_page_filename_is_deterministic_and_markdown(self) -> None:
+        first = page_filename("https://example.com/docs/page", "Title", 1)
+        second = page_filename("https://example.com/docs/page", "Different Title", 1)
+
+        self.assertEqual(first, second)
+        self.assertTrue(first.startswith("0001-docs-page-"))
+        self.assertTrue(first.endswith(".md"))
+
+    def test_write_markdown_corpus_removes_stale_generated_pages(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pages_dir = Path(tmp) / "pages"
+            pages_dir.mkdir()
+            (pages_dir / "stale.md").write_text("---\ntitle: Stale\n---\n\nOld text.", encoding="utf-8")
+
+            write_markdown_corpus([], pages_dir)
+
+            self.assertEqual(list(pages_dir.glob("*.md")), [])
+
+    def test_write_markdown_corpus_frontmatter_feeds_existing_chunker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            pages_dir = Path(tmp) / "pages"
+            write_markdown_corpus(
+                [
+                    CrawledPage(
+                        url="https://example.com/docs/page",
+                        title="Docs Page",
+                        status=200,
+                        content_type="text/html; charset=utf-8",
+                        markdown="## Intro\nUseful documentation text for retrieval.",
+                    )
+                ],
+                pages_dir,
+            )
+
+            files = list(pages_dir.glob("*.md"))
+            self.assertEqual(len(files), 1)
+            text = files[0].read_text(encoding="utf-8")
+            self.assertIn('url: "https://example.com/docs/page"', text)
+            self.assertIn('title: "Docs Page"', text)
+            self.assertIn('status: "200"', text)
+            self.assertIn('content_type: "text/html; charset=utf-8"', text)
+            self.assertIn('fetcher: "scrapling-static-spider"', text)
+
+            plan = process_corpus(pages_dir)
+            self.assertEqual(plan.stats.files_seen, 1)
+            self.assertEqual(plan.stats.files_error, 0)
+            self.assertEqual(plan.stats.chunks_generated, 1)
+            self.assertEqual(plan.chunks[0].title, "Docs Page")
+            self.assertEqual(plan.chunks[0].url, "https://example.com/docs/page")
+
+
+if __name__ == "__main__":
+    unittest.main()

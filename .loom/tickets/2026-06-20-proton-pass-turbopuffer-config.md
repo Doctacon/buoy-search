@@ -39,8 +39,8 @@ Out of scope:
 - 2026-06-20: User approved these future execution defaults: search accessible Proton Pass items for the turbopuffer credential, `TURBOPUFFER_REGION=gcp-us-central1`, and `TURBOPUFFER_NAMESPACE=jellyfish-site-docs-v1`.
 - 2026-06-20: Activated for execution under `/loom-driver`.
 - 2026-06-20: Verified `pass-cli` availability and authenticated an isolated Proton Pass session after the default session was absent.
-- 2026-06-20: Searched accessible Proton Pass item metadata and found exactly one turbopuffer candidate: item title `TurboPuffer` in the accessible vault. No secret fields were printed or written.
-- 2026-06-20: Retrieved the `API Key` field from the `TurboPuffer` item into shell memory only, using `PROTON_PASS_AGENT_REASON`; verified it was non-empty without exposing the value.
+- 2026-06-20: Searched accessible Proton Pass item metadata and found exactly one turbopuffer candidate: item title `<private turbopuffer credential item>` in the accessible vault. No secret fields were printed or written.
+- 2026-06-20: Retrieved the `API Key` field from the `<private turbopuffer credential item>` item into shell memory only, using `PROTON_PASS_AGENT_REASON`; verified it was non-empty without exposing the value.
 - 2026-06-20: Recorded runtime defaults: `TURBOPUFFER_REGION=gcp-us-central1` and `TURBOPUFFER_NAMESPACE=jellyfish-site-docs-v1`.
 - 2026-06-20: Ran a non-mutating turbopuffer smoke check: `GET /v1/namespaces?page_size=1000` in region `gcp-us-central1` succeeded with the retrieved key. The first page contained 0 namespaces; `jellyfish-site-docs-v1` is not yet present, as expected before indexing/writes. Evidence: `.loom/evidence/2026-06-20-turbopuffer-config-verification.md`.
 - 2026-06-20: No project `.env` was created and no indexing or turbopuffer writes were run.

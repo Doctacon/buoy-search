@@ -31,14 +31,14 @@ uv sync && uv run python -m unittest discover -s tests -v
 
 Result: passed, 11 tests.
 
-2. Followed the Proton Pass session check rule before `pass-cli` access. An isolated session at `/tmp/pass-agent-turbo-search-live-indexing` was used. The active accessible vault was `LoughOnData`, and the credential item title was `TurboPuffer`.
+2. Followed the Proton Pass session check rule before `pass-cli` access. An isolated session at `/tmp/pass-agent-turbo-search-live-indexing` was used. The active accessible vault was `<private Proton Pass vault>`, and the credential item title was `<private turbopuffer credential item>`.
 
 3. Retrieved only the `API Key` field into shell memory without printing it:
 
 ```bash
 pass-cli info >/dev/null
 TURBOPUFFER_API_KEY="$(PROTON_PASS_AGENT_REASON="Live index approved Jellyfish docs into turbopuffer namespace jellyfish-site-docs-v1" \
-  pass-cli item view --vault-name "LoughOnData" --item-title "TurboPuffer" --field "API Key")"
+  pass-cli item view --vault-name "<private Proton Pass vault>" --item-title "<private turbopuffer credential item>" --field "API Key")"
 ```
 
 4. Ran the approved live index command with the key in shell memory only:

@@ -43,14 +43,14 @@ PYTHONPATH=src uv run --no-sync python -m turbo_search evals --dry-run --top-k 5
 
 Result: listed 5 eval cases with expected URL/topic hints, `credentials_required=false`, `turbopuffer_api_calls=false`, and no live API calls.
 
-3. Followed the Proton Pass session check rule before `pass-cli` access. An isolated session at `/tmp/pass-agent-retrieval-smoke-evals` was used. The accessible vault was `LoughOnData`, and the credential item title was `TurboPuffer`.
+3. Followed the Proton Pass session check rule before `pass-cli` access. An isolated session at `/tmp/pass-agent-retrieval-smoke-evals` was used. The accessible vault was `<private Proton Pass vault>`, and the credential item title was `<private turbopuffer credential item>`.
 
 4. Retrieved only the `API Key` field into shell memory without printing it. Sanitized command shape:
 
 ```bash
 pass-cli info >/dev/null
 TURBOPUFFER_API_KEY="$(PROTON_PASS_AGENT_REASON="Live retrieval smoke evals against indexed Jellyfish docs namespace jellyfish-site-docs-v1" \
-  pass-cli item view --vault-name "LoughOnData" --item-title "TurboPuffer" --field "API Key")"
+  pass-cli item view --vault-name "<private Proton Pass vault>" --item-title "<private turbopuffer credential item>" --field "API Key")"
 ```
 
 5. Ran live evals with the key in shell memory only, captured output to a temporary file, checked the output did not contain the in-memory key, then printed sanitized output:

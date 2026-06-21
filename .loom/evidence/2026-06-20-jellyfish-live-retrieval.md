@@ -25,14 +25,14 @@ Secret handling boundaries maintained:
 
 ## Commands and procedure
 
-1. Followed the Proton Pass session check rule before `pass-cli` access. An isolated session at `/tmp/pass-agent-turbo-search-live-retrieval` was used. The active accessible vault was `LoughOnData`, and the credential item title was `TurboPuffer`.
+1. Followed the Proton Pass session check rule before `pass-cli` access. An isolated session at `/tmp/pass-agent-turbo-search-live-retrieval` was used. The active accessible vault was `<private Proton Pass vault>`, and the credential item title was `<private turbopuffer credential item>`.
 
 2. Retrieved only the `API Key` field into shell memory without printing it:
 
 ```bash
 pass-cli info >/dev/null
 TURBOPUFFER_API_KEY="$(PROTON_PASS_AGENT_REASON="Live retrieval approved against indexed turbopuffer namespace jellyfish-site-docs-v1" \
-  pass-cli item view --vault-name "LoughOnData" --item-title "TurboPuffer" --field "API Key")"
+  pass-cli item view --vault-name "<private Proton Pass vault>" --item-title "<private turbopuffer credential item>" --field "API Key")"
 ```
 
 3. Ran live retrieval with the key in shell memory only. Sanitized command shape:

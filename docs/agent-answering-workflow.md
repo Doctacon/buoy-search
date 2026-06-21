@@ -41,13 +41,21 @@ Required live environment:
 - `TURBOPUFFER_NAMESPACE`: default is `jellyfish-site-docs-v1`.
 - `TURBO_SEARCH_EMBEDDING_MODEL`: optional; default is `BAAI/bge-small-en-v1.5`.
 
-Safe Proton Pass note: do not access secrets unless live retrieval is approved. If approved, verify the Proton Pass session first, then export the key into shell memory only; do not print it, write it to `.env`, or commit it. Command shape, with no secret values:
+Safe Proton Pass note: do not access secrets unless live retrieval is approved. If approved, verify the Proton Pass session first, then export the key into shell memory only; do not print it, write it to `.env`, or commit it.
+
+Known working command shape for this project:
 
 ```bash
-pass-cli info >/dev/null
+export PROTON_PASS_SESSION_DIR="/tmp/pass-agent-turbo-search-jellyfish"
+pass-cli info >/dev/null || {
+  echo "Proton Pass session is not authenticated; re-authenticate before live retrieval." >&2
+  exit 2
+}
 export TURBOPUFFER_API_KEY="$(PROTON_PASS_AGENT_REASON="Retrieve Jellyfish docs context for an approved answer" \
-  pass-cli item view --vault-name "<approved-vault>" --item-title "TurboPuffer" --field "API Key")"
+  pass-cli item view --vault-name "<private Proton Pass vault>" --item-title "<private turbopuffer credential item>" --field "API Key")"
 ```
+
+Important: `pass-cli item view --item-title "<private turbopuffer credential item>"` fails without `--vault-name "<private Proton Pass vault>"` in this setup. If `pass-cli info` fails, re-authenticate in the isolated session directory using the Proton Pass agent instructions; do not paste or log token values.
 
 ## 2. Read the retrieval output
 

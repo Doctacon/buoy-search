@@ -7,6 +7,7 @@ Local Python prototype for testing turbopuffer-backed RAG over exported Jellyfis
 Implemented so far:
 
 - Safe Markdown indexing CLI, dry-run by default.
+- Safe generic website crawl CLI, dry-run by default, using Scrapling for fetch/extraction.
 - Recursive `*.md` discovery under `jellyfish-site-docs/`.
 - Frontmatter parsing for `url` and `title`.
 - Conservative site-chrome normalization.
@@ -54,6 +55,19 @@ PYTHONPATH=src uv run --no-sync python -m turbo_search index \
   --max-files 25 \
   --limit-chunks 100
 ```
+
+Dry-run crawl a public website with Scrapling. This writes a local generated Markdown corpus and chunks it, but does not read credentials, embed text, create namespaces, or contact turbopuffer:
+
+```bash
+uv run turbo-search crawl \
+  --base-url "https://scrapling.readthedocs.io/en/latest/" \
+  --max-pages 10 \
+  --max-chunks 100 \
+  --css-selector ".md-content__inner" \
+  --json
+```
+
+The crawl command prefers robots/sitemap discovery first and falls back to capped same-domain link crawling if no sitemap pages are scraped. It reports a namespace candidate such as `site-scrapling-readthedocs-io-v1`; it never creates that namespace.
 
 Plan retrieval without credentials. This is the default for `retrieve`; it does not load the embedding model or contact turbopuffer:
 

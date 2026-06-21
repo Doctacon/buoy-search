@@ -10,6 +10,17 @@ from typing import Sequence
 
 from turbo_search import __version__
 from turbo_search.config import load_config
+from turbo_search.crawler import (
+    DEFAULT_CRAWL_CONCURRENT_REQUESTS,
+    DEFAULT_CRAWL_CONCURRENT_REQUESTS_PER_DOMAIN,
+    DEFAULT_CRAWL_DOWNLOAD_DELAY,
+    DEFAULT_CRAWL_MAX_CHUNKS,
+    DEFAULT_CRAWL_MAX_PAGES,
+    CrawlOptions,
+    crawl_site,
+    default_out_dir,
+    validate_base_url,
+)
 from turbo_search.evals import (
     build_dry_run_eval_report,
     load_eval_cases,
@@ -36,7 +47,7 @@ from turbo_search.retriever import (
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="turbo-search",
-        description="Local Jellyfish docs RAG utilities. Indexing is dry-run by default.",
+        description="Local site RAG utilities. Crawl/index commands are dry-run by default unless explicitly documented otherwise.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
@@ -91,6 +102,83 @@ def build_parser() -> argparse.ArgumentParser:
         help="Explicitly embed chunks and write batched upserts to turbopuffer.",
     )
     index_parser.set_defaults(func=_run_index)
+
+    crawl_parser = subparsers.add_parser(
+        "crawl",
+        help="crawl a website with Scrapling and chunk locally; always dry-run",
+        description=(
+            "Crawl a public website with Scrapling, generate a local Markdown corpus, "
+            "and chunk it for namespace planning. This command is local-only: it does not "
+            "read credentials, embed text, create namespaces, or call turbopuffer."
+        ),
+    )
+    crawl_parser.add_argument(
+        "--base-url",
+        required=True,
+        help="Absolute http(s) URL to crawl.",
+    )
+    crawl_parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="Local output directory. Defaults to artifacts/site-crawls/<host>.",
+    )
+    crawl_parser.add_argument(
+        "--max-pages",
+        type=positive_int,
+        default=DEFAULT_CRAWL_MAX_PAGES,
+        help="Maximum pages to scrape.",
+    )
+    crawl_parser.add_argument(
+        "--max-chunks",
+        type=positive_int,
+        default=DEFAULT_CRAWL_MAX_CHUNKS,
+        help="Maximum chunks to generate from crawled pages.",
+    )
+    crawl_parser.add_argument(
+        "--concurrent-requests",
+        type=positive_int,
+        default=DEFAULT_CRAWL_CONCURRENT_REQUESTS,
+        help="Global Scrapling crawl concurrency.",
+    )
+    crawl_parser.add_argument(
+        "--concurrent-requests-per-domain",
+        type=positive_int,
+        default=DEFAULT_CRAWL_CONCURRENT_REQUESTS_PER_DOMAIN,
+        help="Per-domain Scrapling crawl concurrency.",
+    )
+    crawl_parser.add_argument(
+        "--download-delay",
+        type=nonnegative_float,
+        default=DEFAULT_CRAWL_DOWNLOAD_DELAY,
+        help="Polite delay between crawl requests in seconds.",
+    )
+    crawl_parser.add_argument(
+        "--css-selector",
+        default=None,
+        help=(
+            "Optional CSS selector passed to Scrapling extraction to scope content, "
+            "e.g. article or .md-content__inner."
+        ),
+    )
+    crawl_parser.add_argument(
+        "--target-tokens",
+        type=positive_int,
+        default=DEFAULT_TARGET_TOKENS,
+        help="Approximate target tokens per generated chunk.",
+    )
+    crawl_parser.add_argument(
+        "--overlap-sentences",
+        type=nonnegative_int,
+        default=DEFAULT_OVERLAP_SENTENCES,
+        help="Number of trailing sentences to overlap between adjacent chunks.",
+    )
+    crawl_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON output. Text summary is used by default.",
+    )
+    crawl_parser.set_defaults(func=_run_crawl)
 
     retrieve_parser = subparsers.add_parser(
         "retrieve",
@@ -204,6 +292,13 @@ def nonnegative_int(value: str) -> int:
     return parsed
 
 
+def nonnegative_float(value: str) -> float:
+    parsed = float(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be zero or greater")
+    return parsed
+
+
 def _print_json(payload: dict[str, object]) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True))
 
@@ -277,6 +372,39 @@ def index_summary(
     }
 
 
+def _run_crawl(args: argparse.Namespace) -> int:
+    try:
+        base_url = validate_base_url(args.base_url)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    out_dir = args.out_dir if args.out_dir is not None else default_out_dir(base_url)
+    options = CrawlOptions(
+        base_url=base_url,
+        out_dir=out_dir,
+        max_pages=args.max_pages,
+        max_chunks=args.max_chunks,
+        concurrent_requests=args.concurrent_requests,
+        concurrent_requests_per_domain=args.concurrent_requests_per_domain,
+        download_delay=args.download_delay,
+        css_selector=args.css_selector,
+        target_tokens=args.target_tokens,
+        overlap_sentences=args.overlap_sentences,
+    )
+    try:
+        summary = crawl_site(options)
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    if args.json:
+        _print_json(summary)
+    else:
+        print_crawl_text(summary)
+    return 0
+
+
 def _run_retrieve(args: argparse.Namespace) -> int:
     config = load_config()
     options = RetrievalOptions(top_k=args.top_k, candidates=args.candidates, doc_kind=args.doc_kind)
@@ -329,6 +457,16 @@ def _run_evals(args: argparse.Namespace) -> int:
     else:
         print_eval_text(report.to_dict())
     return 0
+
+
+def print_crawl_text(payload: dict[str, object]) -> None:
+    print("Website crawl dry-run (no credentials, embeddings, or turbopuffer API calls):")
+    print(f"  base_url: {payload['base_url']}")
+    print(f"  namespace_candidate: {payload['namespace_candidate']}")
+    print(f"  strategy: {payload['crawl_strategy']}")
+    print(f"  pages_scraped: {payload['pages_scraped']}; chunks_generated: {payload['chunks_generated']}")
+    print(f"  out_dir: {payload['out_dir']}")
+    print("  live writes: not supported by this command")
 
 
 def print_retrieval_text(output: RetrievalPlan | RetrievalResult) -> None:

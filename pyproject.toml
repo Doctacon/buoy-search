@@ -10,6 +10,8 @@ dependencies = [
     "turbopuffer",
     "sentence-transformers",
     "PyYAML",
+    "scrapling[fetchers]>=0.4.9",
+    "markdownify>=1.2.0",
 ]
 
 [project.scripts]
