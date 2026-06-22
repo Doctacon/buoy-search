@@ -9,19 +9,9 @@ This skill captures the working Jellyfish/turbopuffer RAG workflow and the plann
 
 ## Repository location
 
-The CLI implementation lives at:
+Run `uv run turbo-search ...` commands from the `turbo-search` repository root.
 
-```text
-<repo-root>
-```
-
-If a session starts in another directory, first run:
-
-```bash
-cd <repo-root>
-```
-
-Then run `uv run turbo-search ...` commands from that repository root.
+If this skill is installed globally by symlink, resolve the symlink target to find the repository clone. Otherwise, ask the user for the local clone path before running repo commands from another directory.
 
 ## Non-negotiable guardrails
 

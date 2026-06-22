@@ -33,3 +33,6 @@ outputs/
 generated/
 artifacts/
 *.log
+
+# Local/private Loom binary evidence captures
+.loom/**/.storage/
