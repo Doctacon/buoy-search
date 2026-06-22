@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 import json
+import os
 import tempfile
 from pathlib import Path
 import unittest
@@ -189,6 +190,49 @@ class ApplyCliTests(unittest.TestCase):
         self.assertEqual(payload["rows_to_upsert"], 2)
         self.assertEqual(payload["rows_upserted"], 0)
         self.assertEqual(stderr, "")
+
+    def test_apply_defaults_to_latest_plan_and_plan_namespace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(root)
+                _, old_plan_path = build_saved_plan(
+                    root / "artifacts/site-crawls/old-site-plan",
+                    state_root=Path(".turbo-search"),
+                )
+                _, latest_plan_path = build_saved_plan(
+                    root / "artifacts/site-crawls/latest-site-plan",
+                    state_root=Path(".turbo-search"),
+                )
+                os.utime(old_plan_path, (1, 1))
+                os.utime(latest_plan_path, (2, 2))
+
+                result, stdout, stderr = self.run_main(["apply", "--json"])
+            finally:
+                os.chdir(old_cwd)
+
+        payload = json.loads(stdout)
+        self.assertEqual(result, 0, stderr)
+        self.assertEqual(payload["plan_path"], str(latest_plan_path.relative_to(root)))
+        self.assertEqual(payload["namespace"], "site-example-com-v1")
+        self.assertFalse(payload["approved"])
+        self.assertFalse(payload["turbopuffer_api_calls"])
+
+    def test_apply_without_plan_fails_clearly_when_no_local_plan_exists(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(root)
+                result, stdout, stderr = self.run_main(["apply", "--json"])
+            finally:
+                os.chdir(old_cwd)
+
+        self.assertEqual(result, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("No plan search root found", stderr)
+        self.assertIn("pass --plan explicitly", stderr)
 
     def test_approved_apply_requires_api_key_before_embedding_or_writing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

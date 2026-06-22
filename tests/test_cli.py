@@ -57,6 +57,9 @@ def fake_plan_crawl_summary(options: CrawlOptions) -> dict[str, object]:
         "pages_dir": str(options.out_dir / "pages"),
         "max_pages": options.max_pages,
         "max_chunks": options.max_chunks,
+        "include_paths": list(options.include_paths),
+        "exclude_paths": list(options.exclude_paths),
+        "strip_trailing_slash": options.strip_trailing_slash,
         "css_selector": options.css_selector,
         "target_tokens": options.target_tokens,
         "overlap_sentences": options.overlap_sentences,
@@ -237,7 +240,48 @@ class CliTests(unittest.TestCase):
         self.assertEqual(options.max_pages, 3)
         self.assertEqual(options.max_chunks, 5)
         self.assertEqual(options.crawl_strategy, "hybrid")
+        self.assertEqual(options.include_paths, ())
+        self.assertEqual(options.exclude_paths, ())
+        self.assertTrue(options.strip_trailing_slash)
         self.assertEqual(options.css_selector, ".md-content__inner")
+
+    def test_crawl_text_output_warns_when_caps_are_hit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = Path(tmp) / "crawl"
+            fake_summary = {
+                "command": "crawl",
+                "dry_run": True,
+                "credentials_required": False,
+                "turbopuffer_api_calls": False,
+                "api_calls_occurred": False,
+                "base_url": "https://example.com/",
+                "allowed_host": "example.com",
+                "namespace_candidate": "site-example-com-v1",
+                "crawl_strategy": "hybrid",
+                "out_dir": str(out_dir),
+                "pages_dir": str(out_dir / "pages"),
+                "max_pages": 3,
+                "max_chunks": 5,
+                "css_selector": None,
+                "pages_scraped": 3,
+                "requests_count": 4,
+                "robots_disallowed_count": 0,
+                "blocked_requests_count": 0,
+                "failed_requests_count": 0,
+                "chunks_generated": 5,
+                "files_error": 0,
+                "limit_reached": True,
+                "sample_chunks": [],
+            }
+            stdout = StringIO()
+            with patch("turbo_search.cli.crawl_site", return_value=fake_summary):
+                with redirect_stdout(stdout):
+                    result = main(["crawl", "--base-url", "https://example.com/", "--max-pages", "3", "--max-chunks", "5"])
+
+        output = stdout.getvalue()
+        self.assertEqual(result, 0)
+        self.assertIn("caps: max_pages=3; max_chunks=5; chunk_limit_reached=True", output)
+        self.assertIn("warning: reached page cap, chunk cap", output)
 
     def test_crawl_command_defaults_to_hybrid_strategy(self) -> None:
         def fake_crawl(options: CrawlOptions) -> dict[str, object]:
@@ -286,6 +330,10 @@ class CliTests(unittest.TestCase):
                         "3",
                         "--max-chunks",
                         "5",
+                        "--include-path",
+                        "/docs/**",
+                        "--exclude-path",
+                        "/llms-full.txt",
                         "--css-selector",
                         "main",
                         "--json",
@@ -305,6 +353,9 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["diff"]["stale_rows"], 0)
         self.assertEqual(payload["namespace"], "site-example-com-v1")
         self.assertEqual(payload["crawl_strategy"], "hybrid")
+        self.assertEqual(payload["include_paths"], ["/docs/**"])
+        self.assertEqual(payload["exclude_paths"], ["/llms-full.txt"])
+        self.assertTrue(payload["strip_trailing_slash"])
         self.assertTrue((out_dir / "plan.json").exists())
         self.assertTrue((out_dir / "manifest.json").exists())
         self.assertTrue((out_dir / "chunks.jsonl").exists())
@@ -315,6 +366,9 @@ class CliTests(unittest.TestCase):
         chunks = [json.loads(line) for line in (out_dir / "chunks.jsonl").read_text(encoding="utf-8").splitlines()]
         self.assertEqual(plan["diff"]["rows_to_upsert"], 1)
         self.assertEqual(plan["crawl_options"]["crawl_strategy"], "hybrid")
+        self.assertEqual(plan["crawl_options"]["include_paths"], ["/docs/**"])
+        self.assertEqual(plan["crawl_options"]["exclude_paths"], ["/llms-full.txt"])
+        self.assertTrue(plan["crawl_options"]["strip_trailing_slash"])
         self.assertEqual(plan["state_path"], str(state_root / "state/example-com/site-example-com-v1/last-applied.json"))
         self.assertEqual(len(manifest["pages"]), 1)
         self.assertEqual(len(chunks), 1)

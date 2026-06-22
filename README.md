@@ -67,7 +67,7 @@ uv run turbo-search crawl \
   --json
 ```
 
-The crawl command defaults to hybrid discovery: robots/sitemap pages plus capped same-domain link crawling from the base URL. If you want a lighter crawl that trusts the sitemap, use `--crawl-strategy sitemap`; use `--crawl-strategy link` to ignore sitemaps. It reports a namespace candidate such as `site-scrapling-readthedocs-io-v1`; it never creates that namespace.
+The crawl command defaults to hybrid discovery with practical planning caps (`250` pages / `10000` chunks): robots/sitemap pages plus capped same-domain link crawling from the base URL. If you want a lighter crawl that trusts the sitemap, use `--crawl-strategy sitemap`; use `--crawl-strategy link` to ignore sitemaps. Use repeatable `--include-path` / `--exclude-path` globs to shape the corpus, e.g. `--exclude-path /llms-full.txt`. URL paths are canonicalized by stripping trailing slashes by default; pass `--keep-trailing-slash` to preserve variants. It reports a namespace candidate such as `site-scrapling-readthedocs-io-v1`; it never creates that namespace.
 
 Create a Terraform-like local website RAG plan. This reuses the same Scrapling crawl/extract/chunk path, loads local applied state from `.turbo-search/` when present, writes review artifacts, and still does not read credentials, embed text, create namespaces, or contact turbopuffer:
 
@@ -75,10 +75,7 @@ Create a Terraform-like local website RAG plan. This reuses the same Scrapling c
 uv run turbo-search plan \
   "https://scrapling.readthedocs.io/en/latest/" \
   --out-dir artifacts/site-crawls/scrapling-readthedocs-io-plan \
-  --max-pages 1000 \
-  --max-chunks 10000 \
-  --css-selector ".md-content__inner" \
-  --json
+  --css-selector ".md-content__inner"
 ```
 
 Plan artifacts include:
@@ -93,34 +90,24 @@ pages/*.md
 
 Use `--namespace <stable-namespace>` to diff against a specific local state namespace. `plan` is preview-only.
 
-Verify a saved plan before live work. Apply preflight re-reads `plan.json`, `manifest.json`, and `chunks.jsonl`, verifies the artifact hash and namespace, recomputes the local diff from state, and does not read credentials, load embeddings, or call turbopuffer:
+Verify the latest saved plan before live work. Apply preflight defaults to the newest `artifacts/site-crawls/**/plan.json`, uses the namespace recorded in that plan, re-reads `plan.json`, `manifest.json`, and `chunks.jsonl`, verifies the artifact hash and namespace, recomputes the local diff from state, and does not read credentials, load embeddings, or call turbopuffer:
 
 ```bash
-uv run turbo-search apply \
-  --plan artifacts/site-crawls/scrapling-readthedocs-io-plan/plan.json \
-  --namespace site-scrapling-readthedocs-io-v1 \
-  --json
+uv run turbo-search apply
 ```
+
+Use `--json` for scripts/automation. Use `--plan <plan.json>` or `--namespace <namespace>` only when you want to override the defaults.
 
 Approved apply is explicitly live. Only run it after reviewing the plan and putting `TURBOPUFFER_API_KEY` in the environment. It embeds/upserts only chunks selected by the recomputed incremental diff. By default, stale rows are not deleted; they are retained in local state as `retained_stale` for a future cleanup pass.
 
 ```bash
-uv run turbo-search apply \
-  --plan artifacts/site-crawls/scrapling-readthedocs-io-plan/plan.json \
-  --namespace site-scrapling-readthedocs-io-v1 \
-  --approve \
-  --json
+uv run turbo-search apply --approve
 ```
 
 Delete stale rows only with an additional explicit flag. Preflight with `--delete-stale` reports the exact stale row IDs that would be deleted but still makes no live calls. Live stale deletion requires both `--approve` and `--delete-stale`:
 
 ```bash
-uv run turbo-search apply \
-  --plan artifacts/site-crawls/scrapling-readthedocs-io-plan/plan.json \
-  --namespace site-scrapling-readthedocs-io-v1 \
-  --approve \
-  --delete-stale \
-  --json
+uv run turbo-search apply --approve --delete-stale
 ```
 
 See [`docs/generic-site-rag-plan-apply.md`](docs/generic-site-rag-plan-apply.md) for the full generic site plan/apply safety model.

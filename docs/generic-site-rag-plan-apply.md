@@ -18,10 +18,7 @@ Stale deletes have an additional guardrail: stale rows are retained by default. 
 uv run turbo-search plan \
   "https://scrapling.readthedocs.io/en/latest/" \
   --out-dir artifacts/site-crawls/scrapling-readthedocs-io-plan \
-  --max-pages 1000 \
-  --max-chunks 10000 \
-  --css-selector ".md-content__inner" \
-  --json
+  --css-selector ".md-content__inner"
 ```
 
 Plan artifacts:
@@ -44,16 +41,29 @@ The plan compares generated chunks to local applied state under `.turbo-search/s
 - `sitemap`: use robots/sitemap discovery; fall back to link crawling only when the sitemap path yields no pages. Use this for a lighter, sitemap-trusting crawl.
 - `link`: ignore sitemap URLs and crawl same-site links from the base URL.
 
-Hybrid/link crawling still obeys robots.txt, host restrictions, page caps, concurrency, and delay settings.
+Hybrid/link crawling still obeys robots.txt, host restrictions, page caps, concurrency, and delay settings. Default planning caps are `250` pages and `10000` chunks; lower them for smoke tests or raise them for unusually large sites.
+
+### Path filters and URL canonicalization
+
+Use repeatable path globs to shape the local corpus before a live apply:
+
+```bash
+uv run turbo-search plan https://turbopuffer.com/ \
+  --exclude-path /llms-full.txt
+```
+
+- `--include-path /docs/**` includes only matching URL paths; `/docs/**` also matches `/docs`.
+- `--exclude-path /llms-full.txt` removes matching URL paths from sitemap and link discovery.
+- trailing slashes are stripped by default so `/docs/query` and `/docs/query/` canonicalize to one page.
+- `--keep-trailing-slash` preserves trailing-slash variants when a site needs that behavior.
 
 ## Apply preflight
 
 ```bash
-uv run turbo-search apply \
-  --plan artifacts/site-crawls/scrapling-readthedocs-io-plan/plan.json \
-  --namespace site-scrapling-readthedocs-io-v1 \
-  --json
+uv run turbo-search apply
 ```
+
+By default, `apply` selects the newest `artifacts/site-crawls/**/plan.json` and uses the namespace recorded in that plan. Pass `--json` for scripts/automation. Pass `--plan <plan.json>` or `--namespace <namespace>` only when you want to override those defaults.
 
 Preflight verifies:
 
@@ -67,14 +77,10 @@ Preflight makes no live calls and does not read `TURBOPUFFER_API_KEY`.
 
 ## Approved apply
 
-Only after reviewing plan artifacts and explicitly choosing the namespace:
+Only after reviewing plan artifacts and accepting the namespace shown by preflight:
 
 ```bash
-uv run turbo-search apply \
-  --plan artifacts/site-crawls/scrapling-readthedocs-io-plan/plan.json \
-  --namespace site-scrapling-readthedocs-io-v1 \
-  --approve \
-  --json
+uv run turbo-search apply --approve
 ```
 
 Approved apply:
@@ -92,22 +98,13 @@ Do not store API keys, private vault names, item titles, share IDs, or token val
 Preview exact stale deletes without live calls:
 
 ```bash
-uv run turbo-search apply \
-  --plan artifacts/site-crawls/scrapling-readthedocs-io-plan/plan.json \
-  --namespace site-scrapling-readthedocs-io-v1 \
-  --delete-stale \
-  --json
+uv run turbo-search apply --delete-stale
 ```
 
 Actually delete stale rows only with both flags:
 
 ```bash
-uv run turbo-search apply \
-  --plan artifacts/site-crawls/scrapling-readthedocs-io-plan/plan.json \
-  --namespace site-scrapling-readthedocs-io-v1 \
-  --approve \
-  --delete-stale \
-  --json
+uv run turbo-search apply --approve --delete-stale
 ```
 
 `--delete-stale` deletes exact stale row IDs from the recomputed diff. It does not delete namespaces.

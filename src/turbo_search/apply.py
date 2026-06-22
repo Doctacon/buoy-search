@@ -41,6 +41,7 @@ from turbo_search.plan_artifacts import (
 from turbo_search.plan_diff import IncrementalPlanDiff, PlanDiffError, diff_manifest_against_state
 
 JsonObject = dict[str, Any]
+DEFAULT_APPLY_PLAN_SEARCH_ROOT = Path("artifacts/site-crawls")
 
 
 class ApplyPlanError(ValueError):
@@ -67,7 +68,18 @@ class ApplyResult:
     summary: JsonObject
 
 
-def load_verified_apply_plan(*, plan_path: Path, namespace: str, state_root: Path) -> VerifiedApplyPlan:
+def discover_latest_plan_path(search_root: Path = DEFAULT_APPLY_PLAN_SEARCH_ROOT) -> Path:
+    """Return the newest local plan.json under the default artifacts tree."""
+
+    if not search_root.exists():
+        raise ApplyPlanError(f"No plan search root found: {search_root}; pass --plan explicitly.")
+    candidates = [path for path in search_root.rglob("plan.json") if path.is_file()]
+    if not candidates:
+        raise ApplyPlanError(f"No plan.json files found under {search_root}; run `turbo-search plan <url>` or pass --plan.")
+    return max(candidates, key=lambda path: (path.stat().st_mtime_ns, str(path)))
+
+
+def load_verified_apply_plan(*, plan_path: Path, namespace: str | None, state_root: Path) -> VerifiedApplyPlan:
     """Load and verify plan artifacts and recompute state diff locally.
 
     This function is intentionally safe for preflight: it does not read secrets,
@@ -94,13 +106,14 @@ def load_verified_apply_plan(*, plan_path: Path, namespace: str, state_root: Pat
     if plan.get("command") != "plan":
         raise ApplyPlanError(f"plan command must be 'plan', found {plan.get('command')!r}")
     require_plan_field(plan, "namespace")
-    if str(plan["namespace"]) != namespace:
+    resolved_namespace = str(plan["namespace"])
+    if namespace is not None and resolved_namespace != namespace:
         raise ApplyPlanError(f"namespace mismatch: plan has {plan['namespace']!r}, argument has {namespace!r}")
 
     manifest = manifest_from_json(manifest_payload)
-    if manifest.namespace != namespace:
+    if manifest.namespace != resolved_namespace:
         raise ApplyPlanError(
-            f"namespace mismatch: manifest has {manifest.namespace!r}, argument has {namespace!r}"
+            f"namespace mismatch: manifest has {manifest.namespace!r}, plan has {resolved_namespace!r}"
         )
     for field in ("base_url", "site_id", "namespace_candidate"):
         require_plan_field(plan, field)
@@ -109,7 +122,7 @@ def load_verified_apply_plan(*, plan_path: Path, namespace: str, state_root: Pat
                 f"plan {field} mismatch: plan has {plan[field]!r}, manifest has {getattr(manifest, field)!r}"
             )
 
-    expected_state_path = state_path_for_site(manifest.site_id, namespace, state_root=state_root)
+    expected_state_path = state_path_for_site(manifest.site_id, resolved_namespace, state_root=state_root)
     if str(plan.get("state_path", "")) != expected_state_path:
         raise ApplyPlanError(
             "plan state_path does not match the requested state root; "
@@ -123,7 +136,7 @@ def load_verified_apply_plan(*, plan_path: Path, namespace: str, state_root: Pat
 
     state = load_applied_state(
         site_id=manifest.site_id,
-        namespace=namespace,
+        namespace=resolved_namespace,
         base_url=manifest.base_url,
         state_root=state_root,
     )

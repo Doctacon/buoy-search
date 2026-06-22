@@ -11,7 +11,13 @@ from typing import Sequence
 
 from turbo_search import __version__
 from turbo_search.applied_state import AppliedStateError, load_applied_state
-from turbo_search.apply import ApplyPlanError, apply_preflight_summary, load_verified_apply_plan, run_approved_apply
+from turbo_search.apply import (
+    ApplyPlanError,
+    apply_preflight_summary,
+    discover_latest_plan_path,
+    load_verified_apply_plan,
+    run_approved_apply,
+)
 from turbo_search.config import load_config
 from turbo_search.crawler import (
     CRAWL_STRATEGIES,
@@ -175,6 +181,25 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     crawl_parser.add_argument(
+        "--include-path",
+        action="append",
+        default=[],
+        help="Optional URL path glob to include, repeatable. Example: /docs/**. Defaults to all same-site paths.",
+    )
+    crawl_parser.add_argument(
+        "--exclude-path",
+        action="append",
+        default=[],
+        help="Optional URL path glob to exclude, repeatable. Example: /llms-full.txt.",
+    )
+    crawl_parser.add_argument(
+        "--keep-trailing-slash",
+        action="store_false",
+        dest="strip_trailing_slash",
+        default=True,
+        help="Preserve trailing-slash URL variants instead of canonicalizing /path/ to /path.",
+    )
+    crawl_parser.add_argument(
         "--css-selector",
         default=None,
         help=(
@@ -279,6 +304,25 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     plan_parser.add_argument(
+        "--include-path",
+        action="append",
+        default=[],
+        help="Optional URL path glob to include, repeatable. Example: /docs/**. Defaults to all same-site paths.",
+    )
+    plan_parser.add_argument(
+        "--exclude-path",
+        action="append",
+        default=[],
+        help="Optional URL path glob to exclude, repeatable. Example: /llms-full.txt.",
+    )
+    plan_parser.add_argument(
+        "--keep-trailing-slash",
+        action="store_false",
+        dest="strip_trailing_slash",
+        default=True,
+        help="Preserve trailing-slash URL variants instead of canonicalizing /path/ to /path.",
+    )
+    plan_parser.add_argument(
         "--css-selector",
         default=None,
         help=(
@@ -317,13 +361,13 @@ def build_parser() -> argparse.ArgumentParser:
     apply_parser.add_argument(
         "--plan",
         type=Path,
-        required=True,
-        help="Path to a saved plan.json artifact.",
+        default=None,
+        help="Path to a saved plan.json artifact. Defaults to the newest artifacts/site-crawls/**/plan.json.",
     )
     apply_parser.add_argument(
         "--namespace",
-        required=True,
-        help="Expected stable target namespace. Must match the plan and manifest.",
+        default=None,
+        help="Expected stable target namespace. Defaults to the namespace recorded in the plan.",
     )
     apply_parser.add_argument(
         "--state-root",
@@ -599,6 +643,9 @@ def _run_crawl(args: argparse.Namespace) -> int:
         concurrent_requests_per_domain=args.concurrent_requests_per_domain,
         download_delay=args.download_delay,
         crawl_strategy=args.crawl_strategy,
+        include_paths=tuple(args.include_path),
+        exclude_paths=tuple(args.exclude_path),
+        strip_trailing_slash=args.strip_trailing_slash,
         css_selector=args.css_selector,
         target_tokens=args.target_tokens,
         overlap_sentences=args.overlap_sentences,
@@ -642,6 +689,9 @@ def _run_plan(args: argparse.Namespace) -> int:
         concurrent_requests_per_domain=args.concurrent_requests_per_domain,
         download_delay=args.download_delay,
         crawl_strategy=args.crawl_strategy,
+        include_paths=tuple(args.include_path),
+        exclude_paths=tuple(args.exclude_path),
+        strip_trailing_slash=args.strip_trailing_slash,
         css_selector=args.css_selector,
         target_tokens=args.target_tokens,
         overlap_sentences=args.overlap_sentences,
@@ -711,6 +761,9 @@ def plan_crawl_options(args: argparse.Namespace) -> dict[str, object]:
         "concurrent_requests_per_domain": args.concurrent_requests_per_domain,
         "download_delay": args.download_delay,
         "crawl_strategy": args.crawl_strategy,
+        "include_paths": list(args.include_path),
+        "exclude_paths": list(args.exclude_path),
+        "strip_trailing_slash": args.strip_trailing_slash,
         "css_selector": args.css_selector,
     }
 
@@ -761,8 +814,9 @@ def plan_summary(
 
 def _run_apply(args: argparse.Namespace) -> int:
     try:
+        plan_path = args.plan if args.plan is not None else discover_latest_plan_path()
         verified = load_verified_apply_plan(
-            plan_path=args.plan,
+            plan_path=plan_path,
             namespace=args.namespace,
             state_root=args.state_root,
         )
@@ -770,10 +824,11 @@ def _run_apply(args: argparse.Namespace) -> int:
         print(str(exc), file=sys.stderr)
         return 2
 
+    namespace = args.namespace or verified.manifest.namespace
     if not args.approve:
         summary = apply_preflight_summary(
             verified,
-            namespace=args.namespace,
+            namespace=namespace,
             approved=False,
             delete_stale=args.delete_stale,
         )
@@ -783,12 +838,12 @@ def _run_apply(args: argparse.Namespace) -> int:
             print_apply_text(summary)
         return 0
 
-    config = replace(load_config(), namespace=args.namespace, embedding_model=str(verified.plan["embedding_model"]))
+    config = replace(load_config(), namespace=namespace, embedding_model=str(verified.plan["embedding_model"]))
     try:
         summary = run_approved_apply(
             verified,
             config=config,
-            namespace=args.namespace,
+            namespace=namespace,
             batch_size=args.batch_size,
             delete_stale=args.delete_stale,
         )
@@ -863,6 +918,8 @@ def print_crawl_text(payload: dict[str, object]) -> None:
     print(f"  namespace_candidate: {payload['namespace_candidate']}")
     print(f"  strategy: {payload['crawl_strategy']}")
     print(f"  pages_scraped: {payload['pages_scraped']}; chunks_generated: {payload['chunks_generated']}")
+    print_limit_summary(payload)
+    print_filter_summary(payload)
     print(f"  out_dir: {payload['out_dir']}")
     print("  live writes: not supported by this command")
 
@@ -873,6 +930,8 @@ def print_plan_text(payload: dict[str, object]) -> None:
     print(f"  namespace: {payload['namespace']}")
     print(f"  plan_id: {payload['plan_id']}")
     print(f"  pages_scraped: {payload['pages_scraped']}; chunks_generated: {payload['chunks_generated']}")
+    print_limit_summary(payload)
+    print_filter_summary(payload)
     diff = payload.get("diff", {}) if isinstance(payload.get("diff"), dict) else {}
     print(
         "  diff: "
@@ -885,6 +944,38 @@ def print_plan_text(payload: dict[str, object]) -> None:
     print(f"  plan_path: {payload['plan_path']}")
     print(f"  state_path: {payload['state_path']}")
     print("  live writes: not supported by this command; future apply must be explicit")
+
+
+def print_limit_summary(payload: dict[str, object]) -> None:
+    max_pages = payload.get("max_pages")
+    max_chunks = payload.get("max_chunks")
+    limit_reached = bool(payload.get("limit_reached"))
+    if max_pages is not None or max_chunks is not None:
+        print(f"  caps: max_pages={max_pages}; max_chunks={max_chunks}; chunk_limit_reached={limit_reached}")
+    warnings: list[str] = []
+    if max_pages is not None and payload.get("pages_scraped") == max_pages:
+        warnings.append("page cap")
+    if limit_reached or (max_chunks is not None and payload.get("chunks_generated") == max_chunks):
+        warnings.append("chunk cap")
+    if warnings:
+        print(
+            "  warning: reached "
+            f"{', '.join(warnings)}; this is probably capped/incomplete. "
+            "Increase --max-pages and/or --max-chunks and rerun."
+        )
+
+
+def print_filter_summary(payload: dict[str, object]) -> None:
+    include_paths = payload.get("include_paths") or []
+    exclude_paths = payload.get("exclude_paths") or []
+    strip_trailing_slash = payload.get("strip_trailing_slash")
+    if include_paths or exclude_paths or strip_trailing_slash is not None:
+        print(
+            "  filters: "
+            f"include={list(include_paths)}; "
+            f"exclude={list(exclude_paths)}; "
+            f"strip_trailing_slash={strip_trailing_slash}"
+        )
 
 
 def print_apply_text(payload: dict[str, object]) -> None:

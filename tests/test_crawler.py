@@ -6,12 +6,16 @@ import unittest
 from unittest.mock import patch
 
 from turbo_search.crawler import (
+    DEFAULT_CRAWL_MAX_CHUNKS,
+    DEFAULT_CRAWL_MAX_PAGES,
     CrawledPage,
     CrawlOptions,
+    canonicalize_page_url,
     allowed_domains_for_url,
     crawl_pages,
     crawled_page_from_response,
     default_out_dir,
+    url_allowed_by_path_filters,
     namespace_candidate,
     page_filename,
     sitemap_seed_urls,
@@ -22,6 +26,10 @@ from turbo_search.indexer import process_corpus
 
 
 class CrawlerHelperTests(unittest.TestCase):
+    def test_default_caps_are_useful_for_site_plans(self) -> None:
+        self.assertEqual(DEFAULT_CRAWL_MAX_PAGES, 250)
+        self.assertEqual(DEFAULT_CRAWL_MAX_CHUNKS, 10000)
+
     def test_validate_base_url_accepts_absolute_http_urls_and_strips_fragment(self) -> None:
         self.assertEqual(
             validate_base_url("https://example.com/docs/#section"),
@@ -55,6 +63,44 @@ class CrawlerHelperTests(unittest.TestCase):
                 "https://example.com/sitemap.xml",
                 "https://example.com/sitemap_index.xml",
             ],
+        )
+
+    def test_url_path_filters_support_include_exclude_and_globs(self) -> None:
+        self.assertTrue(
+            url_allowed_by_path_filters(
+                "https://example.com/docs/query/",
+                include_paths=("/docs/**",),
+                exclude_paths=("/docs/private/**",),
+            )
+        )
+        self.assertTrue(
+            url_allowed_by_path_filters(
+                "https://example.com/docs",
+                include_paths=("/docs/**",),
+            )
+        )
+        self.assertFalse(
+            url_allowed_by_path_filters(
+                "https://example.com/blog/post",
+                include_paths=("/docs/**",),
+            )
+        )
+        self.assertFalse(
+            url_allowed_by_path_filters(
+                "https://example.com/llms-full.txt",
+                exclude_paths=("/llms-full.txt",),
+            )
+        )
+
+    def test_canonicalize_page_url_strips_fragments_and_trailing_slashes(self) -> None:
+        self.assertEqual(
+            canonicalize_page_url("https://example.com/docs/query/#top"),
+            "https://example.com/docs/query",
+        )
+        self.assertEqual(canonicalize_page_url("https://example.com/"), "https://example.com/")
+        self.assertEqual(
+            canonicalize_page_url("https://example.com/docs/query/", strip_trailing_slash=False),
+            "https://example.com/docs/query/",
         )
 
     def test_page_filename_is_deterministic_and_markdown(self) -> None:

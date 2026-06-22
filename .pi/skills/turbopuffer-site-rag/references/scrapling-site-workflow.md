@@ -20,11 +20,14 @@ base URL
 - Default to hybrid discovery: sitemap/robots pages plus same-domain link crawling from the base URL.
 - Use `--crawl-strategy sitemap` only when a lighter, sitemap-trusting crawl is desired.
 - Use `--crawl-strategy link` to ignore sitemaps.
+- Use repeatable `--include-path` / `--exclude-path` globs to shape the corpus before apply, e.g. `--exclude-path /llms-full.txt`.
+- Strip trailing slashes by default so `/docs/query` and `/docs/query/` canonicalize to one page; use `--keep-trailing-slash` only when variants must be preserved.
 - Obey robots.txt by default.
 - Restrict to the base URL host/domain unless the user approves otherwise.
-- Use conservative caps until the site shape is known:
-  - `--max-pages 10` or `25` for smoke tests
-  - `--max-chunks 100` or `200` for smoke tests
+- Default planning caps are intentionally useful for ordinary sites: `250` pages and `10000` chunks.
+- Lower caps for smoke tests when needed:
+  - `--max-pages 10` or `25`
+  - `--max-chunks 100` or `200`
   - low concurrency, e.g. `2`
   - crawl delay, e.g. `0.25` to `1.0` seconds
 - Use static HTTP fetching first. Escalate to browser rendering only when pages are empty or clearly JavaScript-dependent.
@@ -48,10 +51,7 @@ Use `plan` for Terraform-like review/apply artifacts and incremental diffing aga
 uv run turbo-search plan \
   "https://scrapling.readthedocs.io/en/latest/" \
   --out-dir artifacts/site-crawls/scrapling-readthedocs-io-plan \
-  --max-pages 1000 \
-  --max-chunks 10000 \
-  --css-selector ".md-content__inner" \
-  --json
+  --css-selector ".md-content__inner"
 ```
 
 Expected safety fields for crawl/plan:
@@ -109,31 +109,21 @@ Apply has a preflight mode and an explicit live mode.
 Preflight, no credentials or live calls:
 
 ```bash
-uv run turbo-search apply \
-  --plan artifacts/site-crawls/scrapling-readthedocs-io-plan/plan.json \
-  --namespace site-scrapling-readthedocs-io-v1 \
-  --json
+uv run turbo-search apply
 ```
+
+By default, apply uses the newest `artifacts/site-crawls/**/plan.json` and the namespace recorded in that plan. Pass `--json` for scripts/automation. Pass `--plan` or `--namespace` only when overriding those defaults.
 
 Approved live upsert, only after explicit user approval and after `TURBOPUFFER_API_KEY` is already in the environment:
 
 ```bash
-uv run turbo-search apply \
-  --plan artifacts/site-crawls/scrapling-readthedocs-io-plan/plan.json \
-  --namespace site-scrapling-readthedocs-io-v1 \
-  --approve \
-  --json
+uv run turbo-search apply --approve
 ```
 
 Stale row deletion is off by default. Preflight with `--delete-stale` reports exact stale row IDs without live calls. Live stale deletion requires both `--approve` and `--delete-stale`:
 
 ```bash
-uv run turbo-search apply \
-  --plan artifacts/site-crawls/scrapling-readthedocs-io-plan/plan.json \
-  --namespace site-scrapling-readthedocs-io-v1 \
-  --approve \
-  --delete-stale \
-  --json
+uv run turbo-search apply --approve --delete-stale
 ```
 
 Only after explicit user approval:

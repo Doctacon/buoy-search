@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from fnmatch import fnmatchcase
 import hashlib
 import json
 from pathlib import Path
@@ -24,8 +25,8 @@ from turbo_search.indexer import (
     sha256_text,
 )
 
-DEFAULT_CRAWL_MAX_PAGES = 25
-DEFAULT_CRAWL_MAX_CHUNKS = 200
+DEFAULT_CRAWL_MAX_PAGES = 250
+DEFAULT_CRAWL_MAX_CHUNKS = 10000
 DEFAULT_CRAWL_CONCURRENT_REQUESTS = 2
 DEFAULT_CRAWL_CONCURRENT_REQUESTS_PER_DOMAIN = 1
 DEFAULT_CRAWL_DOWNLOAD_DELAY = 0.25
@@ -46,6 +47,9 @@ class CrawlOptions:
     concurrent_requests_per_domain: int = DEFAULT_CRAWL_CONCURRENT_REQUESTS_PER_DOMAIN
     download_delay: float = DEFAULT_CRAWL_DOWNLOAD_DELAY
     crawl_strategy: str = DEFAULT_CRAWL_STRATEGY
+    include_paths: tuple[str, ...] = ()
+    exclude_paths: tuple[str, ...] = ()
+    strip_trailing_slash: bool = True
     css_selector: str | None = None
     target_tokens: int = DEFAULT_TARGET_TOKENS
     overlap_sentences: int = DEFAULT_OVERLAP_SENTENCES
@@ -136,6 +140,57 @@ def safe_slug(value: str, *, fallback: str = "page") -> str:
     return slug[:80] or fallback
 
 
+def normalize_path_pattern(pattern: str) -> str:
+    value = pattern.strip()
+    if not value:
+        return value
+    if not value.startswith("/"):
+        value = f"/{value}"
+    if value != "/" and value.endswith("/"):
+        value = value.rstrip("/")
+    return value
+
+
+def normalize_url_path(path: str, *, strip_trailing_slash: bool = True) -> str:
+    value = path or "/"
+    if not value.startswith("/"):
+        value = f"/{value}"
+    if strip_trailing_slash and value != "/":
+        value = value.rstrip("/")
+    return value or "/"
+
+
+def canonicalize_page_url(url: str, *, strip_trailing_slash: bool = True) -> str:
+    parsed = urlparse(url)
+    path = normalize_url_path(parsed.path, strip_trailing_slash=strip_trailing_slash)
+    return urlunparse(parsed._replace(path=path, fragment=""))
+
+
+def path_matches_pattern(path: str, pattern: str) -> bool:
+    normalized_pattern = normalize_path_pattern(pattern)
+    if not normalized_pattern:
+        return False
+    if normalized_pattern.endswith("/**"):
+        prefix = normalized_pattern[:-3].rstrip("/") or "/"
+        return path == prefix or path.startswith(f"{prefix}/")
+    return fnmatchcase(path, normalized_pattern)
+
+
+def url_allowed_by_path_filters(
+    url: str,
+    *,
+    include_paths: Sequence[str] = (),
+    exclude_paths: Sequence[str] = (),
+    strip_trailing_slash: bool = True,
+) -> bool:
+    path = normalize_url_path(urlparse(url).path, strip_trailing_slash=strip_trailing_slash)
+    includes = [normalize_path_pattern(pattern) for pattern in include_paths if normalize_path_pattern(pattern)]
+    excludes = [normalize_path_pattern(pattern) for pattern in exclude_paths if normalize_path_pattern(pattern)]
+    if includes and not any(path_matches_pattern(path, pattern) for pattern in includes):
+        return False
+    return not any(path_matches_pattern(path, pattern) for pattern in excludes)
+
+
 def yaml_scalar(value: object) -> str:
     text = str(value if value is not None else "")
     text = text.replace("\\", "\\\\").replace('"', '\\"')
@@ -163,7 +218,12 @@ def markdown_from_response(response: Any, *, css_selector: str | None = None) ->
     return "".join(parts).strip()
 
 
-def crawled_page_from_response(response: Any, *, css_selector: str | None = None) -> CrawledPage | None:
+def crawled_page_from_response(
+    response: Any,
+    *,
+    css_selector: str | None = None,
+    strip_trailing_slash: bool = True,
+) -> CrawledPage | None:
     """Convert a Scrapling response into a local dry-run page item."""
 
     if getattr(response, "status", None) != 200:
@@ -180,7 +240,7 @@ def crawled_page_from_response(response: Any, *, css_selector: str | None = None
     if headers:
         content_type = headers.get("content-type") or headers.get("Content-Type") or ""
     return CrawledPage(
-        url=str(response.url),
+        url=canonicalize_page_url(str(response.url), strip_trailing_slash=strip_trailing_slash),
         title=str(title).strip(),
         markdown=markdown,
         status=int(response.status),
@@ -199,6 +259,9 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
     _allowed_domains = allowed_domains_for_url(_base_url)
     _max_pages = options.max_pages
     _css_selector = options.css_selector
+    _include_paths = options.include_paths
+    _exclude_paths = options.exclude_paths
+    _strip_trailing_slash = options.strip_trailing_slash
 
     class SiteLinkDryRunSpider(Spider):
         name = "site_link_dry_crawl"
@@ -212,12 +275,22 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
         logging_level = 40  # ERROR; keep --json output clean unless something is genuinely wrong.
 
         def __init__(self) -> None:
-            self._scheduled_urls: set[str] = {_base_url}
+            self._scheduled_urls: set[str] = {page_identity_url(_base_url, strip_trailing_slash=_strip_trailing_slash)}
             self._links = LinkExtractor(allow_domains=_allowed_host)
             super().__init__()
 
         async def parse(self, response):
-            page = crawled_page_from_response(response, css_selector=_css_selector)
+            page_allowed = url_allowed_by_path_filters(
+                response.url,
+                include_paths=_include_paths,
+                exclude_paths=_exclude_paths,
+                strip_trailing_slash=_strip_trailing_slash,
+            )
+            page = crawled_page_from_response(
+                response,
+                css_selector=_css_selector,
+                strip_trailing_slash=_strip_trailing_slash,
+            ) if page_allowed else None
             if page:
                 yield page.__dict__
 
@@ -227,9 +300,17 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
             for url in self._links.extract(response):
                 if len(self._scheduled_urls) >= _max_pages:
                     break
-                if url in self._scheduled_urls:
+                if not url_allowed_by_path_filters(
+                    url,
+                    include_paths=_include_paths,
+                    exclude_paths=_exclude_paths,
+                    strip_trailing_slash=_strip_trailing_slash,
+                ):
                     continue
-                self._scheduled_urls.add(url)
+                url_key = page_identity_url(url, strip_trailing_slash=_strip_trailing_slash)
+                if url_key in self._scheduled_urls:
+                    continue
+                self._scheduled_urls.add(url_key)
                 yield response.follow(url, callback=self.parse)
 
     return SiteLinkDryRunSpider
@@ -245,6 +326,9 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
     _allowed_domains = allowed_domains_for_url(options.base_url)
     _max_pages = options.max_pages
     _css_selector = options.css_selector
+    _include_paths = options.include_paths
+    _exclude_paths = options.exclude_paths
+    _strip_trailing_slash = options.strip_trailing_slash
 
     class SiteSitemapDryRunSpider(SitemapSpider):
         name = "site_sitemap_dry_crawl"
@@ -267,13 +351,25 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
                 return None
             if not self._allowed_links.matches(url):
                 return None
-            if url in self._scheduled_page_urls:
+            if not url_allowed_by_path_filters(
+                url,
+                include_paths=_include_paths,
+                exclude_paths=_exclude_paths,
+                strip_trailing_slash=_strip_trailing_slash,
+            ):
                 return None
-            self._scheduled_page_urls.add(url)
+            url_key = page_identity_url(url, strip_trailing_slash=_strip_trailing_slash)
+            if url_key in self._scheduled_page_urls:
+                return None
+            self._scheduled_page_urls.add(url_key)
             return response.follow(url, callback=self.parse)
 
         async def parse(self, response):
-            page = crawled_page_from_response(response, css_selector=_css_selector)
+            page = crawled_page_from_response(
+                response,
+                css_selector=_css_selector,
+                strip_trailing_slash=_strip_trailing_slash,
+            )
             if page:
                 yield page.__dict__
 
@@ -334,18 +430,21 @@ def crawl_pages(options: CrawlOptions) -> tuple[list[CrawledPage], dict[str, obj
     link_spider = build_link_spider_class(options, allowed_host)
     link_pages, link_stats = run_scrapling_spider(link_spider)
     combined_stats = combine_stats(sitemap_stats, link_stats)
-    merged_pages = merge_unique_pages(sitemap_pages, link_pages)
+    merged_pages = merge_unique_pages(sitemap_pages, link_pages, strip_trailing_slash=options.strip_trailing_slash)
     return merged_pages[: options.max_pages], combined_stats, "hybrid"
 
 
-def merge_unique_pages(*page_groups: Sequence[CrawledPage]) -> list[CrawledPage]:
+def merge_unique_pages(
+    *page_groups: Sequence[CrawledPage],
+    strip_trailing_slash: bool = True,
+) -> list[CrawledPage]:
     """Merge crawl results by URL while preserving first-seen order."""
 
     pages: list[CrawledPage] = []
     seen_urls: set[str] = set()
     for group in page_groups:
         for page in group:
-            key = page_identity_url(page.url)
+            key = page_identity_url(page.url, strip_trailing_slash=strip_trailing_slash)
             if key in seen_urls:
                 continue
             seen_urls.add(key)
@@ -353,9 +452,8 @@ def merge_unique_pages(*page_groups: Sequence[CrawledPage]) -> list[CrawledPage]
     return pages
 
 
-def page_identity_url(url: str) -> str:
-    parsed = urlparse(url)
-    return urlunparse(parsed._replace(fragment=""))
+def page_identity_url(url: str, *, strip_trailing_slash: bool = True) -> str:
+    return canonicalize_page_url(url, strip_trailing_slash=strip_trailing_slash)
 
 
 def combine_stats(first: dict[str, object], second: dict[str, object]) -> dict[str, object]:
@@ -429,6 +527,9 @@ def build_summary(
         "pages_dir": str(pages_dir),
         "max_pages": options.max_pages,
         "max_chunks": options.max_chunks,
+        "include_paths": list(options.include_paths),
+        "exclude_paths": list(options.exclude_paths),
+        "strip_trailing_slash": options.strip_trailing_slash,
         "css_selector": options.css_selector,
         "target_tokens": options.target_tokens,
         "overlap_sentences": options.overlap_sentences,
@@ -459,6 +560,9 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
         concurrent_requests_per_domain=options.concurrent_requests_per_domain,
         download_delay=options.download_delay,
         crawl_strategy=options.crawl_strategy,
+        include_paths=options.include_paths,
+        exclude_paths=options.exclude_paths,
+        strip_trailing_slash=options.strip_trailing_slash,
         css_selector=options.css_selector,
         target_tokens=options.target_tokens,
         overlap_sentences=options.overlap_sentences,

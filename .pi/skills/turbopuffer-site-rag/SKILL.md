@@ -69,15 +69,14 @@ The older local-only helper remains at `scripts/scrapling_dry_crawl.py` for skil
 
 Only proceed if the user explicitly asks for a live generic site apply.
 
-1. Run `turbo-search plan` first and inspect `summary.json`, `plan.json`, `manifest.json`, `chunks.jsonl`, and generated `pages/*.md`.
+1. Run `turbo-search plan` first and inspect `summary.json`, `plan.json`, `manifest.json`, `chunks.jsonl`, and generated `pages/*.md`. Use `--include-path` / `--exclude-path` before apply when the crawl contains duplicate or unwanted paths such as `/llms-full.txt`.
 2. Run apply preflight without approval:
 
 ```bash
-uv run turbo-search apply \
-  --plan <plan-dir>/plan.json \
-  --namespace <approved-namespace> \
-  --json
+uv run turbo-search apply
 ```
+
+`apply` defaults to the newest `artifacts/site-crawls/**/plan.json` and the namespace recorded in that plan. Use `--json` for scripts/automation. Use `--plan` or `--namespace` only when overriding those defaults.
 
 3. Confirm the namespace, rows to upsert, embeddings to generate, stale row counts, and whether stale deletion is desired. Default: retain stale rows; never delete namespaces here.
 4. Retrieve the turbopuffer API key into shell memory only and set environment variables only in the active shell:
@@ -91,11 +90,7 @@ export TURBOPUFFER_API_KEY=<retrieved into shell memory only>
 5. Run approved apply only after explicit approval:
 
 ```bash
-uv run turbo-search apply \
-  --plan <plan-dir>/plan.json \
-  --namespace <approved-namespace> \
-  --approve \
-  --json
+uv run turbo-search apply --approve
 ```
 
 6. Delete stale rows only when explicitly requested with both `--approve` and `--delete-stale`.
