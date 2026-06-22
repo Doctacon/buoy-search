@@ -7,6 +7,22 @@ description: Build, operate, or query turbopuffer-backed RAG indexes for website
 
 This skill captures the working Jellyfish/turbopuffer RAG workflow and the planned generic Scrapling-based website workflow.
 
+## Repository location
+
+The CLI implementation lives at:
+
+```text
+<repo-root>
+```
+
+If a session starts in another directory, first run:
+
+```bash
+cd <repo-root>
+```
+
+Then run `uv run turbo-search ...` commands from that repository root.
+
 ## Non-negotiable guardrails
 
 - Do **not** persist API keys, Proton Pass output, tokens, private vault names, private item titles, or share IDs to disk.
