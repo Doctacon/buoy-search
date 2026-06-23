@@ -1,235 +1,150 @@
 # turbo-search
 
-Local Python prototype for testing turbopuffer-backed RAG over exported Jellyfish site docs.
+Tiny CLI for turning public websites into turbopuffer-backed hybrid RAG indexes.
 
-## Scope
+The main workflow is intentionally Terraform-like:
 
-Implemented so far:
+1. **plan**: crawl and chunk locally; no credentials or turbopuffer calls.
+2. **apply**: preflight the latest plan; still local-only.
+3. **apply --approve**: embed and upsert only the approved diff.
 
-- Safe Markdown indexing CLI, dry-run by default.
-- Safe generic website crawl and plan CLIs, dry-run/local-only by default, using Scrapling for fetch/extraction.
-- Recursive `*.md` discovery under `jellyfish-site-docs/`.
-- Frontmatter parsing for `url` and `title`.
-- Conservative site-chrome normalization.
-- Heading-aware Markdown chunking with ~300-token target chunks and sentence overlap.
-- Deterministic chunk IDs and citation/debug metadata.
-- Explicit `--write` mode that embeds locally with `BAAI/bge-small-en-v1.5` and upserts batches to turbopuffer.
-- Hybrid retrieval CLI/library with query embedding, turbopuffer multi-query ANN + boosted BM25, server RRF, and client-side RRF fallback.
+It uses Scrapling for crawling/extraction, local `BAAI/bge-small-en-v1.5` embeddings, and turbopuffer hybrid retrieval with ANN + BM25 + RRF.
 
 ## Setup
-
-Install dependencies with `uv`:
 
 ```bash
 uv sync
 ```
 
-Non-secret defaults used by the prototype:
+Optional but recommended for fewer Hugging Face download warnings:
 
 ```bash
-export TURBOPUFFER_REGION=gcp-us-central1
-export TURBOPUFFER_NAMESPACE=jellyfish-site-docs-v1
+uv run hf auth login
 ```
 
-Do not store `TURBOPUFFER_API_KEY` in this repository. Write mode and live retrieval read it from the environment at runtime only.
+Do **not** commit API keys. Live apply/retrieval read `TURBOPUFFER_API_KEY` from the environment only.
 
-## Safe commands
-
-Show CLI help without credentials:
+## Index a new website
 
 ```bash
-PYTHONPATH=src uv run --no-sync python -m turbo_search --help
-```
+# 1. Create a local plan. No credentials, embeddings, or live writes.
+uv run turbo-search plan https://example.com/
 
-Dry-run the full local corpus. This parses and chunks files only; it does not load embeddings, read secrets, or contact turbopuffer:
-
-```bash
-PYTHONPATH=src uv run --no-sync python -m turbo_search index --corpus-dir jellyfish-site-docs
-```
-
-Optional dry-run limits:
-
-```bash
-PYTHONPATH=src uv run --no-sync python -m turbo_search index \
-  --corpus-dir jellyfish-site-docs \
-  --max-files 25 \
-  --limit-chunks 100
-```
-
-Dry-run crawl a public website with Scrapling. This writes a local generated Markdown corpus and chunks it, but does not read credentials, embed text, create namespaces, or contact turbopuffer:
-
-```bash
-uv run turbo-search crawl \
-  --base-url "https://scrapling.readthedocs.io/en/latest/" \
-  --max-pages 10 \
-  --max-chunks 100 \
-  --css-selector ".md-content__inner" \
-  --json
-```
-
-The crawl command defaults to hybrid discovery with practical planning caps (`250` pages / `10000` chunks): robots/sitemap pages plus capped same-domain link crawling from the base URL. If you want a lighter crawl that trusts the sitemap, use `--crawl-strategy sitemap`; use `--crawl-strategy link` to ignore sitemaps. Use repeatable `--include-path` / `--exclude-path` globs to shape the corpus, e.g. `--exclude-path /llms-full.txt`. URL paths are canonicalized by stripping trailing slashes by default; pass `--keep-trailing-slash` to preserve variants. It reports a namespace candidate such as `site-scrapling-readthedocs-io-v1`; it never creates that namespace.
-
-Create a Terraform-like local website RAG plan. This reuses the same Scrapling crawl/extract/chunk path, loads local applied state from `.turbo-search/` when present, writes review artifacts, and still does not read credentials, embed text, create namespaces, or contact turbopuffer:
-
-```bash
-uv run turbo-search plan \
-  "https://scrapling.readthedocs.io/en/latest/" \
-  --out-dir artifacts/site-crawls/scrapling-readthedocs-io-plan \
-  --css-selector ".md-content__inner"
-```
-
-Plan artifacts include:
-
-```text
-plan.json
-summary.json
-manifest.json
-chunks.jsonl
-pages/*.md
-```
-
-Use `--namespace <stable-namespace>` to diff against a specific local state namespace. `plan` is preview-only.
-
-Verify the latest saved plan before live work. Apply preflight defaults to the newest `artifacts/site-crawls/**/plan.json`, uses the namespace recorded in that plan, re-reads `plan.json`, `manifest.json`, and `chunks.jsonl`, verifies the artifact hash and namespace, recomputes the local diff from state, and does not read credentials, load embeddings, or call turbopuffer:
-
-```bash
+# 2. Review what would be applied. Still no credentials or live calls.
 uv run turbo-search apply
-```
 
-Use `--json` for scripts/automation. Use `--plan <plan.json>` or `--namespace <namespace>` only when you want to override the defaults.
-
-Approved apply is explicitly live. Only run it after reviewing the plan and putting `TURBOPUFFER_API_KEY` in the environment. It embeds/upserts only chunks selected by the recomputed incremental diff. By default, stale rows are not deleted; they are retained in local state as `retained_stale` for a future cleanup pass.
-
-```bash
+# 3. If the plan looks good, explicitly upsert to turbopuffer.
+export TURBOPUFFER_API_KEY="..."
 uv run turbo-search apply --approve
 ```
 
-Delete stale rows only with an additional explicit flag. Preflight with `--delete-stale` reports the exact stale row IDs that would be deleted but still makes no live calls. Live stale deletion requires both `--approve` and `--delete-stale`:
+The namespace is derived from the site, for example:
+
+```text
+https://example.com/ -> site-example-com-v1
+```
+
+Plan artifacts are written under `artifacts/site-crawls/...` and local applied state is written under `.turbo-search/state/...`. Both are local/generated paths and are gitignored.
+
+## Shape the crawl
+
+Defaults are meant for normal sites:
+
+```text
+crawl_strategy: hybrid
+max_pages: 250
+max_chunks: 10000
+strip_trailing_slash: true
+```
+
+Useful filters:
+
+```bash
+# Only crawl docs pages
+uv run turbo-search plan https://example.com/ --include-path /docs/**
+
+# Exclude noisy paths
+uv run turbo-search plan https://example.com/ --exclude-path /blog/**
+
+# Bigger site
+uv run turbo-search plan https://example.com/ --max-pages 1000 --max-chunks 50000
+```
+
+Other crawl strategies:
+
+```bash
+uv run turbo-search plan https://example.com/ --crawl-strategy sitemap
+uv run turbo-search plan https://example.com/ --crawl-strategy link
+```
+
+## Incremental updates
+
+Run the same sequence later:
+
+```bash
+uv run turbo-search plan https://example.com/
+uv run turbo-search apply
+uv run turbo-search apply --approve
+```
+
+`plan` compares the new crawl against local applied state and reports:
+
+```text
+upsert=<new or changed chunks>
+unchanged=<already indexed chunks>
+stale=<previously indexed chunks missing from the new crawl>
+```
+
+Approved apply embeds/upserts only new or changed chunks. Stale rows are retained by default. Delete them only with an extra explicit flag:
 
 ```bash
 uv run turbo-search apply --approve --delete-stale
 ```
 
-See [`docs/generic-site-rag-plan-apply.md`](docs/generic-site-rag-plan-apply.md) for the full generic site plan/apply safety model.
-
-Plan retrieval without credentials. This is the default for `retrieve`; it does not load the embedding model or contact turbopuffer:
-
-```bash
-PYTHONPATH=src uv run --no-sync python -m turbo_search retrieve \
-  "What are DORA metrics?" \
-  --dry-run \
-  --top-k 5 \
-  --candidates 100 \
-  --json
-```
-
-Generic site namespaces can be targeted without code changes by passing non-secret runtime overrides, or by setting the corresponding environment variables:
+## Search an indexed site
 
 ```bash
 uv run turbo-search retrieve \
-  "How does Scrapling LinkExtractor filter links?" \
-  --dry-run \
-  --namespace site-scrapling-readthedocs-io-v1 \
-  --region gcp-us-central1 \
-  --embedding-model BAAI/bge-small-en-v1.5 \
-  --json
-```
-
-List the built-in retrieval smoke eval questions and expected URL/topic hints without credentials:
-
-```bash
-PYTHONPATH=src uv run --no-sync python -m turbo_search evals \
-  --dry-run \
+  "How does this feature work?" \
+  --live \
+  --namespace site-example-com-v1 \
   --top-k 5 \
-  --candidates 100 \
-  --json
+  --candidates 50
 ```
 
-List the Scrapling docs eval hints for a future approved generic-site namespace, still without credentials or turbopuffer calls:
+Dry-run retrieval is the default and does not contact turbopuffer:
 
 ```bash
-uv run turbo-search evals \
-  --dry-run \
-  --dataset src/turbo_search/data/scrapling_retrieval_smoke_evals.json \
-  --namespace site-scrapling-readthedocs-io-v1 \
-  --top-k 5 \
-  --candidates 100 \
-  --json
+uv run turbo-search retrieve "How does this feature work?" --namespace site-example-com-v1
 ```
 
-## Explicit write mode
+## Evals
 
-Only run this after credentials are approved and `TURBOPUFFER_API_KEY` is already present in the environment:
-
-```bash
-uv run turbo-search index --corpus-dir jellyfish-site-docs --write --batch-size 64
-```
-
-Write mode uses local open-source BGE embeddings by default:
-
-- Model: `BAAI/bge-small-en-v1.5`
-- Override: `TURBO_SEARCH_EMBEDDING_MODEL`
-
-Rows contain:
-
-- `id`
-- `vector`
-- `content`
-- `title`
-- `url`
-- `path`
-- `section_path`
-- `chunk_index`
-- `doc_kind`
-- `tags`
-- `source_hash`
-
-The turbopuffer schema enables ANN on `vector` and BM25 full-text search on `content`, `title`, and `section_path`.
-
-## Agent answering workflow
-
-Before answering user questions from Jellyfish docs, retrieve context and follow the citation/insufficient-context guardrails in [`docs/agent-answering-workflow.md`](docs/agent-answering-workflow.md).
-
-## Explicit live retrieval and smoke evals
-
-Only run these after indexing has completed and credentials are approved in the shell environment:
-
-```bash
-uv run turbo-search retrieve "What does Jellyfish say about developer productivity?" --live --top-k 5 --candidates 100 --json
-```
-
-Run the lightweight smoke/eval harness against the indexed namespace:
-
-```bash
-uv run turbo-search evals --live --top-k 5 --candidates 30 --json
-```
-
-For a generic applied site namespace, pass the namespace and dataset explicitly after live retrieval has been approved and `TURBOPUFFER_API_KEY` is already in the environment:
+Use a small JSON dataset of questions, expected URLs, and expected topics:
 
 ```bash
 uv run turbo-search evals \
   --live \
-  --dataset src/turbo_search/data/scrapling_retrieval_smoke_evals.json \
-  --namespace site-scrapling-readthedocs-io-v1 \
+  --dataset path/to/evals.json \
+  --namespace site-example-com-v1 \
   --top-k 5 \
-  --candidates 30 \
-  --json
+  --candidates 50
 ```
 
-The built-in Jellyfish eval dataset lives at `src/turbo_search/data/retrieval_smoke_evals.json` and covers five representative Jellyfish questions with expected URL/topic hints for developer productivity, DORA metrics, DevFinOps, Claude Code/Cursor integrations, and AI coding tool adoption. The Scrapling example dataset lives at `src/turbo_search/data/scrapling_retrieval_smoke_evals.json`.
+## Legacy Jellyfish corpus
 
-Live retrieval:
+The repo still includes the original Jellyfish docs prototype:
 
-- Reads `TURBOPUFFER_API_KEY` from the environment only when `--live` is passed.
-- Embeds the query with the same local `BAAI/bge-small-en-v1.5` model used by the indexer.
-- Sends one turbopuffer `multi_query` containing an ANN vector subquery and a boosted BM25 subquery over `title`, `section_path`, and `content`.
-- Prefers server-side `rerank_by=("RRF",)` and falls back to local reciprocal-rank fusion when needed.
-- Returns citation fields (`title`, `url`, `section_path`, `content`, `path`) and score info. Vectors are not requested or returned by default.
-- Supports `--doc-kind` filters such as `blog`, `library`, `platform`, or `integrations`.
+```bash
+uv run turbo-search index --corpus-dir jellyfish-site-docs
+uv run turbo-search index --corpus-dir jellyfish-site-docs --write
+```
+
+Prefer the generic `plan`/`apply` workflow for new websites.
 
 ## Tests
 
 ```bash
 PYTHONPATH=src python3 -m unittest discover -s tests -v
-PYTHONPATH=src python3 -m compileall src tests
+PYTHONPATH=src python3 -m compileall -q src tests
 ```
