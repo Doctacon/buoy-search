@@ -1,5 +1,5 @@
 # turbo-search
-
+<img src="images/puffin.png" />
 Tiny CLI for turning public websites into turbopuffer-backed hybrid RAG indexes.
 
 The main workflow is intentionally Terraform-like:
