@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
-from turbo_search.crawler import namespace_candidate, safe_slug, validate_base_url
+from turbo_search.crawler import namespace_candidate, safe_slug, source_id_for_url, validate_base_url
 from turbo_search.chunker import (
     TURBOPUFFER_SCHEMA,
     IndexingPlan,
@@ -34,7 +34,25 @@ GENERIC_SITE_TURBOPUFFER_SCHEMA = {
     "embedding_text_hash": {"type": "string"},
     "plan_id": {"type": "string"},
     "applied_at": {"type": "string"},
+    "source_kind": {"type": "string"},
+    "repo_full_name": {"type": "string"},
+    "repo_owner": {"type": "string"},
+    "repo_name": {"type": "string"},
+    "repo_ref": {"type": "string"},
+    "commit_sha": {"type": "string"},
+    "repo_path": {"type": "string"},
+    "language": {"type": "string"},
 }
+SOURCE_METADATA_ROW_FIELDS = (
+    "source_kind",
+    "repo_full_name",
+    "repo_owner",
+    "repo_name",
+    "repo_ref",
+    "commit_sha",
+    "repo_path",
+    "language",
+)
 
 JsonObject = dict[str, Any]
 
@@ -72,6 +90,7 @@ class ChunkManifestRecord:
     content_preview: str
     doc_kind: str
     tags: list[str]
+    source_metadata: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -129,7 +148,7 @@ class PlanArtifacts:
 def site_id_for_url(base_url: str) -> str:
     """Return the deterministic local state site ID for an absolute URL."""
 
-    return safe_slug(namespace_candidate(base_url).removeprefix("site-").removesuffix("-v1"), fallback="site")
+    return safe_slug(source_id_for_url(base_url), fallback="site")
 
 
 def state_path_for_site(site_id: str, namespace: str, *, state_root: Path = Path(".turbo-search")) -> str:
@@ -213,9 +232,15 @@ def build_plan_artifacts(
     site_id = site_id_for_url(normalized_base_url)
     pages = build_page_records(indexing_plan)
     page_hashes = {page.content_path: page.page_hash for page in pages}
+    page_metadata = {page.content_path: page.source_metadata for page in pages}
     chunks = disambiguate_duplicate_chunk_row_ids(
         [
-            build_chunk_record(chunk, site_id=site_id, page_hash=page_hashes.get(chunk.path, chunk.source_hash))
+            build_chunk_record(
+                chunk,
+                site_id=site_id,
+                page_hash=page_hashes.get(chunk.path, chunk.source_hash),
+                source_metadata=page_metadata.get(chunk.path, {}),
+            )
             for chunk in indexing_plan.chunks
         ]
     )
@@ -297,7 +322,13 @@ def build_page_records(indexing_plan: IndexingPlan) -> list[PageManifestRecord]:
     return records
 
 
-def build_chunk_record(chunk: MarkdownChunk, *, site_id: str, page_hash: str) -> ChunkManifestRecord:
+def build_chunk_record(
+    chunk: MarkdownChunk,
+    *,
+    site_id: str,
+    page_hash: str,
+    source_metadata: dict[str, str] | None = None,
+) -> ChunkManifestRecord:
     chunk_hash = sha256_text(chunk.content)
     embedding_text_hash = sha256_text(chunk.embedding_text)
     row_id = generic_site_row_id(
@@ -323,6 +354,7 @@ def build_chunk_record(chunk: MarkdownChunk, *, site_id: str, page_hash: str) ->
         content_preview=chunk.content[:240].replace("\n", " "),
         doc_kind=chunk.doc_kind,
         tags=list(chunk.tags),
+        source_metadata=dict(source_metadata or {}),
     )
 
 
@@ -372,6 +404,7 @@ def disambiguate_duplicate_chunk_row_ids(chunks: list[ChunkManifestRecord]) -> l
                 content_preview=chunk.content_preview,
                 doc_kind=chunk.doc_kind,
                 tags=list(chunk.tags),
+                source_metadata=dict(chunk.source_metadata),
             )
         )
     return disambiguated
@@ -391,7 +424,8 @@ def build_generic_site_row(
     """
 
     record = dataclass_to_json_object(chunk) if isinstance(chunk, ChunkManifestRecord) else normalize_json_object(chunk)
-    return {
+    source_metadata = normalize_json_object(record.get("source_metadata", {}))
+    row = {
         "id": record["row_id"],
         "vector": list(vector),
         "content": record["content"],
@@ -411,6 +445,10 @@ def build_generic_site_row(
         "plan_id": plan_id,
         "applied_at": applied_at,
     }
+    if isinstance(source_metadata, dict):
+        for field_name in SOURCE_METADATA_ROW_FIELDS:
+            row[field_name] = str(source_metadata.get(field_name, ""))
+    return row
 
 
 def write_plan_artifacts(artifacts: PlanArtifacts, out_dir: Path) -> None:

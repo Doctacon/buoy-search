@@ -10,15 +10,20 @@ from turbo_search.crawler import (
     DEFAULT_CRAWL_MAX_PAGES,
     CrawledPage,
     CrawlOptions,
+    GitHubRepoSource,
+    WebsiteSource,
     canonicalize_page_url,
     allowed_domains_for_url,
     crawl_pages,
     crawled_page_from_response,
     default_out_dir,
+    detect_source,
     url_allowed_by_path_filters,
     namespace_candidate,
     page_filename,
+    parse_github_repo_url,
     sitemap_seed_urls,
+    source_id_for_url,
     validate_base_url,
     write_markdown_corpus,
 )
@@ -43,11 +48,72 @@ class CrawlerHelperTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     validate_base_url(url)
 
-    def test_namespace_candidate_and_default_out_dir_are_host_based(self) -> None:
+    def test_namespace_candidate_and_default_out_dir_are_host_based_for_websites(self) -> None:
         url = "https://Scrapling.ReadTheDocs.io/en/latest/"
 
         self.assertEqual(namespace_candidate(url), "site-scrapling-readthedocs-io-v1")
+        self.assertEqual(source_id_for_url(url), "scrapling-readthedocs-io")
         self.assertEqual(default_out_dir(url), Path("artifacts/site-crawls/scrapling-readthedocs-io"))
+
+    def test_github_repo_url_root_defaults_are_repo_specific(self) -> None:
+        url = "https://github.com/Doctacon/open-streaming-lab"
+
+        source = detect_source(url)
+
+        self.assertIsInstance(source, GitHubRepoSource)
+        assert isinstance(source, GitHubRepoSource)
+        self.assertEqual(source.kind, "github_repo")
+        self.assertEqual(source.repo_root_url, "https://github.com/Doctacon/open-streaming-lab")
+        self.assertEqual(source.repo_full_name, "Doctacon/open-streaming-lab")
+        self.assertEqual(source.clone_url, "https://github.com/Doctacon/open-streaming-lab.git")
+        self.assertEqual(source.site_id, "github-doctacon-open-streaming-lab")
+        self.assertEqual(source.namespace_candidate, "github-doctacon-open-streaming-lab-v1")
+        self.assertEqual(source.default_out_dir, Path("artifacts/site-crawls/github-doctacon-open-streaming-lab"))
+        self.assertEqual(namespace_candidate(url), "github-doctacon-open-streaming-lab-v1")
+        self.assertEqual(source_id_for_url(url), "github-doctacon-open-streaming-lab")
+        self.assertEqual(default_out_dir(url), Path("artifacts/site-crawls/github-doctacon-open-streaming-lab"))
+
+    def test_github_repo_url_parser_accepts_trailing_slash_dot_git_and_tree_urls(self) -> None:
+        trailing = parse_github_repo_url("https://github.com/owner/repo/")
+        dot_git = parse_github_repo_url("https://github.com/owner/repo.git#readme")
+        tree = parse_github_repo_url("https://github.com/owner/repo/tree/main/docs/examples")
+
+        self.assertIsNotNone(trailing)
+        self.assertIsNotNone(dot_git)
+        self.assertIsNotNone(tree)
+        assert trailing is not None and dot_git is not None and tree is not None
+        self.assertEqual(trailing.repo_root_url, "https://github.com/owner/repo")
+        self.assertEqual(dot_git.repo_root_url, "https://github.com/owner/repo")
+        self.assertEqual(tree.tree_ref, "main")
+        self.assertEqual(tree.tree_path, "docs/examples")
+        self.assertEqual(tree.repo_root_url, "https://github.com/owner/repo")
+
+    def test_github_blob_url_returns_structured_hint(self) -> None:
+        source = parse_github_repo_url("https://github.com/owner/repo/blob/main/src/app.py")
+
+        self.assertIsNotNone(source)
+        assert source is not None
+        self.assertIsNotNone(source.blob_hint)
+        assert source.blob_hint is not None
+        self.assertEqual(source.blob_hint.ref, "main")
+        self.assertEqual(source.blob_hint.path, "src/app.py")
+
+    def test_github_non_repo_pages_fall_back_to_website_source(self) -> None:
+        source = detect_source("https://github.com/features")
+
+        self.assertIsInstance(source, WebsiteSource)
+        assert isinstance(source, WebsiteSource)
+        self.assertEqual(source.url, "https://github.com/features")
+
+    def test_github_repo_like_invalid_urls_fail_clearly(self) -> None:
+        for url in (
+            "https://github.com/owner-only",
+            "https://github.com/owner/repo/issues",
+            "https://github.com/owner/repo/tree/",
+        ):
+            with self.subTest(url=url):
+                with self.assertRaises(ValueError):
+                    detect_source(url)
 
     def test_allowed_domains_include_host_and_port_netloc(self) -> None:
         self.assertEqual(

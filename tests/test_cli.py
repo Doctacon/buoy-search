@@ -40,6 +40,96 @@ def write_fake_crawl_page(pages_dir: Path) -> None:
     )
 
 
+def write_fake_github_page(pages_dir: Path) -> None:
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    (pages_dir / "repo-page.md").write_text(
+        "\n".join(
+            [
+                "---",
+                'url: "https://github.com/Doctacon/open-streaming-lab/blob/main/README.md"',
+                'title: "README.md"',
+                'status: "200"',
+                'content_type: "text/plain; charset=utf-8"',
+                'source_kind: "github_repo"',
+                'repo_full_name: "Doctacon/open-streaming-lab"',
+                'repo_owner: "Doctacon"',
+                'repo_name: "open-streaming-lab"',
+                'repo_ref: "main"',
+                'commit_sha: "abc123"',
+                'repo_path: "README.md"',
+                'language: "markdown"',
+                'source_hash: "source-hash"',
+                'crawl_timestamp: "2026-06-25T00:00:00+00:00"',
+                'fetcher: "git-shallow-clone"',
+                "---",
+                "",
+                "# Open Streaming Lab",
+                "",
+                "Useful repository documentation for retrieval.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def fake_github_crawl_summary(source, options: CrawlOptions) -> dict[str, object]:  # noqa: ANN001 - parser source union.
+    return {
+        "command": "crawl",
+        "dry_run": True,
+        "credentials_required": False,
+        "turbopuffer_api_calls": False,
+        "api_calls_occurred": False,
+        "source_kind": "github_repo",
+        "base_url": source.repo_root_url,
+        "repo_root_url": source.repo_root_url,
+        "repo_owner": source.owner,
+        "repo_name": source.repo,
+        "repo_full_name": source.repo_full_name,
+        "repo_ref": "main",
+        "requested_ref": source.requested_ref,
+        "repo_subdir": source.repo_subdir,
+        "commit_sha": "abc123",
+        "clone_url": source.clone_url,
+        "acquisition_strategy": "git-shallow-clone",
+        "repo_size_kb": 1,
+        "primary_language": "TypeScript",
+        "allowed_host": "github.com",
+        "namespace_candidate": source.namespace_candidate,
+        "crawl_strategy": "git-shallow-clone",
+        "requested_crawl_strategy": options.crawl_strategy,
+        "sitemap_seed_urls": [],
+        "out_dir": str(options.out_dir),
+        "pages_dir": str(options.out_dir / "pages"),
+        "max_pages": options.max_pages,
+        "max_chunks": options.max_chunks,
+        "include_paths": list(options.include_paths),
+        "exclude_paths": list(options.exclude_paths),
+        "strip_trailing_slash": options.strip_trailing_slash,
+        "css_selector": options.css_selector,
+        "target_tokens": options.target_tokens,
+        "overlap_sentences": options.overlap_sentences,
+        "pages_scraped": 1,
+        "files_discovered": 1,
+        "files_selected": 1,
+        "files_skipped_binary": 0,
+        "files_skipped_empty": 0,
+        "files_skipped_oversize": 0,
+        "files_skipped_filtered": 0,
+        "files_skipped_limit": 0,
+        "requests_count": 0,
+        "robots_disallowed_count": 0,
+        "blocked_requests_count": 0,
+        "failed_requests_count": 0,
+        "files_seen": 1,
+        "files_error": 0,
+        "chunks_generated": 1,
+        "limit_reached": False,
+        "sample_chunks": [],
+        "errors": [],
+    }
+
+
 def fake_plan_crawl_summary(options: CrawlOptions) -> dict[str, object]:
     return {
         "command": "crawl",
@@ -235,6 +325,36 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(payload["crawl_strategy"], "hybrid")
 
+    def test_crawl_command_routes_github_repo_urls_to_repo_crawler(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = Path(tmp) / "github-crawl"
+
+            def fake_github_crawl(source, options: CrawlOptions) -> dict[str, object]:  # noqa: ANN001
+                write_fake_github_page(options.out_dir / "pages")
+                return fake_github_crawl_summary(source, options)
+
+            stdout = StringIO()
+            with patch("turbo_search.cli.crawl_github_repo", side_effect=fake_github_crawl) as github_mock:
+                with patch("turbo_search.cli.crawl_site") as site_mock:
+                    with redirect_stdout(stdout):
+                        result = main(
+                            [
+                                "crawl",
+                                "--base-url",
+                                "https://github.com/Doctacon/open-streaming-lab",
+                                "--out-dir",
+                                str(out_dir),
+                                "--json",
+                            ]
+                        )
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(result, 0)
+        self.assertEqual(payload["source_kind"], "github_repo")
+        self.assertEqual(payload["namespace_candidate"], "github-doctacon-open-streaming-lab-v1")
+        github_mock.assert_called_once()
+        site_mock.assert_not_called()
+
     def test_plan_command_writes_artifacts_and_first_apply_diff_without_credentials(self) -> None:
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -304,6 +424,52 @@ class CliTests(unittest.TestCase):
         self.assertEqual(len(manifest["pages"]), 1)
         self.assertEqual(len(chunks), 1)
         crawl_mock.assert_called_once()
+
+    def test_plan_command_routes_github_repo_urls_to_repo_corpus_and_artifacts(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        out_dir = root / "github-plan"
+        state_root = root / "state"
+
+        def fake_github_crawl(source, options: CrawlOptions) -> dict[str, object]:  # noqa: ANN001
+            write_fake_github_page(options.out_dir / "pages")
+            return fake_github_crawl_summary(source, options)
+
+        stdout = StringIO()
+        with patch("turbo_search.cli.crawl_github_repo", side_effect=fake_github_crawl) as github_mock:
+            with patch("turbo_search.cli.crawl_site") as site_mock:
+                with redirect_stdout(stdout):
+                    result = main(
+                        [
+                            "plan",
+                            "https://github.com/Doctacon/open-streaming-lab",
+                            "--out-dir",
+                            str(out_dir),
+                            "--state-root",
+                            str(state_root),
+                            "--json",
+                        ]
+                    )
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(result, 0)
+        self.assertEqual(payload["source_kind"], "github_repo")
+        self.assertEqual(payload["base_url"], "https://github.com/Doctacon/open-streaming-lab")
+        self.assertEqual(payload["namespace"], "github-doctacon-open-streaming-lab-v1")
+        self.assertEqual(payload["site_id"], "github-doctacon-open-streaming-lab")
+        self.assertEqual(
+            payload["state_path"],
+            str(state_root / "state/github-doctacon-open-streaming-lab/github-doctacon-open-streaming-lab-v1/last-applied.json"),
+        )
+        self.assertEqual(payload["files_selected"], 1)
+        self.assertTrue((out_dir / "plan.json").exists())
+        manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
+        chunk = manifest["chunks"][0]
+        self.assertEqual(chunk["source_metadata"]["source_kind"], "github_repo")
+        self.assertEqual(chunk["source_metadata"]["repo_path"], "README.md")
+        github_mock.assert_called_once()
+        site_mock.assert_not_called()
 
     def test_plan_command_loads_existing_state_and_reports_unchanged_diff(self) -> None:
         tmp = tempfile.TemporaryDirectory()

@@ -1,6 +1,6 @@
-# Generic site RAG plan/apply workflow
+# Generic site/repository RAG plan/apply workflow
 
-This workflow is the Terraform-like path for turning a public website crawl into a reviewed, incremental turbopuffer index.
+This workflow is the Terraform-like path for turning a public website crawl or public GitHub repository into a reviewed, incremental turbopuffer index.
 
 ## Safety model
 
@@ -14,12 +14,22 @@ Stale deletes have an additional guardrail: stale rows are retained by default. 
 
 ## Plan
 
+Website example:
+
 ```bash
 uv run turbo-search plan \
   "https://scrapling.readthedocs.io/en/latest/" \
   --out-dir artifacts/site-crawls/scrapling-readthedocs-io-plan \
   --css-selector ".md-content__inner"
 ```
+
+GitHub repository example:
+
+```bash
+uv run turbo-search plan https://github.com/Doctacon/open-streaming-lab
+```
+
+GitHub repository URLs are detected automatically and ingested from git-tracked repository contents, not rendered GitHub UI pages. The default namespace is repo-specific, e.g. `github-doctacon-open-streaming-lab-v1`.
 
 Plan artifacts:
 
@@ -52,10 +62,19 @@ uv run turbo-search plan https://turbopuffer.com/ \
   --exclude-path /llms-full.txt
 ```
 
+For websites:
+
 - `--include-path /docs/**` includes only matching URL paths; `/docs/**` also matches `/docs`.
 - `--exclude-path /llms-full.txt` removes matching URL paths from sitemap and link discovery.
 - trailing slashes are stripped by default so `/docs/query` and `/docs/query/` canonicalize to one page.
 - `--keep-trailing-slash` preserves trailing-slash variants when a site needs that behavior.
+
+For GitHub repositories, `--include-path` and `--exclude-path` match repo-relative file paths:
+
+```bash
+uv run turbo-search plan https://github.com/owner/repo --include-path 'docs/**'
+uv run turbo-search plan https://github.com/owner/repo --exclude-path 'dist/**'
+```
 
 ## Apply preflight
 

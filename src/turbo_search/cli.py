@@ -27,11 +27,13 @@ from turbo_search.crawler import (
     DEFAULT_CRAWL_MAX_CHUNKS,
     DEFAULT_CRAWL_MAX_PAGES,
     DEFAULT_CRAWL_STRATEGY,
+    GitHubRepoSource,
     CrawlOptions,
     crawl_site,
     default_out_dir,
-    validate_base_url,
+    detect_source,
 )
+from turbo_search.github_repo import GitHubRepoError, crawl_github_repo
 from turbo_search.evals import (
     build_dry_run_eval_report,
     load_eval_cases,
@@ -63,7 +65,7 @@ from turbo_search.retriever import (
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="turbo-search",
-        description="Local site RAG utilities. Website planning is local-only by default unless explicitly documented otherwise.",
+        description="Local site/repository RAG utilities. Planning is local-only by default unless explicitly documented otherwise.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
@@ -71,11 +73,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     crawl_parser = subparsers.add_parser(
         "crawl",
-        help="crawl a website with Scrapling and chunk locally; always dry-run",
+        help="crawl a website or public GitHub repo and chunk locally; always dry-run",
         description=(
-            "Crawl a public website with Scrapling, generate a local Markdown corpus, "
-            "and chunk it for namespace planning. This command is local-only: it does not "
-            "read credentials, embed text, create namespaces, or call turbopuffer."
+            "Crawl a public website with Scrapling or ingest a public GitHub repository via git, "
+            "generate a local Markdown corpus, and chunk it for namespace planning. This command "
+            "is local-only with respect to turbopuffer: it does not read turbopuffer credentials, "
+            "embed text, create namespaces, or call turbopuffer."
         ),
     )
     crawl_parser.add_argument(
@@ -176,12 +179,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     plan_parser = subparsers.add_parser(
         "plan",
-        help="crawl a website and write local review/apply plan artifacts; no live writes",
+        help="crawl a website or public GitHub repo and write local review/apply plan artifacts; no live writes",
         description=(
-            "Crawl a public website with Scrapling, generate a local Markdown corpus, "
-            "chunk it, compare it to local applied state, and write reviewable plan artifacts. "
-            "This command is local-only: it does not read credentials, embed text, create namespaces, "
-            "or call turbopuffer."
+            "Crawl a public website with Scrapling or ingest a public GitHub repository via git, "
+            "generate a local Markdown corpus, chunk it, compare it to local applied state, and "
+            "write reviewable plan artifacts. This command is local-only with respect to turbopuffer: "
+            "it does not read turbopuffer credentials, embed text, create namespaces, or call turbopuffer."
         ),
     )
     plan_parser.add_argument(
@@ -507,7 +510,8 @@ def _print_json(payload: dict[str, object]) -> None:
 
 def _run_crawl(args: argparse.Namespace) -> int:
     try:
-        base_url = validate_base_url(args.base_url)
+        source = detect_source(args.base_url)
+        base_url = source.base_url
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -530,8 +534,8 @@ def _run_crawl(args: argparse.Namespace) -> int:
         overlap_sentences=args.overlap_sentences,
     )
     try:
-        summary = crawl_site(options)
-    except RuntimeError as exc:
+        summary = crawl_github_repo(source, options) if isinstance(source, GitHubRepoSource) else crawl_site(options)
+    except (RuntimeError, GitHubRepoError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
@@ -551,7 +555,8 @@ def _run_plan(args: argparse.Namespace) -> int:
         print("base URL is required; pass it as `turbo-search plan <url>` or with --base-url.", file=sys.stderr)
         return 2
     try:
-        base_url = validate_base_url(requested_url)
+        source = detect_source(requested_url)
+        base_url = source.base_url
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -576,7 +581,7 @@ def _run_plan(args: argparse.Namespace) -> int:
         overlap_sentences=args.overlap_sentences,
     )
     try:
-        crawl_summary = crawl_site(options)
+        crawl_summary = crawl_github_repo(source, options) if isinstance(source, GitHubRepoSource) else crawl_site(options)
         pages_dir = out_dir / "pages"
         indexing_plan = process_corpus(
             pages_dir,
@@ -614,7 +619,7 @@ def _run_plan(args: argparse.Namespace) -> int:
             state_root=args.state_root,
         )
         write_plan_artifacts(artifacts, out_dir)
-    except (RuntimeError, OSError, ValueError, AppliedStateError, PlanDiffError, json.JSONDecodeError) as exc:
+    except (RuntimeError, GitHubRepoError, OSError, ValueError, AppliedStateError, PlanDiffError, json.JSONDecodeError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
@@ -792,8 +797,20 @@ def _run_evals(args: argparse.Namespace) -> int:
 
 
 def print_crawl_text(payload: dict[str, object]) -> None:
-    print("Website crawl dry-run (no credentials, embeddings, or turbopuffer API calls):")
+    source_kind = payload.get("source_kind", "website")
+    print("Source crawl dry-run (no credentials, embeddings, or turbopuffer API calls):")
+    print(f"  source_kind: {source_kind}")
     print(f"  base_url: {payload['base_url']}")
+    if source_kind == "github_repo":
+        print(f"  repo: {payload.get('repo_full_name')} @ {payload.get('repo_ref')} ({payload.get('commit_sha')})")
+        print(
+            "  files: "
+            f"selected={payload.get('files_selected')}; "
+            f"discovered={payload.get('files_discovered')}; "
+            f"filtered={payload.get('files_skipped_filtered')}; "
+            f"binary={payload.get('files_skipped_binary')}; "
+            f"oversize={payload.get('files_skipped_oversize')}"
+        )
     print(f"  namespace_candidate: {payload['namespace_candidate']}")
     print(f"  strategy: {payload['crawl_strategy']}")
     print(f"  pages_scraped: {payload['pages_scraped']}; chunks_generated: {payload['chunks_generated']}")
@@ -804,8 +821,20 @@ def print_crawl_text(payload: dict[str, object]) -> None:
 
 
 def print_plan_text(payload: dict[str, object]) -> None:
-    print("Website RAG plan (local-only; no credentials, embeddings, or turbopuffer API calls):")
+    source_kind = payload.get("source_kind", "website")
+    print("Source RAG plan (local-only; no credentials, embeddings, or turbopuffer API calls):")
+    print(f"  source_kind: {source_kind}")
     print(f"  base_url: {payload['base_url']}")
+    if source_kind == "github_repo":
+        print(f"  repo: {payload.get('repo_full_name')} @ {payload.get('repo_ref')} ({payload.get('commit_sha')})")
+        print(
+            "  files: "
+            f"selected={payload.get('files_selected')}; "
+            f"discovered={payload.get('files_discovered')}; "
+            f"filtered={payload.get('files_skipped_filtered')}; "
+            f"binary={payload.get('files_skipped_binary')}; "
+            f"oversize={payload.get('files_skipped_oversize')}"
+        )
     print(f"  namespace: {payload['namespace']}")
     print(f"  plan_id: {payload['plan_id']}")
     print(f"  pages_scraped: {payload['pages_scraped']}; chunks_generated: {payload['chunks_generated']}")

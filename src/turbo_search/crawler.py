@@ -14,8 +14,8 @@ import hashlib
 import json
 from pathlib import Path
 import re
-from typing import Any, Sequence
-from urllib.parse import urlparse, urlunparse
+from typing import Any, Literal, Sequence
+from urllib.parse import unquote, urlparse, urlunparse
 
 from turbo_search.chunker import (
     DEFAULT_OVERLAP_SENTENCES,
@@ -33,6 +33,89 @@ DEFAULT_CRAWL_DOWNLOAD_DELAY = 0.25
 DEFAULT_CRAWL_OUT_DIR = Path("artifacts/site-crawls")
 DEFAULT_CRAWL_STRATEGY = "hybrid"
 CRAWL_STRATEGIES = ("sitemap", "link", "hybrid")
+GITHUB_HOSTS = {"github.com", "www.github.com"}
+GITHUB_NON_REPO_PATHS = {
+    "about",
+    "collections",
+    "customer-stories",
+    "enterprise",
+    "events",
+    "explore",
+    "features",
+    "login",
+    "marketplace",
+    "new",
+    "notifications",
+    "orgs",
+    "organizations",
+    "pricing",
+    "pulls",
+    "search",
+    "settings",
+    "sponsors",
+    "topics",
+}
+
+
+@dataclass(frozen=True)
+class WebsiteSource:
+    """An ordinary HTTP(S) website source that should use Scrapling crawling."""
+
+    kind: Literal["website"]
+    url: str
+
+    @property
+    def base_url(self) -> str:
+        return self.url
+
+
+@dataclass(frozen=True)
+class GitHubBlobHint:
+    """Structured hint for a GitHub blob URL pending single-file ingestion."""
+
+    ref: str
+    path: str
+
+
+@dataclass(frozen=True)
+class GitHubRepoSource:
+    """A public GitHub repository URL parsed into stable local identity defaults."""
+
+    kind: Literal["github_repo"]
+    original_url: str
+    repo_root_url: str
+    owner: str
+    repo: str
+    repo_full_name: str
+    site_id: str
+    namespace_candidate: str
+    default_out_dir: Path
+    tree_ref: str | None = None
+    tree_path: str | None = None
+    blob_hint: GitHubBlobHint | None = None
+
+    @property
+    def base_url(self) -> str:
+        return self.repo_root_url
+
+    @property
+    def clone_url(self) -> str:
+        return f"{self.repo_root_url}.git"
+
+    @property
+    def requested_ref(self) -> str | None:
+        if self.tree_ref is not None:
+            return self.tree_ref
+        if self.blob_hint is not None:
+            return self.blob_hint.ref
+        return None
+
+    @property
+    def repo_subdir(self) -> str:
+        return self.tree_path or ""
+
+
+Source = WebsiteSource | GitHubRepoSource
 
 
 @dataclass(frozen=True)
@@ -113,15 +196,27 @@ def origin_from_url(url: str) -> str:
 
 
 def namespace_candidate(base_url: str) -> str:
-    """Return the deterministic dry-run namespace candidate for a site."""
+    """Return the deterministic dry-run namespace candidate for a source."""
 
-    host = host_from_url(base_url)
+    source = detect_source(base_url)
+    if isinstance(source, GitHubRepoSource):
+        return source.namespace_candidate
+    host = host_from_url(source.url)
     slug = re.sub(r"[^a-z0-9]+", "-", host).strip("-")
     return f"site-{slug}-v1"
 
 
+def source_id_for_url(base_url: str) -> str:
+    """Return the deterministic local source/site ID for a supported URL."""
+
+    source = detect_source(base_url)
+    if isinstance(source, GitHubRepoSource):
+        return source.site_id
+    return safe_slug(host_from_url(source.url), fallback="site")
+
+
 def default_out_dir(base_url: str) -> Path:
-    return DEFAULT_CRAWL_OUT_DIR / safe_slug(host_from_url(base_url), fallback="site")
+    return DEFAULT_CRAWL_OUT_DIR / source_id_for_url(base_url)
 
 
 def sitemap_seed_urls(base_url: str) -> list[str]:
@@ -138,6 +233,103 @@ def sitemap_seed_urls(base_url: str) -> list[str]:
 def safe_slug(value: str, *, fallback: str = "page") -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return slug[:80] or fallback
+
+
+def detect_source(url: str) -> Source:
+    """Classify a URL as an ordinary website or a first-class GitHub repository."""
+
+    normalized = validate_base_url(url)
+    github_source = parse_github_repo_url(normalized)
+    if github_source is not None:
+        return github_source
+    return WebsiteSource(kind="website", url=normalized)
+
+
+def parse_github_repo_url(url: str) -> GitHubRepoSource | None:
+    """Parse supported public GitHub repository URL forms.
+
+    Non-repository GitHub global pages return ``None`` so they can continue
+    through ordinary website handling. URLs that look like a repository but point
+    at unsupported repo UI subpages raise clearly so callers do not accidentally
+    crawl rendered GitHub chrome as source content.
+    """
+
+    normalized = validate_base_url(url)
+    parsed = urlparse(normalized)
+    host = (parsed.hostname or parsed.netloc).lower()
+    if host not in GITHUB_HOSTS:
+        return None
+
+    segments = [unquote(segment) for segment in parsed.path.split("/") if segment]
+    if not segments:
+        return None
+    if segments[0].lower() in GITHUB_NON_REPO_PATHS:
+        return None
+    if len(segments) < 2:
+        raise ValueError("GitHub repository URL must include both owner and repo, e.g. https://github.com/owner/repo")
+
+    owner = segments[0]
+    repo = segments[1]
+    if repo.endswith(".git"):
+        repo = repo[:-4]
+    if not owner or not repo or owner in {".", ".."} or repo in {".", ".."}:
+        raise ValueError("GitHub repository URL must include non-empty owner and repo segments")
+
+    repo_root_url = f"https://github.com/{owner}/{repo}"
+    repo_full_name = f"{owner}/{repo}"
+    site_id = safe_slug(f"github-{owner}-{repo}", fallback="github-repo")
+    source = GitHubRepoSource(
+        kind="github_repo",
+        original_url=normalized,
+        repo_root_url=repo_root_url,
+        owner=owner,
+        repo=repo,
+        repo_full_name=repo_full_name,
+        site_id=site_id,
+        namespace_candidate=f"{site_id}-v1",
+        default_out_dir=DEFAULT_CRAWL_OUT_DIR / site_id,
+    )
+
+    remaining = segments[2:]
+    if not remaining:
+        return source
+
+    qualifier = remaining[0]
+    if qualifier == "tree":
+        if len(remaining) < 2 or not remaining[1]:
+            raise ValueError("GitHub tree URL must include a branch or ref after /tree/")
+        return GitHubRepoSource(
+            kind="github_repo",
+            original_url=normalized,
+            repo_root_url=repo_root_url,
+            owner=owner,
+            repo=repo,
+            repo_full_name=repo_full_name,
+            site_id=site_id,
+            namespace_candidate=f"{site_id}-v1",
+            default_out_dir=DEFAULT_CRAWL_OUT_DIR / site_id,
+            tree_ref=remaining[1],
+            tree_path="/".join(remaining[2:]) or None,
+        )
+    if qualifier == "blob":
+        if len(remaining) < 3 or not remaining[1] or not remaining[2]:
+            raise ValueError("GitHub blob URL must include a branch/ref and file path after /blob/")
+        return GitHubRepoSource(
+            kind="github_repo",
+            original_url=normalized,
+            repo_root_url=repo_root_url,
+            owner=owner,
+            repo=repo,
+            repo_full_name=repo_full_name,
+            site_id=site_id,
+            namespace_candidate=f"{site_id}-v1",
+            default_out_dir=DEFAULT_CRAWL_OUT_DIR / site_id,
+            blob_hint=GitHubBlobHint(ref=remaining[1], path="/".join(remaining[2:])),
+        )
+
+    raise ValueError(
+        "Unsupported GitHub repository URL path; pass the repository root or a /tree/<ref>/<path> URL"
+    )
 
 
 def normalize_path_pattern(pattern: str) -> str:

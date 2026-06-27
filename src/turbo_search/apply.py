@@ -473,6 +473,7 @@ def chunk_from_json(payload: Any, *, index: int) -> ChunkManifestRecord:
             content_preview=str(payload.get("content_preview", "")),
             doc_kind=str(payload.get("doc_kind", "page")),
             tags=[str(tag) for tag in payload.get("tags", [])],
+            source_metadata={str(key): str(value) for key, value in dict(payload.get("source_metadata", {})).items()},
         )
     except KeyError as exc:
         raise ApplyPlanError(f"manifest chunk {index} missing required field: {exc.args[0]}") from exc
