@@ -32,9 +32,9 @@ ranking_aggregation = max
 
 - process/project-agent and run-artifact paths such as `.pi/`, `.10x/`, `.loom/`, `.claude/`, `.cursor/`, `.turbo-search/`, `artifacts/`, and `autoresearch/` are demoted strongly;
 - eval/fixture/dataset JSON under `/data/` is demoted strongly so answer-key-like files do not dominate implementation queries;
-- `docs/`, README/CHANGELOG, and other Markdown files are demoted gently;
+- `docs/`, README/CHANGELOG, and other Markdown files are demoted gently, with a partial recovery for exact documentation filename matches such as `docs/api.rst` on API queries;
 - `tests/` files get a light boost because repository evals often ask where behavior is validated;
-- source/config files are left at neutral weight.
+- source/config files are mostly neutral, with conservative query-aware boosts for exact source filename matches and Python `def`/`class` declarations already present in retrieved chunks.
 
 Generic website rows without `repo_path` remain chunk-keyed and are not collapsed by file ranking.
 
@@ -50,10 +50,11 @@ turbo-search retrieve "..." --ranking-aggregation capped-sum-3
 turbo-search retrieve "..." --ranking-mode chunk --ranking-profile none
 ```
 
-The repo default was first promoted after live retrieval-only experiments improved the `turbo-search` seed repo eval from `Precision@5 = 0.300` and `repo_search_score = 59.967` to `Precision@5 = 0.500` and `repo_search_score = 87.251` on namespace `github-doctacon-turbo-search-v1`. A follow-up capped aggregation experiment improved `turbo-search` further, but cross-repo validation on `psf/requests` showed capped aggregation is not a safe universal default. After current `main` shipped project-memory/eval artifacts, a clean current-main namespace plus query-intent profile validates `turbo-search` at `Precision@5 = 0.520`, `Recall@10 = 0.833`, `NDCG@10 = 0.906`, and `repo_search_score = 86.697` with the cross-repo-safe max default; opt-in capped aggregation reaches `repo_search_score = 89.197` on `turbo-search`.
+The repo default was first promoted after live retrieval-only experiments improved the `turbo-search` seed repo eval from `Precision@5 = 0.300` and `repo_search_score = 59.967` to `Precision@5 = 0.500` and `repo_search_score = 87.251` on namespace `github-doctacon-turbo-search-v1`. A follow-up capped aggregation experiment improved `turbo-search` further, but cross-repo validation on `psf/requests` showed capped aggregation is not a safe universal default. After current `main` shipped project-memory/eval artifacts, a clean current-main namespace plus query-intent and path/symbol profile validates `turbo-search` at `Precision@5 = 0.520`, `Recall@10 = 0.833`, `NDCG@10 = 0.914`, and `repo_search_score = 87.126` with the cross-repo-safe max default; opt-in capped aggregation reaches `repo_search_score = 89.197` on `turbo-search`. Cross-repo validation on `psf/requests` improved from `repo_search_score = 81.809` to `82.547` and `Precision@5 = 0.360` to `0.400` after the path/symbol scorer.
 
 Evidence:
 
 - `.10x/evidence/2026-06-28-repo-search-file-ranking-promotion-validation.md`
 - `.10x/evidence/2026-06-28-repo-capped-aggregation-default-promotion.md`
 - `.10x/evidence/2026-06-28-repo-index-hygiene-and-profile-validation.md`
+- `.10x/evidence/2026-06-28-repo-path-symbol-ranking-validation.md`

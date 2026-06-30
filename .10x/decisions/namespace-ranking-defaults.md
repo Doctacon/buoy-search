@@ -61,7 +61,7 @@ User-supplied CLI/config ranking options continue to override namespace defaults
 
 - Repository retrieval/evals without explicit ranking flags use the safer single-best-file evidence default.
 - `turbo-search` can still use `--ranking-aggregation capped-sum-3` when optimizing that specific namespace.
-- Further repo score improvements should target query intent, index hygiene, path/symbol metadata, or an adaptive aggregation strategy validated across more repositories.
+- Further repo score improvements should target index hygiene, path/symbol metadata, or an adaptive aggregation strategy validated across more repositories; scoring-only query intent and path/symbol boosts are now part of the `repo_code` profile.
 
 ## Evidence
 
@@ -69,4 +69,5 @@ User-supplied CLI/config ranking options continue to override namespace defaults
 - `.10x/evidence/2026-06-28-repo-index-hygiene-and-profile-validation.md`
 - `.10x/evidence/2026-06-28-cross-repo-requests-validation.md`
 - `.10x/evidence/2026-06-28-repo-query-intent-profile-validation.md`
+- `.10x/evidence/2026-06-28-repo-path-symbol-ranking-validation.md`
 - `.10x/evidence/2026-06-28-website-ranking-evidence-hardening.md`

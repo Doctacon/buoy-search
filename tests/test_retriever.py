@@ -293,6 +293,14 @@ class RetrieverTests(unittest.TestCase):
             ),
             1.10,
         )
+        self.assertAlmostEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="docs-api", repo_path="docs/api.rst"),
+                "repo_code",
+                query="Where are the top-level request API helpers implemented?",
+            ),
+            0.91,
+        )
 
     def test_file_ranking_can_use_symbol_matches_from_later_chunks_in_group(self) -> None:
         hits = [

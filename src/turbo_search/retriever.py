@@ -728,13 +728,15 @@ def ranking_profile_multiplier(hit: SearchHit, profile: str, *, query: str = "")
 
 
 def repo_path_symbol_multiplier(hit: SearchHit, *, query: str = "") -> float:
-    """Boost precise source-file and symbol matches without changing index schema."""
+    """Boost precise path and symbol matches without changing index schema."""
 
     path = normalize_path(hit.repo_path)
-    if not path.startswith("src/"):
-        return 1.0
     query_tokens = ranking_signal_tokens(query)
     if not query_tokens:
+        return 1.0
+    if path.startswith("docs/") and file_stem_matches_query(query_tokens, file_stem(path)):
+        return 1.30
+    if not path.startswith("src/"):
         return 1.0
     extra = 0.0
     if file_stem_matches_query(query_tokens, file_stem(path)):
