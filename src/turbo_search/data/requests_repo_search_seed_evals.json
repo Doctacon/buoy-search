@@ -1,0 +1,231 @@
+{
+  "metadata": {
+    "id": "requests-repo-search-seed-v1",
+    "status": "seed-draft",
+    "target_repo": "psf/requests",
+    "human_approved_ground_truth": false,
+    "notes": "Assistant-drafted graded relevance labels for cross-repo repository search validation on psf/requests. Source-backed from the planned repository corpus."
+  },
+  "cases": [
+    {
+      "id": "top-level-request-api",
+      "question": "Where does Requests implement the top-level request, get, post, put, patch, delete, head, and options API helpers?",
+      "coverage_area": "public_api",
+      "judgments": [
+        {
+          "repo_path": "src/requests/api.py",
+          "grade": 3,
+          "reason": "Defines request() and the top-level HTTP verb helper functions."
+        },
+        {
+          "repo_path": "docs/api.rst",
+          "grade": 2,
+          "reason": "Documents the developer interface for requests.api functions."
+        },
+        {
+          "repo_path": "README.md",
+          "grade": 1,
+          "reason": "Shows user-facing examples of top-level request helpers."
+        }
+      ]
+    },
+    {
+      "id": "session-request-send-flow",
+      "question": "Where is the Session request flow implemented, including preparing requests, merging environment settings, sending requests, and redirect handling?",
+      "coverage_area": "session_flow",
+      "judgments": [
+        {
+          "repo_path": "src/requests/sessions.py",
+          "grade": 3,
+          "reason": "Owns Session, request preparation, environment merging, send(), redirects, auth/proxy rebuilds, and session defaults."
+        },
+        {
+          "repo_path": "src/requests/api.py",
+          "grade": 2,
+          "reason": "Top-level request() delegates through Session."
+        },
+        {
+          "repo_path": "docs/user/advanced.rst",
+          "grade": 1,
+          "reason": "Documents session usage and advanced request preparation concepts."
+        }
+      ]
+    },
+    {
+      "id": "prepared-request-response-models",
+      "question": "Where are Request, PreparedRequest, and Response implemented, including URL preparation, headers, body handling, json(), and raise_for_status()?",
+      "coverage_area": "request_response_models",
+      "judgments": [
+        {
+          "repo_path": "src/requests/models.py",
+          "grade": 3,
+          "reason": "Defines Request, PreparedRequest, Response, prepare_* helpers, content/text/json behavior, and raise_for_status."
+        },
+        {
+          "repo_path": "docs/api.rst",
+          "grade": 2,
+          "reason": "Documents Request, PreparedRequest, and Response API surfaces."
+        },
+        {
+          "repo_path": "src/requests/sessions.py",
+          "grade": 1,
+          "reason": "Session constructs and sends PreparedRequest objects."
+        }
+      ]
+    },
+    {
+      "id": "http-adapter-poolmanager-retries",
+      "question": "Where does Requests implement HTTPAdapter behavior for urllib3 PoolManager, retries, proxies, certificate verification, and send()?",
+      "coverage_area": "transport_adapter",
+      "judgments": [
+        {
+          "repo_path": "src/requests/adapters.py",
+          "grade": 3,
+          "reason": "Defines HTTPAdapter, pool manager setup, proxy manager behavior, certificate verification, retries, and send()."
+        },
+        {
+          "repo_path": "tests/test_adapters.py",
+          "grade": 2,
+          "reason": "Validates adapter-specific behavior."
+        },
+        {
+          "repo_path": "docs/api.rst",
+          "grade": 1,
+          "reason": "Documents adapter classes and related API."
+        }
+      ]
+    },
+    {
+      "id": "authentication-basic-digest-netrc",
+      "question": "Where are Requests authentication handlers implemented, including AuthBase, HTTPBasicAuth, HTTPProxyAuth, HTTPDigestAuth, and netrc-related behavior?",
+      "coverage_area": "authentication",
+      "judgments": [
+        {
+          "repo_path": "src/requests/auth.py",
+          "grade": 3,
+          "reason": "Defines the auth handler classes and digest-auth machinery."
+        },
+        {
+          "repo_path": "docs/user/authentication.rst",
+          "grade": 2,
+          "reason": "Documents basic, digest, netrc, and custom authentication behavior."
+        },
+        {
+          "repo_path": "src/requests/sessions.py",
+          "grade": 1,
+          "reason": "Sessions apply auth settings and rebuild auth during redirects."
+        }
+      ]
+    },
+    {
+      "id": "cookie-jar-merge",
+      "question": "Where does Requests implement cookie jar helpers such as RequestsCookieJar, create_cookie, merge_cookies, and cookiejar_from_dict?",
+      "coverage_area": "cookies",
+      "judgments": [
+        {
+          "repo_path": "src/requests/cookies.py",
+          "grade": 3,
+          "reason": "Defines RequestsCookieJar and cookie creation, extraction, merge, and conversion helpers."
+        },
+        {
+          "repo_path": "src/requests/sessions.py",
+          "grade": 2,
+          "reason": "Sessions own and merge cookie jars across requests."
+        },
+        {
+          "repo_path": "docs/user/advanced.rst",
+          "grade": 1,
+          "reason": "Advanced user docs discuss sessions and cookies."
+        }
+      ]
+    },
+    {
+      "id": "utilities-proxies-netrc-encoding-uri",
+      "question": "Where are Requests utility helpers implemented for proxies, netrc auth, URI requoting, JSON encoding detection, and header/link parsing?",
+      "coverage_area": "utilities",
+      "judgments": [
+        {
+          "repo_path": "src/requests/utils.py",
+          "grade": 3,
+          "reason": "Contains proxy, netrc, URI, encoding, header, stream, and link utility helpers."
+        },
+        {
+          "repo_path": "tests/test_utils.py",
+          "grade": 2,
+          "reason": "Validates many utility helper behaviors."
+        },
+        {
+          "repo_path": "src/requests/compat.py",
+          "grade": 1,
+          "reason": "Provides compatibility imports used by utility helpers."
+        }
+      ]
+    },
+    {
+      "id": "exceptions-and-warnings",
+      "question": "Where are Requests exception and warning classes defined, such as RequestException, HTTPError, ConnectionError, Timeout, TooManyRedirects, and RequestsWarning?",
+      "coverage_area": "errors",
+      "judgments": [
+        {
+          "repo_path": "src/requests/exceptions.py",
+          "grade": 3,
+          "reason": "Defines Requests exception hierarchy and warning classes."
+        },
+        {
+          "repo_path": "docs/api.rst",
+          "grade": 2,
+          "reason": "Documents exceptions exposed by Requests."
+        },
+        {
+          "repo_path": "src/requests/models.py",
+          "grade": 1,
+          "reason": "Response.raise_for_status raises HTTPError based on response status."
+        }
+      ]
+    },
+    {
+      "id": "case-insensitive-dict-lookup",
+      "question": "Where is the CaseInsensitiveDict structure implemented and tested for case-insensitive header lookup behavior?",
+      "coverage_area": "structures",
+      "judgments": [
+        {
+          "repo_path": "src/requests/structures.py",
+          "grade": 3,
+          "reason": "Defines CaseInsensitiveDict and LookupDict."
+        },
+        {
+          "repo_path": "tests/test_structures.py",
+          "grade": 2,
+          "reason": "Validates case-insensitive dictionary behavior."
+        },
+        {
+          "repo_path": "src/requests/models.py",
+          "grade": 1,
+          "reason": "Request/response models use case-insensitive header structures."
+        }
+      ]
+    },
+    {
+      "id": "hooks-dispatch-system",
+      "question": "Where does Requests implement and validate the hook dispatch system for response hooks?",
+      "coverage_area": "hooks",
+      "judgments": [
+        {
+          "repo_path": "src/requests/hooks.py",
+          "grade": 3,
+          "reason": "Defines default_hooks and dispatch_hook."
+        },
+        {
+          "repo_path": "tests/test_hooks.py",
+          "grade": 2,
+          "reason": "Validates hook dispatch behavior."
+        },
+        {
+          "repo_path": "docs/user/advanced.rst",
+          "grade": 1,
+          "reason": "Advanced docs describe event hooks."
+        }
+      ]
+    }
+  ]
+}

@@ -65,15 +65,23 @@ REPO_SOURCE_EXTENSIONS = {
     ".zig",
 }
 DEFAULT_EXCLUDED_DIRS = {
+    ".10x",
+    ".claude",
+    ".cursor",
     ".git",
     ".hg",
+    ".loom",
     ".mypy_cache",
     ".next",
+    ".pi",
     ".pytest_cache",
     ".ruff_cache",
     ".svn",
     ".turbo",
+    ".turbo-search",
     "__pycache__",
+    "artifacts",
+    "autoresearch",
     "build",
     "coverage",
     "dist",
@@ -655,6 +663,11 @@ def default_repo_path_excluded(repo_path: str) -> bool:
         return True
     name = path.name.lower()
     if name in DEFAULT_EXCLUDED_FILENAMES:
+        return True
+    lower_path = repo_path.casefold()
+    if name.endswith(".json") and "/data/" in lower_path and any(
+        marker in lower_path for marker in ("eval", "fixture", "seed", "dataset")
+    ):
         return True
     return name.endswith(".min.js") or name.endswith(".min.css") or name.endswith(".map")
 

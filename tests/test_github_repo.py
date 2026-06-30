@@ -161,6 +161,9 @@ class GitHubRepoAcquisitionTests(unittest.TestCase):
                     "README.md": "# Test Repo\n\nUseful docs.\n",
                     "src/app.py": "def hello():\n    return 'world'\n",
                     "docs/private.md": "# Private docs\n",
+                    ".10x/evidence/noise.md": "# Internal evidence\n",
+                    "autoresearch/run.json": "{}\n",
+                    "src/turbo_search/data/repo_search_seed_evals.json": "{}\n",
                     "empty.txt": "",
                     "dist/bundle.js": "console.log('generated');\n",
                     "node_modules/pkg/index.js": "module.exports = {};\n",
@@ -179,12 +182,12 @@ class GitHubRepoAcquisitionTests(unittest.TestCase):
                 max_file_bytes=50,
             )
 
-            self.assertEqual(corpus.stats.files_discovered, 9)
+            self.assertEqual(corpus.stats.files_discovered, 12)
             self.assertEqual(corpus.stats.files_selected, 2)
             self.assertEqual(corpus.stats.files_skipped_empty, 1)
             self.assertEqual(corpus.stats.files_skipped_binary, 1)
             self.assertEqual(corpus.stats.files_skipped_oversize, 1)
-            self.assertEqual(corpus.stats.files_skipped_filtered, 4)
+            self.assertEqual(corpus.stats.files_skipped_filtered, 7)
             generated = sorted(pages_dir.glob("*.md"))
             self.assertEqual(len(generated), 2)
             parsed = [parse_markdown_file(path, pages_dir) for path in generated]

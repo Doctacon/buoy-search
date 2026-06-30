@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import os
+import re
 from typing import Any, Mapping, Protocol, Sequence
 
 from turbo_search.config import RuntimeConfig
@@ -316,7 +317,7 @@ class HybridRetriever:
                 row_to_hit(row, score_info={"fusion": "server_rrf", "source_rank": rank})
                 for rank, row in enumerate(result_lists[0], start=1)
             ][:ranking_pool]
-        hits = rank_hits(hits, options=options)[: options.top_k]
+        hits = rank_hits(hits, options=options, query=cleaned_query)[: options.top_k]
         return RetrievalResult(
             query=cleaned_query,
             hits=hits,
@@ -517,7 +518,7 @@ def client_side_rrf(result_lists: Sequence[Sequence[object]], *, top_k: int, rrf
     return hits
 
 
-def rank_hits(hits: Sequence[SearchHit], *, options: RetrievalOptions) -> list[SearchHit]:
+def rank_hits(hits: Sequence[SearchHit], *, options: RetrievalOptions, query: str = "") -> list[SearchHit]:
     """Apply the configured final ranking layer to fused retrieval candidates."""
 
     if options.ranking_mode == "chunk":
@@ -532,7 +533,7 @@ def rank_hits(hits: Sequence[SearchHit], *, options: RetrievalOptions) -> list[S
     for key, group in groups.items():
         best_rank, representative = min(group, key=lambda item: item[0])
         base_score = ranking_group_score(group, options.ranking_aggregation)
-        ranking_score = base_score * ranking_profile_multiplier(representative, options.ranking_profile)
+        ranking_score = base_score * ranking_group_profile_multiplier(group, options.ranking_profile, query=query)
         ranked_groups.append(
             (
                 ranking_score,
@@ -609,16 +610,187 @@ def hit_with_ranking_info(
     )
 
 
-def ranking_profile_multiplier(hit: SearchHit, profile: str) -> float:
+IMPLEMENTATION_INTENT_TOKENS = {"code", "function", "functions", "implement", "implemented", "implementation", "logic", "source"}
+EXPERIMENT_INTENT_TOKENS = {"autoresearch", "benchmark", "benchmarks", "experiment", "experiments", "fixture", "fixtures", "hypothesis", "hypotheses", "research"}
+EXPERIMENT_PATH_TOKENS = {"autoresearch", "benchmark", "benchmarks", "experiment", "experiments", "fixture", "fixtures", "hypothesis", "hypotheses"}
+PATH_SYMBOL_STOP_TOKENS = {
+    "and",
+    "are",
+    "as",
+    "behavior",
+    "code",
+    "does",
+    "file",
+    "files",
+    "flow",
+    "for",
+    "helper",
+    "helpers",
+    "implement",
+    "implemented",
+    "implements",
+    "in",
+    "including",
+    "into",
+    "is",
+    "local",
+    "locally",
+    "logic",
+    "of",
+    "or",
+    "public",
+    "repo",
+    "repository",
+    "source",
+    "such",
+    "system",
+    "the",
+    "to",
+    "using",
+    "validate",
+    "validated",
+    "where",
+    "with",
+}
+PATH_SYMBOL_GENERIC_TOKENS = {
+    "app",
+    "apps",
+    "changelog",
+    "doc",
+    "docs",
+    "js",
+    "json",
+    "lib",
+    "md",
+    "py",
+    "readme",
+    "rst",
+    "src",
+    "test",
+    "tests",
+    "ts",
+    "txt",
+    "yaml",
+    "yml",
+}
+PATH_SYMBOL_ALIASES = {
+    "auth": {"authentication"},
+    "authentication": {"auth"},
+    "error": {"exception", "exceptions"},
+    "errors": {"exception", "exceptions"},
+    "exception": {"error", "errors"},
+    "exceptions": {"error", "errors"},
+    "utilities": {"util", "utility", "utils"},
+    "utility": {"util", "utilities", "utils"},
+    "utils": {"util", "utilities", "utility"},
+}
+IDENTIFIER_TOKEN_RE = re.compile(r"[A-Z]+(?=[A-Z][a-z]|\d|$)|[A-Z]?[a-z]+|\d+")
+SYMBOL_DECLARATION_RE = re.compile(r"(?m)^\s*(?:async\s+def|def|class)\s+([A-Za-z_][A-Za-z0-9_]*)")
+
+
+def ranking_group_profile_multiplier(
+    group: Sequence[tuple[int, SearchHit]],
+    profile: str,
+    *,
+    query: str = "",
+) -> float:
+    """Return the strongest profile signal present in a grouped file/page."""
+
+    if profile == "none":
+        return 1.0
+    return max(ranking_profile_multiplier(hit, profile, query=query) for _rank, hit in group)
+
+
+def ranking_profile_multiplier(hit: SearchHit, profile: str, *, query: str = "") -> float:
     if profile == "none" or not hit.repo_path:
         return 1.0
     path = normalize_path(hit.repo_path)
     lower_path = path.casefold()
-    if lower_path.startswith((".pi/", ".10x/", ".loom/", ".claude/", ".cursor/")):
-        return 0.20
-    if lower_path.startswith("docs/") or lower_path.endswith(".md") or lower_path in {"readme.md", "changelog.md"}:
-        return 0.70
-    return 1.0
+    query_tokens = lexical_tokens(query)
+    path_tokens = lexical_tokens(path)
+    multiplier = 1.0
+    if lower_path.startswith((".pi/", ".10x/", ".loom/", ".claude/", ".cursor/", ".turbo-search/", "artifacts/", "autoresearch/")):
+        multiplier *= 0.20
+    elif lower_path.endswith(".json") and "/data/" in lower_path and any(
+        marker in lower_path for marker in ("eval", "fixture", "seed", "dataset")
+    ):
+        multiplier *= 0.20
+    elif lower_path.startswith("docs/") or lower_path.endswith(".md") or lower_path in {"readme.md", "changelog.md"}:
+        multiplier *= 0.70
+    elif lower_path.startswith("tests/"):
+        multiplier *= 1.10
+    if path_tokens & EXPERIMENT_PATH_TOKENS and not query_tokens & EXPERIMENT_INTENT_TOKENS:
+        multiplier *= 0.70
+    if lower_path.startswith("src/") and query_tokens & IMPLEMENTATION_INTENT_TOKENS:
+        multiplier *= 1.12
+    multiplier *= repo_path_symbol_multiplier(hit, query=query)
+    return multiplier
+
+
+def repo_path_symbol_multiplier(hit: SearchHit, *, query: str = "") -> float:
+    """Boost precise source-file and symbol matches without changing index schema."""
+
+    path = normalize_path(hit.repo_path)
+    if not path.startswith("src/"):
+        return 1.0
+    query_tokens = ranking_signal_tokens(query)
+    if not query_tokens:
+        return 1.0
+    extra = 0.0
+    if file_stem_matches_query(query_tokens, file_stem(path)):
+        extra += 0.04
+    if related_token_count(query_tokens, ranking_signal_tokens(" ".join(SYMBOL_DECLARATION_RE.findall(hit.content)))) >= 2:
+        extra += 0.04
+    return 1.0 + min(extra, 0.06)
+
+
+def file_stem_matches_query(query_tokens: set[str], stem: str) -> bool:
+    stem_tokens = ranking_signal_tokens(stem)
+    if not stem_tokens:
+        return False
+    required_matches = 1 if len(stem_tokens) == 1 else min(2, len(stem_tokens))
+    return related_token_count(query_tokens, stem_tokens) >= required_matches
+
+
+def related_token_count(query_tokens: set[str], document_tokens: set[str]) -> int:
+    matched_tokens: set[str] = set()
+    for document_token in document_tokens:
+        for query_token in query_tokens:
+            if query_token == document_token or (
+                len(query_token) >= 4
+                and len(document_token) >= 4
+                and (query_token.startswith(document_token) or document_token.startswith(query_token))
+            ):
+                matched_tokens.add(document_token)
+                break
+    return len(matched_tokens)
+
+
+def ranking_signal_tokens(value: str) -> set[str]:
+    tokens: set[str] = set()
+    for token in re.split(r"[^A-Za-z0-9]+", value):
+        for match in IDENTIFIER_TOKEN_RE.findall(token):
+            tokens.add(match.casefold())
+    for token in list(tokens):
+        if len(token) > 3 and token.endswith("ies"):
+            tokens.add(f"{token[:-3]}y")
+        if len(token) > 3 and token.endswith("s"):
+            tokens.add(token[:-1])
+        tokens.update(PATH_SYMBOL_ALIASES.get(token, set()))
+    return {
+        token
+        for token in tokens
+        if len(token) >= 3 and token not in PATH_SYMBOL_STOP_TOKENS and token not in PATH_SYMBOL_GENERIC_TOKENS
+    }
+
+
+def file_stem(path: str) -> str:
+    name = path.rsplit("/", 1)[-1]
+    return name.rsplit(".", 1)[0]
+
+
+def lexical_tokens(value: str) -> set[str]:
+    return {token for token in re.split(r"[^a-z0-9]+", value.casefold()) if token}
 
 
 def normalize_path(value: str) -> str:

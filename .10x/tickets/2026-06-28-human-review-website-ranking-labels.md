@@ -1,4 +1,4 @@
-Status: open
+Status: cancelled
 Created: 2026-06-28
 Updated: 2026-06-28
 Depends-On: .10x/evidence/2026-06-28-website-ranking-evidence-hardening.md
@@ -25,7 +25,7 @@ Datasets needing review:
 
 ## Blockers
 
-- Requires human/domain-owner review; assistant-only review is not sufficient to mark labels human-approved.
+- Cancelled by user direction. On 2026-06-28, the user stated they trust assistant judgment, do not need human review, and prefer more hypotheses, tests, and repo search score improvements.
 
 ## References
 
@@ -34,3 +34,4 @@ Datasets needing review:
 ## Progress and notes
 
 - 2026-06-28: Opened after evidence hardening established three assistant-drafted website eval sets but left human approval unresolved.
+- 2026-06-28: Cancelled after explicit user direction to skip human review and focus on more hypotheses/tests and repo search score improvements.

@@ -69,7 +69,7 @@ For websites:
 - trailing slashes are stripped by default so `/docs/query` and `/docs/query/` canonicalize to one page.
 - `--keep-trailing-slash` preserves trailing-slash variants when a site needs that behavior.
 
-For GitHub repositories, `--include-path` and `--exclude-path` match repo-relative file paths:
+For GitHub repositories, `--include-path` and `--exclude-path` match repo-relative file paths. Default repo planning excludes generated/vendor directories plus local agent memory/run artifacts such as `.10x/`, `.loom/`, `.pi/`, `.turbo-search/`, `artifacts/`, `autoresearch/`, and eval fixture JSON under `/data/` so repository search stays focused on source, tests, and user-facing docs.
 
 ```bash
 uv run turbo-search plan https://github.com/owner/repo --include-path 'docs/**'
@@ -163,7 +163,7 @@ uv run turbo-search evals \
 
 Do not run live retrieval/evals unless the namespace has been applied and the user explicitly approves live validation.
 
-Retrieval defaults to namespace-aware final ranking after hybrid ANN + BM25 + RRF. `site-*` namespaces use page-level website ranking by default (`--ranking-mode page --ranking-profile none --ranking-pool 20 --ranking-aggregation max`). GitHub repository namespaces keep file-level `repo-code` ranking, deduplicating by `repo_path` and gently demoting process/docs paths such as `.pi/`, `.10x/`, `.loom/`, `docs/`, and Markdown files. Pass `--ranking-aggregation capped-sum-3` to experiment with multi-chunk page aggregation, or `--ranking-mode chunk --ranking-profile none` when validating raw fused chunk order.
+Retrieval defaults to namespace-aware final ranking after hybrid ANN + BM25 + RRF. `site-*` namespaces use page-level website ranking by default (`--ranking-mode page --ranking-profile none --ranking-pool 20 --ranking-aggregation max`). GitHub repository namespaces use file-level `repo-code` ranking by default (`--ranking-mode file --ranking-profile repo-code --ranking-pool 100 --ranking-aggregation max`), deduplicating by `repo_path`, using the best chunk per file, gently demoting process/docs/eval-artifact paths such as `.pi/`, `.10x/`, `.loom/`, `autoresearch/`, `docs/`, Markdown files, and eval fixture JSON, and lightly boosting `tests/` files. Pass `--ranking-aggregation capped-sum-3` to reward up to three matching chunks from the same file when that fits a repository, or `--ranking-mode chunk --ranking-profile none` when validating raw fused chunk order.
 
 ### Repository composite evals and config autoresearch
 

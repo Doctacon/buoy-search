@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-06-28
 Updated: 2026-06-28
-Depends-On: .10x/decisions/website-ranking-defaults.md, .10x/evidence/2026-06-28-opt-in-page-aggregation-ranking-validation.md, .10x/evidence/2026-06-28-cross-site-page-aggregation-sqlmesh-validation.md
+Depends-On: .10x/decisions/superseded/website-ranking-defaults.md, .10x/evidence/2026-06-28-opt-in-page-aggregation-ranking-validation.md, .10x/evidence/2026-06-28-cross-site-page-aggregation-sqlmesh-validation.md
 
 # Promote Website Page Ranking Default
 
@@ -42,7 +42,7 @@ Explicit CLI flags must override namespace-derived defaults.
 
 ## References
 
-- `.10x/decisions/website-ranking-defaults.md`
+- `.10x/decisions/superseded/website-ranking-defaults.md`
 - `.10x/evidence/2026-06-28-opt-in-page-aggregation-ranking-validation.md`
 - `.10x/evidence/2026-06-28-cross-site-page-aggregation-sqlmesh-validation.md`
 

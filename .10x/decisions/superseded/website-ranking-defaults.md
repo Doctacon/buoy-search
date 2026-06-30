@@ -1,8 +1,10 @@
-Status: active
+Status: superseded
 Created: 2026-06-28
 Updated: 2026-06-28
 
 # Website Ranking Defaults
+
+Superseded-By: `.10x/decisions/namespace-ranking-defaults.md`
 
 ## Context
 

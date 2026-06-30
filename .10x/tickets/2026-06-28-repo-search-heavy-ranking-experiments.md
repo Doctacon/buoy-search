@@ -25,9 +25,8 @@ Evaluate the heavier remaining precision hypotheses after the default file-level
 
 ## Blockers
 
-- None for the completed local reranker slice.
-- The next specific heavy experiment is not yet selected. Evidence points toward page-level website ranking/dedup before more reranker work.
-- Larger/human-reviewed labels remain recommended before learning-to-rank or model-default promotion.
+- None for retrieval-only ranking experiments.
+- Larger cross-repo labels remain recommended before learning-to-rank or embedding-model default promotion.
 
 ## References
 
@@ -47,3 +46,11 @@ Evaluate the heavier remaining precision hypotheses after the default file-level
 - 2026-06-28: Cross-site validated page ranking on existing `site-sqlmesh-readthedocs-io-v1` namespace. Page mode pool 20 improved Precision@5 from `0.260` to `0.473`; default promotion remains separate. Evidence: `.10x/evidence/2026-06-28-cross-site-page-aggregation-sqlmesh-validation.md`.
 - 2026-06-28: Promoted namespace-aware website defaults for `site-*`: page/none/pool20/max. GitHub repo defaults preserved. Evidence: `.10x/evidence/2026-06-28-website-page-ranking-default-promotion-validation.md`.
 - 2026-06-28: Hardened evidence on third website namespace `site-pi-dev-v1`; promoted default improved Precision@5 from `0.220` to `0.333`. Evidence: `.10x/evidence/2026-06-28-website-ranking-evidence-hardening.md`.
+- 2026-06-28: User explicitly cancelled the human-review prerequisite preference and requested more hypotheses/tests focused on repo search score improvements.
+- 2026-06-28: Tested repo file aggregation grid. `file/repo_code/pool100/capped_sum_3` improved repo score from `87.251` to `89.629`, Precision@5 from `0.500` to `0.520`, Recall@10 from `0.833` to `0.900`, and NDCG@10 from `0.920` to `0.935`.
+- 2026-06-28: Promoted repo `ranking_aggregation` default from `max` to `capped_sum_3`; website default remains `page/none/pool20/max`. Evidence: `.10x/evidence/2026-06-28-repo-capped-aggregation-default-promotion.md`.
+- 2026-06-28: Re-indexed current shipped `main` into existing `github-doctacon-turbo-search-v1` without stale deletion; unfiltered memory/eval artifacts degraded score to `71.346`, exposing index-hygiene as the next strongest hypothesis.
+- 2026-06-28: Added default GitHub repo planning exclusions for local agent memory/run artifacts and eval fixture JSON; updated `repo_code` profile to demote artifact/eval paths and lightly boost `tests/`.
+- 2026-06-28: Applied clean new namespace `github-doctacon-turbo-search-v2-clean`; default repo score recovered to `88.125` on current `main`. Evidence: `.10x/evidence/2026-06-28-repo-index-hygiene-and-profile-validation.md`.
+- 2026-06-28: Implemented query-aware implementation-vs-experiment reranking in the `repo_code` profile. Clean `turbo-search` with opt-in capped aggregation reached `repo_search_score = 89.197`; cross-repo-safe max default scored `86.697`. Evidence: `.10x/evidence/2026-06-28-repo-query-intent-profile-validation.md`.
+- 2026-06-28: Cross-repo validated `psf/requests` in new namespace `github-psf-requests-v1`. `max` aggregation beat `capped_sum_3` (`81.809` vs `78.229`), so the active repo default was reverted to `max` and capped aggregation remains opt-in. Evidence: `.10x/evidence/2026-06-28-cross-repo-requests-validation.md`.

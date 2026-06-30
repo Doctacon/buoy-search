@@ -8,8 +8,11 @@ from turbo_search.retriever import (
     RETRIEVAL_ATTRIBUTES,
     HybridRetriever,
     RetrievalOptions,
+    SearchHit,
     bm25_rank_by,
     build_multi_query_subqueries,
+    rank_hits,
+    ranking_profile_multiplier,
 )
 
 
@@ -213,7 +216,99 @@ class RetrieverTests(unittest.TestCase):
         self.assertEqual(len({hit.repo_path for hit in result.hits}), 3)
         self.assertEqual(result.ranking_mode, "file")
         self.assertEqual(result.ranking_profile, "repo_code")
+        self.assertEqual(result.ranking_aggregation, "max")
         self.assertEqual(result.hits[0].score_info["ranking"]["file_hit_count"], 2)
+
+    def test_repo_code_profile_demotes_artifacts_and_boosts_tests(self) -> None:
+        self.assertEqual(
+            ranking_profile_multiplier(SearchHit(id="memory", repo_path=".10x/evidence/finding.md"), "repo_code"),
+            0.20,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="eval-data", repo_path="src/turbo_search/data/repo_search_seed_evals.json"),
+                "repo_code",
+            ),
+            0.20,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(SearchHit(id="test", repo_path="tests/test_retriever.py"), "repo_code"),
+            1.10,
+        )
+
+    def test_repo_code_profile_uses_query_intent_for_implementation_vs_experiment_files(self) -> None:
+        implementation_query = "Where is the repository search composite eval metric implemented and validated?"
+
+        self.assertGreater(
+            ranking_profile_multiplier(
+                SearchHit(id="evals", repo_path="src/turbo_search/evals.py"),
+                "repo_code",
+                query=implementation_query,
+            ),
+            1.0,
+        )
+        self.assertLess(
+            ranking_profile_multiplier(
+                SearchHit(id="autoresearch", repo_path="src/turbo_search/autoresearch.py"),
+                "repo_code",
+                query=implementation_query,
+            ),
+            1.0,
+        )
+        self.assertGreaterEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="autoresearch", repo_path="src/turbo_search/autoresearch.py"),
+                "repo_code",
+                query="Where is the autoresearch experiment runner implemented?",
+            ),
+            1.0,
+        )
+
+    def test_repo_code_profile_boosts_precise_source_file_and_symbol_matches(self) -> None:
+        self.assertGreater(
+            ranking_profile_multiplier(
+                SearchHit(
+                    id="hooks",
+                    repo_path="src/requests/hooks.py",
+                    content="def default_hooks(): pass\n\ndef dispatch_hook(key, hooks, hook_data): pass\n",
+                ),
+                "repo_code",
+                query="Where does Requests implement the hook dispatch system for response hooks?",
+            ),
+            1.0,
+        )
+        self.assertAlmostEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="plan-diff", repo_path="src/turbo_search/plan_diff.py", content="def build_plan_diff(): pass"),
+                "repo_code",
+                query="Which code propagates GitHub repo metadata into plan manifests and chunk rows?",
+            ),
+            1.12,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="test-hooks", repo_path="tests/test_hooks.py", content="def test_dispatch_hook(): pass"),
+                "repo_code",
+                query="Where does Requests implement the hook dispatch system for response hooks?",
+            ),
+            1.10,
+        )
+
+    def test_file_ranking_can_use_symbol_matches_from_later_chunks_in_group(self) -> None:
+        hits = [
+            SearchHit(id="models", repo_path="src/requests/models.py"),
+            SearchHit(id="structures-header", repo_path="src/requests/structures.py"),
+            SearchHit(
+                id="structures-class",
+                repo_path="src/requests/structures.py",
+                content="class CaseInsensitiveDict(MutableMapping): pass",
+            ),
+        ]
+
+        ranked = rank_hits(hits, options=RetrievalOptions(top_k=2, ranking_pool=3), query="CaseInsensitiveDict lookup")
+
+        self.assertEqual(ranked[0].repo_path, "src/requests/structures.py")
+        self.assertEqual(ranked[0].score_info["ranking"]["file_hit_count"], 2)
 
     def test_chunk_ranking_preserves_raw_fused_order(self) -> None:
         retriever = HybridRetriever(
@@ -256,7 +351,14 @@ class RetrieverTests(unittest.TestCase):
 
         result = retriever.retrieve(
             "repo code",
-            RetrievalOptions(top_k=3, candidates=10, ranking_mode="page", ranking_profile="none", ranking_pool=10),
+            RetrievalOptions(
+                top_k=3,
+                candidates=10,
+                ranking_mode="page",
+                ranking_profile="none",
+                ranking_pool=10,
+                ranking_aggregation="max",
+            ),
         )
 
         self.assertEqual([hit.repo_path for hit in result.hits], ["docs/guide.md", "src/module.py", ".pi/skills/tool/SKILL.md"])
@@ -271,7 +373,14 @@ class RetrieverTests(unittest.TestCase):
 
         default_result = retriever.retrieve(
             "website docs",
-            RetrievalOptions(top_k=2, candidates=10, ranking_mode="page", ranking_profile="none", ranking_pool=4),
+            RetrievalOptions(
+                top_k=2,
+                candidates=10,
+                ranking_mode="page",
+                ranking_profile="none",
+                ranking_pool=4,
+                ranking_aggregation="max",
+            ),
         )
         aggregated_result = retriever.retrieve(
             "website docs",

@@ -79,6 +79,8 @@ GitHub repo max_chunks: 100000
 strip_trailing_slash: true
 ```
 
+GitHub repo planning excludes generated/vendor directories plus local agent memory/run artifacts such as `.10x/`, `.loom/`, `.pi/`, `.turbo-search/`, `artifacts/`, `autoresearch/`, and eval fixture JSON under `/data/` by default.
+
 Useful filters:
 
 ```bash
@@ -133,7 +135,7 @@ uv run turbo-search retrieve \
   --top-k 5
 ```
 
-Retrieval defaults to hybrid ANN + BM25 + RRF, then namespace-aware final ranking. `site-*` namespaces default to page-level website ranking (`--ranking-mode page --ranking-profile none --ranking-pool 20 --ranking-aggregation max`). Repository namespaces default to file-level ranking (`--ranking-mode file --ranking-profile repo-code --ranking-pool 100`), which deduplicates chunks by `repo_path` and gently demotes repository process/docs paths such as `.pi/`, `.10x/`, `.loom/`, `docs/`, and Markdown files after fusion. Use `--ranking-aggregation capped-sum-3` to experiment with multi-chunk page aggregation, or `--ranking-mode chunk --ranking-profile none` to inspect raw chunk-level fused order.
+Retrieval defaults to hybrid ANN + BM25 + RRF, then namespace-aware final ranking. `site-*` namespaces default to page-level website ranking (`--ranking-mode page --ranking-profile none --ranking-pool 20 --ranking-aggregation max`). Repository namespaces default to file-level ranking (`--ranking-mode file --ranking-profile repo-code --ranking-pool 100 --ranking-aggregation max`), which deduplicates chunks by `repo_path`, uses the best chunk per file, gently demotes repository process/docs/eval-artifact paths such as `.pi/`, `.10x/`, `.loom/`, `autoresearch/`, `docs/`, Markdown files, and eval fixture JSON, and lightly boosts `tests/` files after fusion. Use `--ranking-aggregation capped-sum-3` to reward up to three matching chunks from the same file when that fits a repository, or `--ranking-mode chunk --ranking-profile none` to inspect raw chunk-level fused order.
 
 Dry-run retrieval is the default and does not contact turbopuffer:
 
