@@ -11,7 +11,7 @@ Updated: 2026-06-28
 - website rows need page-level deduplication by canonical URL;
 - GitHub repository rows need file-level grouping by `repo_path`;
 - repository files may have multiple matching chunks, but repeated evidence can also over-rank broad core files;
-- current `repo_code` scoring also applies artifact demotion, conditional example/demo path demotion, query-intent handling, path/symbol boosts, and one-companion docs/tests role diversification.
+- current `repo_code` scoring also applies artifact demotion, conditional example/demo and documentation/tutorial path demotion, query-intent handling, path/symbol boosts, and one-companion docs/tests role diversification.
 
 Earlier evidence rejected universal `capped_sum_3` because it improved `turbo-search` but regressed `psf/requests`. Third-repo validation on `pallets/click` reopened the aggregation question: `capped_sum_3` was average-better across three repos, but still regressed `psf/requests`.
 
@@ -68,7 +68,7 @@ close_extra_chunk_count = count of chunks 2..3 where chunk_score >= 0.80 * best_
 
 User-supplied CLI/config ranking options continue to override namespace defaults. `--ranking-aggregation max` remains available for strict single-best-chunk file/page ranking, and `--ranking-aggregation capped-sum-3` remains available for opt-in repo or website experiments.
 
-Within `ranking_profile=repo_code`, example/demo paths such as `examples/`, `docs_src/`, `example_scripts/`, `/example/`, and `/examples/` are demoted for queries that are not explicitly asking for examples/tutorials/samples/demos. This is part of the default repository profile rather than a separate CLI knob.
+Within `ranking_profile=repo_code`, example/demo paths such as `examples/`, `docs_src/`, `example_scripts/`, `/example/`, and `/examples/` are demoted for queries that are not explicitly asking for examples/tutorials/samples/demos. Singular `doc/` roots and `docs/tutorial/` paths are also demoted for implementation-oriented queries that are not explicitly asking for documentation/tutorial/example material. These are part of the default repository profile rather than separate CLI knobs.
 
 ## Alternatives considered
 
@@ -81,7 +81,7 @@ Within `ranking_profile=repo_code`, example/demo paths such as `examples/`, `doc
 - Repository retrieval/evals without explicit ranking flags now use a conservative repeated-file evidence bonus.
 - Website defaults remain unchanged at page/max/pool20.
 - Strict `max` and full `capped_sum_3` remain inspectable CLI/config options.
-- Further repo score improvements should target index hygiene, richer path/symbol metadata, example-aware query routing, or learned/adaptive ranking after more labeled repos.
+- Further repo score improvements should target index hygiene, richer path/symbol metadata, documentation/example-aware query routing, or learned/adaptive ranking after more labeled repos.
 
 ## Evidence
 
@@ -95,3 +95,4 @@ Within `ranking_profile=repo_code`, example/demo paths such as `examples/`, `doc
 - `.10x/evidence/2026-06-28-repo-adaptive-aggregation-validation.md`
 - `.10x/evidence/2026-06-28-website-ranking-evidence-hardening.md`
 - `.10x/evidence/2026-06-28-repo-example-path-demotion-validation.md`
+- `.10x/evidence/2026-06-28-repo-documentation-path-demotion-validation.md`

@@ -619,6 +619,18 @@ IMPLEMENTATION_INTENT_TOKENS = {"code", "function", "functions", "implement", "i
 EXPERIMENT_INTENT_TOKENS = {"autoresearch", "benchmark", "benchmarks", "experiment", "experiments", "fixture", "fixtures", "hypothesis", "hypotheses", "research"}
 EXPERIMENT_PATH_TOKENS = {"autoresearch", "benchmark", "benchmarks", "experiment", "experiments", "fixture", "fixtures", "hypothesis", "hypotheses"}
 EXAMPLE_INTENT_TOKENS = {"demo", "demos", "example", "examples", "sample", "samples", "tutorial", "tutorials"}
+DOCUMENTATION_INTENT_TOKENS = {
+    "doc",
+    "docs",
+    "document",
+    "documentation",
+    "documented",
+    "guide",
+    "guides",
+    "readme",
+    "tutorial",
+    "tutorials",
+}
 PATH_SYMBOL_STOP_TOKENS = {
     "and",
     "are",
@@ -757,6 +769,10 @@ def ranking_profile_multiplier(hit: SearchHit, profile: str, *, query: str = "")
         multiplier *= 0.70
     elif lower_path.startswith("tests/"):
         multiplier *= 1.10
+    if lower_path.startswith("doc/") and not query_tokens & (DOCUMENTATION_INTENT_TOKENS | EXAMPLE_INTENT_TOKENS):
+        multiplier *= 0.80
+    if lower_path.startswith("docs/tutorial/") and not query_tokens & (DOCUMENTATION_INTENT_TOKENS | EXAMPLE_INTENT_TOKENS):
+        multiplier *= 0.80
     if path_tokens & EXPERIMENT_PATH_TOKENS and not query_tokens & EXPERIMENT_INTENT_TOKENS:
         multiplier *= 0.70
     if lower_path.startswith("src/") and query_tokens & IMPLEMENTATION_INTENT_TOKENS:

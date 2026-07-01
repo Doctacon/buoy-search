@@ -33,6 +33,8 @@ ranking_aggregation = adaptive_sum_3
 - process/project-agent and run-artifact paths such as `.pi/`, `.10x/`, `.loom/`, `.claude/`, `.cursor/`, `.turbo-search/`, `artifacts/`, and `autoresearch/` are demoted strongly;
 - eval/fixture/dataset JSON under `/data/` is demoted strongly so answer-key-like files do not dominate implementation queries;
 - `docs/`, README/CHANGELOG, and other Markdown files are demoted gently, with a partial recovery for exact documentation filename matches such as `docs/api.rst` on API queries;
+- singular `doc/` documentation roots are demoted for non-documentation/example queries;
+- `docs/tutorial/` paths receive an extra demotion for non-documentation/tutorial/example queries;
 - example/demo paths such as `examples/`, `docs_src/`, `example_scripts/`, `/example/`, and `/examples/` are demoted for non-example queries;
 - `tests/` files get a light boost because repository evals often ask where behavior is validated;
 - source/config files are mostly neutral, with conservative query-aware boosts for exact source filename matches and Python `def`/`class` declarations already present in retrieved chunks;
@@ -64,6 +66,8 @@ File-card metadata indexing (`--repo-file-cards`) is a better opt-in metadata sh
 
 Conditional example/demo path demotion is now part of the default `repo_code` profile. It improved Click (`72.474 -> 72.816`), pytest (`84.742 -> 86.042`), and Typer (`59.423 -> 59.710`) while leaving turbo-search and Requests unchanged. Evidence: `.10x/evidence/2026-06-28-repo-example-path-demotion-validation.md`.
 
+Query-aware documentation path demotion is also part of the default `repo_code` profile. Against the example-demotion baseline, singular `doc/` plus `docs/tutorial/` demotion improved pytest (`86.042 -> 89.191`) and Typer (`59.710 -> 62.787`) while leaving turbo-search, Requests, and Click unchanged. Evidence: `.10x/evidence/2026-06-28-repo-documentation-path-demotion-validation.md`.
+
 Evidence:
 
 - `.10x/evidence/2026-06-28-repo-search-file-ranking-promotion-validation.md`
@@ -78,3 +82,4 @@ Evidence:
 - `.10x/evidence/2026-06-28-repo-search-metadata-cross-repo-validation.md`
 - `.10x/evidence/2026-06-28-repo-file-card-metadata-validation.md`
 - `.10x/evidence/2026-06-28-repo-example-path-demotion-validation.md`
+- `.10x/evidence/2026-06-28-repo-documentation-path-demotion-validation.md`

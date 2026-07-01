@@ -251,6 +251,62 @@ class RetrieverTests(unittest.TestCase):
             ),
             1.0,
         )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="doc", repo_path="doc/en/how-to/logging.rst"),
+                "repo_code",
+                query="Where is logging capture implemented?",
+            ),
+            0.80,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="doc", repo_path="doc/en/how-to/logging.rst"),
+                "repo_code",
+                query="Where is logging capture documented?",
+            ),
+            1.0,
+        )
+        self.assertAlmostEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="doc-example", repo_path="doc/en/example/markers.rst"),
+                "repo_code",
+                query="Where is marker behavior implemented?",
+            ),
+            0.56,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="doc-example", repo_path="doc/en/example/markers.rst"),
+                "repo_code",
+                query="Where is the marker example?",
+            ),
+            1.0,
+        )
+        self.assertAlmostEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="tutorial", repo_path="docs/tutorial/commands/index.md"),
+                "repo_code",
+                query="Where is command runtime implemented?",
+            ),
+            0.56,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="tutorial", repo_path="docs/tutorial/commands/index.md"),
+                "repo_code",
+                query="Where is the command tutorial?",
+            ),
+            0.70,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="tutorial", repo_path="docs/tutorial/commands/index.md"),
+                "repo_code",
+                query="Where is the command example?",
+            ),
+            0.70,
+        )
 
     def test_repo_code_profile_uses_query_intent_for_implementation_vs_experiment_files(self) -> None:
         implementation_query = "Where is the repository search composite eval metric implemented and validated?"
