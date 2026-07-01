@@ -1,0 +1,349 @@
+{
+  "metadata": {
+    "id": "typer-repo-search-seed-v1",
+    "status": "seed-draft",
+    "target_repo": "fastapi/typer",
+    "namespace": "github-fastapi-typer-v1",
+    "source_plan": "artifacts/site-crawls/github-fastapi-typer-plan-20260628/plan.json",
+    "commit_sha": "b210c0e2376d99344f79f11fab3ad34cf890cc20",
+    "human_approved_ground_truth": false,
+    "notes": "Assistant-drafted graded relevance labels for expanded cross-repo validation. Source-backed from the local Typer repository plan."
+  },
+  "cases": [
+    {
+      "id": "typer-app-registration",
+      "question": "Where does Typer store app, command, callback, and sub-app metadata and implement the TyperCommand/TyperGroup runtime used by registered apps?",
+      "coverage_area": "app_registration",
+      "judgments": [
+        {
+          "repo_path": "typer/models.py",
+          "grade": 3,
+          "reason": "Defines TyperInfo, CommandInfo, and Typer metadata models used to store app registrations."
+        },
+        {
+          "repo_path": "typer/core.py",
+          "grade": 3,
+          "reason": "Defines TyperCommand and TyperGroup runtime Click subclasses used by registered apps."
+        },
+        {
+          "repo_path": "tests/test_cli/test_multi_app.py",
+          "grade": 2,
+          "reason": "Validates multi-app Typer CLI behavior."
+        },
+        {
+          "repo_path": "tests/test_cli/test_multi_app_sub.py",
+          "grade": 1,
+          "reason": "Validates sub-app CLI behavior."
+        },
+        {
+          "repo_path": "docs/tutorial/typer-app.md",
+          "grade": 1,
+          "reason": "Documents Typer app construction."
+        }
+      ]
+    },
+    {
+      "id": "argument-option-parameter-models",
+      "question": "Where does Typer define parameter metadata models and runtime argument/option behavior for defaults, help text, prompts, and annotated parameters?",
+      "coverage_area": "parameters",
+      "judgments": [
+        {
+          "repo_path": "typer/models.py",
+          "grade": 3,
+          "reason": "Defines OptionInfo, ArgumentInfo, ParameterInfo, and related parameter metadata."
+        },
+        {
+          "repo_path": "typer/core.py",
+          "grade": 3,
+          "reason": "Defines TyperArgument and TyperOption runtime parameter behavior."
+        },
+        {
+          "repo_path": "tests/test_annotated.py",
+          "grade": 2,
+          "reason": "Validates Annotated-based parameter declarations."
+        },
+        {
+          "repo_path": "tests/test_ambiguous_params.py",
+          "grade": 1,
+          "reason": "Validates ambiguous parameter handling."
+        },
+        {
+          "repo_path": "docs/tutorial/options/index.md",
+          "grade": 1,
+          "reason": "Documents CLI option declarations."
+        },
+        {
+          "repo_path": "docs/tutorial/arguments/index.md",
+          "grade": 1,
+          "reason": "Documents CLI argument declarations."
+        }
+      ]
+    },
+    {
+      "id": "click-command-conversion",
+      "question": "Where does Typer implement its Click command/group runtime, command invocation, command lookup, and command help behavior?",
+      "coverage_area": "click_conversion",
+      "judgments": [
+        {
+          "repo_path": "typer/core.py",
+          "grade": 3,
+          "reason": "Defines TyperCommand, TyperGroup, command lookup, invoke behavior, and rich help formatting hooks."
+        },
+        {
+          "repo_path": "tests/test_cli/test_multi_func.py",
+          "grade": 2,
+          "reason": "Validates multi-function command behavior from CLI files."
+        },
+        {
+          "repo_path": "tests/test_cli/test_sub.py",
+          "grade": 2,
+          "reason": "Validates subcommand CLI behavior."
+        },
+        {
+          "repo_path": "tests/test_cli/test_help.py",
+          "grade": 1,
+          "reason": "Validates command help output."
+        },
+        {
+          "repo_path": "docs/tutorial/commands/index.md",
+          "grade": 1,
+          "reason": "Documents command registration and command behavior."
+        }
+      ]
+    },
+    {
+      "id": "completion-shell-install",
+      "question": "Where does Typer implement shell completion for Bash, Zsh, Fish, PowerShell, completion scripts, completion install/show commands, and parameter completion?",
+      "coverage_area": "completion",
+      "judgments": [
+        {
+          "repo_path": "typer/completion.py",
+          "grade": 3,
+          "reason": "Implements Typer completion commands, shell_complete integration, and completion option helpers."
+        },
+        {
+          "repo_path": "typer/_completion_classes.py",
+          "grade": 3,
+          "reason": "Defines shell-specific completion classes and completion protocol handling."
+        },
+        {
+          "repo_path": "typer/_completion_shared.py",
+          "grade": 2,
+          "reason": "Defines shared completion script generation helpers."
+        },
+        {
+          "repo_path": "tests/test_completion/test_completion.py",
+          "grade": 2,
+          "reason": "Validates completion behavior."
+        },
+        {
+          "repo_path": "tests/test_completion/test_completion_install.py",
+          "grade": 2,
+          "reason": "Validates completion install behavior."
+        },
+        {
+          "repo_path": "docs/tutorial/options-autocompletion.md",
+          "grade": 1,
+          "reason": "Documents CLI option autocompletion."
+        }
+      ]
+    },
+    {
+      "id": "rich-help-formatting",
+      "question": "Where does Typer implement rich-formatted help output, option panels, command panels, markup handling, and fallback help rendering?",
+      "coverage_area": "rich_help",
+      "judgments": [
+        {
+          "repo_path": "typer/rich_utils.py",
+          "grade": 3,
+          "reason": "Defines Rich help rendering, panels, markup/highlighting, and rich formatting helpers."
+        },
+        {
+          "repo_path": "typer/core.py",
+          "grade": 2,
+          "reason": "Hooks TyperCommand and TyperGroup help formatting into Rich/fallback output."
+        },
+        {
+          "repo_path": "tests/test_rich_utils.py",
+          "grade": 2,
+          "reason": "Validates Rich utility behavior."
+        },
+        {
+          "repo_path": "tests/test_cli/test_help.py",
+          "grade": 2,
+          "reason": "Validates CLI help output."
+        },
+        {
+          "repo_path": "docs/tutorial/commands/help.md",
+          "grade": 1,
+          "reason": "Documents command help behavior."
+        }
+      ]
+    },
+    {
+      "id": "testing-cli-runner",
+      "question": "Where does Typer implement CliRunner testing support, invoke(), result streams, environment overrides, and isolated filesystem helpers?",
+      "coverage_area": "testing_support",
+      "judgments": [
+        {
+          "repo_path": "typer/testing.py",
+          "grade": 3,
+          "reason": "Defines Typer's CliRunner, Result handling, invoke(), and testing isolation helpers."
+        },
+        {
+          "repo_path": "tests/test_tutorial/test_testing/test_app01.py",
+          "grade": 2,
+          "reason": "Validates documented testing examples."
+        },
+        {
+          "repo_path": "tests/test_core.py",
+          "grade": 1,
+          "reason": "Uses CliRunner to validate core behavior."
+        },
+        {
+          "repo_path": "docs/tutorial/testing.md",
+          "grade": 1,
+          "reason": "Documents Typer testing with CliRunner."
+        }
+      ]
+    },
+    {
+      "id": "parameter-types-file-path-enum",
+      "question": "Where does Typer implement parameter type conversion for bools, numbers, UUID, datetime, enums, path/file types, custom parsers, and shell completion of types?",
+      "coverage_area": "parameter_types",
+      "judgments": [
+        {
+          "repo_path": "typer/models.py",
+          "grade": 3,
+          "reason": "Defines TyperPath, FileBinaryRead/Write, FileTextRead/Write, and parameter metadata for type conversion."
+        },
+        {
+          "repo_path": "typer/_types.py",
+          "grade": 2,
+          "reason": "Defines protocol and custom type behavior including shell_complete hooks."
+        },
+        {
+          "repo_path": "typer/_click/types.py",
+          "grade": 2,
+          "reason": "Vendored Click parameter types back Typer's runtime conversion behavior."
+        },
+        {
+          "repo_path": "tests/test_types.py",
+          "grade": 2,
+          "reason": "Validates type conversion behavior."
+        },
+        {
+          "repo_path": "tests/test_types_file.py",
+          "grade": 1,
+          "reason": "Validates file parameter behavior."
+        },
+        {
+          "repo_path": "docs/tutorial/parameter-types/index.md",
+          "grade": 1,
+          "reason": "Documents CLI parameter types."
+        }
+      ]
+    },
+    {
+      "id": "prompt-progress-echo-launch",
+      "question": "Where does Typer expose terminal UI helpers like echo, secho, style, prompt, confirm, progressbar, launch, and get_app_dir?",
+      "coverage_area": "terminal_ui",
+      "judgments": [
+        {
+          "repo_path": "typer/__init__.py",
+          "grade": 2,
+          "reason": "Re-exports Typer public terminal helpers from Click and Typer modules."
+        },
+        {
+          "repo_path": "typer/_click/termui.py",
+          "grade": 3,
+          "reason": "Vendored Click terminal UI helpers implement prompt, confirm, progressbar, style, secho, launch, pause, and related functions."
+        },
+        {
+          "repo_path": "typer/_click/utils.py",
+          "grade": 2,
+          "reason": "Vendored Click utility helpers implement echo, stream helpers, open_file, and get_app_dir."
+        },
+        {
+          "repo_path": "tests/test_tutorial/test_progressbar/test_tutorial001.py",
+          "grade": 1,
+          "reason": "Validates progressbar tutorial behavior."
+        },
+        {
+          "repo_path": "docs/tutorial/progressbar.md",
+          "grade": 1,
+          "reason": "Documents progressbar usage."
+        },
+        {
+          "repo_path": "docs/tutorial/prompt.md",
+          "grade": 1,
+          "reason": "Documents prompt usage."
+        }
+      ]
+    },
+    {
+      "id": "exceptions-exit-errors",
+      "question": "Where does Typer implement Exit, Abort, BadParameter, rich exception handling, pretty exceptions, and CLI error display?",
+      "coverage_area": "exceptions_errors",
+      "judgments": [
+        {
+          "repo_path": "typer/core.py",
+          "grade": 3,
+          "reason": "Defines TyperArgument/TyperOption error formatting and command/group invocation error behavior."
+        },
+        {
+          "repo_path": "typer/_click/exceptions.py",
+          "grade": 2,
+          "reason": "Vendored Click exception classes back Typer CLI errors."
+        },
+        {
+          "repo_path": "tests/test_exit_errors.py",
+          "grade": 2,
+          "reason": "Validates exit and error behavior."
+        },
+        {
+          "repo_path": "tests/test_tutorial/test_exceptions/test_tutorial001.py",
+          "grade": 1,
+          "reason": "Validates documented exception examples."
+        },
+        {
+          "repo_path": "docs/tutorial/exceptions.md",
+          "grade": 1,
+          "reason": "Documents exceptions and errors."
+        }
+      ]
+    },
+    {
+      "id": "typer-cli-script-runner",
+      "question": "Where does Typer implement the `typer` command that runs Python scripts and exposes CLI helper commands?",
+      "coverage_area": "typer_cli",
+      "judgments": [
+        {
+          "repo_path": "typer/cli.py",
+          "grade": 3,
+          "reason": "Implements the `typer` command-line app, script loading, command lookup, and CLI helper behavior."
+        },
+        {
+          "repo_path": "typer/__main__.py",
+          "grade": 2,
+          "reason": "Entrypoint for running Typer as a module."
+        },
+        {
+          "repo_path": "tests/test_cli/test_app_other_name.py",
+          "grade": 1,
+          "reason": "Validates CLI app name handling."
+        },
+        {
+          "repo_path": "tests/test_cli/test_empty_script.py",
+          "grade": 1,
+          "reason": "Validates script runner error handling for empty scripts."
+        },
+        {
+          "repo_path": "docs/tutorial/typer-command.md",
+          "grade": 1,
+          "reason": "Documents the typer command."
+        }
+      ]
+    }
+  ]
+}

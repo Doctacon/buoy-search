@@ -1,0 +1,245 @@
+{
+  "dataset_id": "ruff-site-search-seed-v1",
+  "source": "https://docs.astral.sh/ruff/",
+  "namespace": "site-ruff-docs-v1",
+  "source_plan": "artifacts/site-crawls/ruff-docs-plan-20260628/plan.json",
+  "human_approved_ground_truth": false,
+  "notes": "Assistant-drafted seed labels for expanded cross-site validation on Ruff docs. Source-backed from the local docs crawl plan.",
+  "cases": [
+    {
+      "id": "ruff-configuration-select-ignore-exclude",
+      "question": "Where does Ruff document configuring select, ignore, exclude, line-length, target-version, and pyproject.toml settings?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://docs.astral.sh/ruff/configuration",
+          "grade": 3,
+          "reason": "Configuration guide covers pyproject.toml, select/ignore, exclude, line length, and target version examples."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/settings",
+          "grade": 2,
+          "reason": "Settings reference lists individual configuration keys and semantics."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/linter",
+          "grade": 1,
+          "reason": "Linter guide discusses lint rule configuration at a high level."
+        }
+      ]
+    },
+    {
+      "id": "ruff-linter-rule-selection-fixes",
+      "question": "Which Ruff pages explain the linter, rule selection, safe and unsafe fixes, noqa comments, and automatic lint fixes?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://docs.astral.sh/ruff/linter",
+          "grade": 3,
+          "reason": "Linter page explains rule selection, fixes, noqa behavior, and lint workflow."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/rules",
+          "grade": 2,
+          "reason": "Rules index enumerates lint rules and rule families."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/rules/unused-noqa",
+          "grade": 1,
+          "reason": "Specific rule page for unused noqa comments."
+        }
+      ]
+    },
+    {
+      "id": "ruff-formatter-black-deviations",
+      "question": "Where does Ruff document the formatter, Black compatibility, formatter configuration, and known deviations from Black?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://docs.astral.sh/ruff/formatter",
+          "grade": 3,
+          "reason": "Formatter guide covers Ruff formatter usage, configuration, and Black compatibility."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/formatter/black",
+          "grade": 3,
+          "reason": "Known Deviations from Black page lists formatter differences from Black."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/configuration",
+          "grade": 1,
+          "reason": "Configuration guide includes formatter-related settings examples."
+        }
+      ]
+    },
+    {
+      "id": "ruff-preview-mode",
+      "question": "Which page explains Ruff preview mode, preview rules, unstable behavior, and how to enable preview features?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://docs.astral.sh/ruff/preview",
+          "grade": 3,
+          "reason": "Preview page explains preview mode, preview rules, and enabling preview behavior."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/settings",
+          "grade": 1,
+          "reason": "Settings reference includes the preview configuration option."
+        }
+      ]
+    },
+    {
+      "id": "ruff-unused-import-f401",
+      "question": "Where is Ruff's unused-import F401 rule documented, including why it fires and how fixes behave?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://docs.astral.sh/ruff/rules/unused-import",
+          "grade": 3,
+          "reason": "Specific F401 rule page documents unused imports and fix behavior."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/rules",
+          "grade": 1,
+          "reason": "Rules index links to and categorizes F401."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/linter",
+          "grade": 1,
+          "reason": "Linter guide explains rule diagnostics and fixes generally."
+        }
+      ]
+    },
+    {
+      "id": "ruff-line-too-long-e501",
+      "question": "Which Ruff documentation covers the line-too-long E501 rule and how it relates to formatter line length?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://docs.astral.sh/ruff/rules/line-too-long",
+          "grade": 3,
+          "reason": "Specific E501 rule page documents line-too-long diagnostics."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/settings",
+          "grade": 2,
+          "reason": "Settings reference documents line-length configuration."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/formatter",
+          "grade": 1,
+          "reason": "Formatter guide discusses formatting and line-length behavior."
+        }
+      ]
+    },
+    {
+      "id": "ruff-installation-package-managers",
+      "question": "Where does Ruff document installation with uv, pip, pipx, Homebrew, conda, npm, Docker, and standalone binaries?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://docs.astral.sh/ruff/installation",
+          "grade": 3,
+          "reason": "Installation page lists package managers and standalone installation options."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff",
+          "grade": 1,
+          "reason": "Ruff landing page provides high-level project overview and links to install docs."
+        }
+      ]
+    },
+    {
+      "id": "ruff-editor-settings-migration",
+      "question": "Where does Ruff document editor settings, editor integration configuration, and migrating from ruff-lsp?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://docs.astral.sh/ruff/editors/settings",
+          "grade": 3,
+          "reason": "Editor settings page documents language-server/editor configuration settings."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/editors/migration",
+          "grade": 3,
+          "reason": "Migration page documents moving from ruff-lsp to the Ruff language server."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/settings",
+          "grade": 1,
+          "reason": "General settings reference is related to editor-exposed configuration keys."
+        }
+      ]
+    },
+    {
+      "id": "ruff-fastapi-rules",
+      "question": "Where are Ruff's FastAPI-specific rules documented, such as redundant response models and non-annotated dependencies?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://docs.astral.sh/ruff/rules/fast-api-redundant-response-model",
+          "grade": 3,
+          "reason": "Specific FAST001 rule page for redundant response models."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/rules/fast-api-non-annotated-dependency",
+          "grade": 3,
+          "reason": "Specific FAST002 rule page for non-annotated dependencies."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/rules/fast-api-unused-path-parameter",
+          "grade": 2,
+          "reason": "Specific FAST003 rule page for unused path parameters."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/rules",
+          "grade": 1,
+          "reason": "Rules index categorizes rule pages."
+        }
+      ]
+    },
+    {
+      "id": "ruff-security-bandit-rules",
+      "question": "Where are Ruff security rules documented for assert usage, hardcoded passwords, unsafe YAML loads, and subprocess shell calls?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://docs.astral.sh/ruff/rules/assert",
+          "grade": 2,
+          "reason": "Specific S101 assert rule page."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/rules/hardcoded-password-string",
+          "grade": 2,
+          "reason": "Specific S105 hardcoded password string rule page."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/rules/unsafe-yaml-load",
+          "grade": 2,
+          "reason": "Specific S506 unsafe yaml load rule page."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/rules/subprocess-popen-with-shell-equals-true",
+          "grade": 2,
+          "reason": "Specific S602 subprocess shell rule page."
+        },
+        {
+          "url": "https://docs.astral.sh/ruff/rules",
+          "grade": 1,
+          "reason": "Rules index groups security-related rules."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,275 @@
+{
+  "dataset_id": "typer-site-search-seed-v1",
+  "source": "https://typer.tiangolo.com/",
+  "namespace": "site-typer-docs-v1",
+  "source_plan": "artifacts/site-crawls/typer-docs-plan-20260628/plan.json",
+  "human_approved_ground_truth": false,
+  "notes": "Assistant-drafted seed labels for expanded cross-site validation on Typer docs. Source-backed from the local docs crawl plan.",
+  "cases": [
+    {
+      "id": "typer-first-app-run",
+      "question": "Where does Typer document the first steps for creating a CLI function, running it with typer.run, and building a Typer app?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://typer.tiangolo.com/tutorial/first-steps",
+          "grade": 3,
+          "reason": "First Steps tutorial introduces a simple function CLI and typer.run."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/typer-app",
+          "grade": 3,
+          "reason": "Typer App page introduces creating and invoking a Typer app."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial",
+          "grade": 1,
+          "reason": "Tutorial index routes readers to first steps and app docs."
+        }
+      ]
+    },
+    {
+      "id": "typer-arguments-options-envvar",
+      "question": "Where does Typer document CLI arguments and options, including optional arguments, defaults, help text, required options, names, and environment variables?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://typer.tiangolo.com/tutorial/arguments",
+          "grade": 3,
+          "reason": "CLI Arguments page documents argument declaration behavior."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/options",
+          "grade": 3,
+          "reason": "CLI Options page documents option declaration behavior."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/arguments/envvar",
+          "grade": 2,
+          "reason": "Arguments envvar page covers environment variables for arguments."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/options/required",
+          "grade": 1,
+          "reason": "Required options page covers required option behavior."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/options/name",
+          "grade": 1,
+          "reason": "Option name page covers custom option names."
+        }
+      ]
+    },
+    {
+      "id": "typer-commands-callback-context",
+      "question": "Where does Typer document multiple commands, command callbacks, command help, command names, and using Click context?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://typer.tiangolo.com/tutorial/commands",
+          "grade": 3,
+          "reason": "Commands page documents multiple command apps."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/commands/callback",
+          "grade": 3,
+          "reason": "Callback page documents Typer callbacks for command groups."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/commands/context",
+          "grade": 2,
+          "reason": "Context page documents using Click context."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/commands/help",
+          "grade": 1,
+          "reason": "Command Help page documents command help text."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/commands/name",
+          "grade": 1,
+          "reason": "Custom Command Name page documents command naming."
+        }
+      ]
+    },
+    {
+      "id": "typer-subcommands-nested",
+      "question": "Where does Typer document subcommands, add_typer, single-file subcommands, nested subcommands, callback override, and custom subcommand names?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://typer.tiangolo.com/tutorial/subcommands",
+          "grade": 3,
+          "reason": "SubCommands page introduces command groups."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/subcommands/add-typer",
+          "grade": 3,
+          "reason": "Add Typer page documents composing apps with add_typer."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/subcommands/nested-subcommands",
+          "grade": 2,
+          "reason": "Nested SubCommands page documents nested command groups."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/subcommands/single-file",
+          "grade": 1,
+          "reason": "Single-file page documents subcommands in one file."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/subcommands/callback-override",
+          "grade": 1,
+          "reason": "Callback override page documents sub-Typer callback behavior."
+        }
+      ]
+    },
+    {
+      "id": "typer-parameter-types",
+      "question": "Where does Typer document CLI parameter types such as bools, numbers, UUID, datetime, enum choices, path, file, and custom types?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://typer.tiangolo.com/tutorial/parameter-types",
+          "grade": 3,
+          "reason": "Parameter types index introduces Typer type conversion."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/parameter-types/enum",
+          "grade": 2,
+          "reason": "Enum page documents choice values."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/parameter-types/path",
+          "grade": 2,
+          "reason": "Path page documents path parameters."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/parameter-types/file",
+          "grade": 2,
+          "reason": "File page documents file parameters."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/parameter-types/custom-types",
+          "grade": 1,
+          "reason": "Custom types page documents custom parser/conversion patterns."
+        }
+      ]
+    },
+    {
+      "id": "typer-autocompletion-shell",
+      "question": "Where does Typer document shell completion and custom option autocompletion?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://typer.tiangolo.com/tutorial/options-autocompletion",
+          "grade": 3,
+          "reason": "CLI Option autocompletion page documents completion callbacks and examples."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/typer-command",
+          "grade": 1,
+          "reason": "typer command page is adjacent to CLI helper behavior including command-line tooling."
+        }
+      ]
+    },
+    {
+      "id": "typer-prompts-passwords",
+      "question": "Where does Typer document prompts, confirmation prompts, password options, and asking interactively for input?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://typer.tiangolo.com/tutorial/options/prompt",
+          "grade": 3,
+          "reason": "CLI Option Prompt page documents prompting for option values."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/options/password",
+          "grade": 3,
+          "reason": "Password CLI Option page documents password prompts and confirmation prompts."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/prompt",
+          "grade": 2,
+          "reason": "Ask with Prompt page documents direct prompt helpers."
+        }
+      ]
+    },
+    {
+      "id": "typer-testing-cli-runner",
+      "question": "Where does Typer document testing CLI apps with CliRunner, invoking commands, checking output, and testing app examples?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://typer.tiangolo.com/tutorial/testing",
+          "grade": 3,
+          "reason": "Testing page documents CliRunner and assertions against CLI output."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/typer-app",
+          "grade": 1,
+          "reason": "Typer app page provides app structure used by testing examples."
+        }
+      ]
+    },
+    {
+      "id": "typer-errors-exceptions-exit",
+      "question": "Where does Typer document exceptions, errors, terminating apps, Exit, Abort, and validation errors?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://typer.tiangolo.com/tutorial/exceptions",
+          "grade": 3,
+          "reason": "Exceptions and Errors page documents Typer error behavior."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/terminating",
+          "grade": 2,
+          "reason": "Terminating page documents exiting applications."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/options/callback-and-context",
+          "grade": 1,
+          "reason": "Callback/context page documents validation callbacks that can produce parameter errors."
+        }
+      ]
+    },
+    {
+      "id": "typer-printing-progress-launch-appdir",
+      "question": "Where does Typer document printing colors, progress bars, app directories, and launching applications?",
+      "expected_urls": [],
+      "expected_topics": [],
+      "judgments": [
+        {
+          "url": "https://typer.tiangolo.com/tutorial/printing",
+          "grade": 3,
+          "reason": "Printing and Colors page documents terminal output helpers."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/progressbar",
+          "grade": 3,
+          "reason": "Progress Bar page documents progress bars."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/app-dir",
+          "grade": 2,
+          "reason": "CLI Application Directory page documents app directory helpers."
+        },
+        {
+          "url": "https://typer.tiangolo.com/tutorial/launch",
+          "grade": 2,
+          "reason": "Launching Applications page documents launch helpers."
+        }
+      ]
+    }
+  ]
+}

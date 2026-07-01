@@ -10,6 +10,12 @@ from turbo_search.retriever import SearchHit
 
 
 TURBO_SEARCH_REPO_EVAL_DATASET = Path("src/turbo_search/data/turbo_search_repo_search_seed_evals.json")
+VALIDATION_BASKET_EVAL_DATASETS = (
+    Path("src/turbo_search/data/pytest_repo_search_seed_evals.json"),
+    Path("src/turbo_search/data/typer_repo_search_seed_evals.json"),
+    Path("src/turbo_search/data/ruff_site_search_seed_evals.json"),
+    Path("src/turbo_search/data/typer_site_search_seed_evals.json"),
+)
 EXPECTED_TURBO_SEARCH_COVERAGE_AREAS = {
     "github_repository_ingestion_flow",
     "plan_apply_safety_local_only_behavior",
@@ -39,6 +45,16 @@ class EvalHarnessTests(unittest.TestCase):
         self.assertTrue(any("scrapling.readthedocs.io" in url for case in cases for url in case.expected_urls))
         for case in cases:
             self.assertTrue(case.expected_urls or case.expected_topics)
+
+    def test_loads_expanded_validation_basket_eval_datasets(self) -> None:
+        for dataset in VALIDATION_BASKET_EVAL_DATASETS:
+            with self.subTest(dataset=str(dataset)):
+                cases = load_eval_cases(dataset)
+
+                self.assertGreaterEqual(len(cases), 8)
+                for case in cases:
+                    self.assertTrue(case.judgments)
+                    self.assertTrue(all(judgment.grade > 0 for judgment in case.judgments))
 
     def test_score_hits_passes_on_expected_url_in_top_k(self) -> None:
         case = EvalCase(

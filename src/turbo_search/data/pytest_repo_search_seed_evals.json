@@ -1,0 +1,344 @@
+{
+  "metadata": {
+    "id": "pytest-repo-search-seed-v1",
+    "status": "seed-draft",
+    "target_repo": "pytest-dev/pytest",
+    "namespace": "github-pytest-dev-pytest-v1",
+    "source_plan": "artifacts/site-crawls/github-pytest-dev-pytest-plan-20260628/plan.json",
+    "commit_sha": "1aa747de62dd9e9f395513c25298ba604f1724d0",
+    "human_approved_ground_truth": false,
+    "notes": "Assistant-drafted graded relevance labels for expanded cross-repo validation. Source-backed from the local pytest repository plan. The plan skips oversized core files such as fixtures.py and python.py, so this seed focuses on selected source/docs/tests present in the planned corpus."
+  },
+  "cases": [
+    {
+      "id": "assertion-rewrite-comparison-output",
+      "question": "Where does pytest implement assertion rewriting and rich assertion comparison output for failed asserts?",
+      "coverage_area": "assertion_rewriting",
+      "judgments": [
+        {
+          "repo_path": "src/_pytest/assertion/rewrite.py",
+          "grade": 3,
+          "reason": "Implements import-hook assertion rewriting and AST rewriting for assert statements."
+        },
+        {
+          "repo_path": "src/_pytest/assertion/util.py",
+          "grade": 3,
+          "reason": "Builds assertion explanations and comparison output helpers used by rewritten assertions."
+        },
+        {
+          "repo_path": "src/_pytest/assertion/_compare_mapping.py",
+          "grade": 2,
+          "reason": "Contains mapping-specific rich comparison logic."
+        },
+        {
+          "repo_path": "src/_pytest/assertion/_compare_sequence.py",
+          "grade": 2,
+          "reason": "Contains sequence-specific rich comparison logic."
+        },
+        {
+          "repo_path": "doc/en/how-to/assert.rst",
+          "grade": 1,
+          "reason": "Documents assertion introspection and custom comparison output."
+        }
+      ]
+    },
+    {
+      "id": "capture-stdout-stderr-stdin",
+      "question": "Where does pytest implement stdout/stderr/stdin capture, capsys, capfd, tee-sys, capture suspension, and captured output behavior?",
+      "coverage_area": "capture",
+      "judgments": [
+        {
+          "repo_path": "src/_pytest/capture.py",
+          "grade": 3,
+          "reason": "Defines CaptureManager, MultiCapture, sys/fd capture classes, capsys/capfd fixtures, and capture suspension."
+        },
+        {
+          "repo_path": "doc/en/how-to/capture-stdout-stderr.rst",
+          "grade": 2,
+          "reason": "Documents stdout/stderr capture, capture methods, and disabling capture."
+        }
+      ]
+    },
+    {
+      "id": "logging-caplog",
+      "question": "Where does pytest implement logging capture, the caplog fixture, log formatting, log CLI options, and captured log reporting?",
+      "coverage_area": "logging",
+      "judgments": [
+        {
+          "repo_path": "src/_pytest/logging.py",
+          "grade": 3,
+          "reason": "Defines LogCaptureFixture, logging plugin options, log handlers, formatting, and captured log reporting."
+        },
+        {
+          "repo_path": "testing/logging/test_fixture.py",
+          "grade": 2,
+          "reason": "Validates caplog fixture behavior."
+        },
+        {
+          "repo_path": "testing/logging/test_reporting.py",
+          "grade": 2,
+          "reason": "Validates captured log reporting behavior."
+        },
+        {
+          "repo_path": "testing/logging/test_formatter.py",
+          "grade": 1,
+          "reason": "Validates logging formatter behavior."
+        },
+        {
+          "repo_path": "doc/en/how-to/logging.rst",
+          "grade": 1,
+          "reason": "Documents logging capture and caplog usage."
+        }
+      ]
+    },
+    {
+      "id": "marks-parametrize-expressions",
+      "question": "Where does pytest implement marks, MarkDecorator, marker expressions, ParameterSet, and parametrization-related marker behavior?",
+      "coverage_area": "marks_parametrize",
+      "judgments": [
+        {
+          "repo_path": "src/_pytest/mark/structures.py",
+          "grade": 3,
+          "reason": "Defines ParameterSet, Mark, MarkDecorator, MarkGenerator, and mark storage behavior."
+        },
+        {
+          "repo_path": "src/_pytest/mark/expression.py",
+          "grade": 3,
+          "reason": "Implements marker keyword expression parsing and evaluation."
+        },
+        {
+          "repo_path": "src/_pytest/mark/__init__.py",
+          "grade": 2,
+          "reason": "Connects mark behavior to pytest hooks and collection."
+        },
+        {
+          "repo_path": "testing/test_mark.py",
+          "grade": 2,
+          "reason": "Validates mark behavior."
+        },
+        {
+          "repo_path": "testing/test_mark_expression.py",
+          "grade": 2,
+          "reason": "Validates marker expression behavior."
+        },
+        {
+          "repo_path": "doc/en/how-to/mark.rst",
+          "grade": 1,
+          "reason": "Documents marks."
+        },
+        {
+          "repo_path": "doc/en/how-to/parametrize.rst",
+          "grade": 1,
+          "reason": "Documents parametrization usage."
+        }
+      ]
+    },
+    {
+      "id": "monkeypatch-temp-paths",
+      "question": "Where does pytest implement monkeypatch helpers and temporary path fixtures like tmp_path and tmp_path_factory?",
+      "coverage_area": "monkeypatch_tmp_path",
+      "judgments": [
+        {
+          "repo_path": "src/_pytest/monkeypatch.py",
+          "grade": 3,
+          "reason": "Defines the monkeypatch fixture and MonkeyPatch setattr/setitem/setenv/syspath/chdir behavior."
+        },
+        {
+          "repo_path": "src/_pytest/tmpdir.py",
+          "grade": 3,
+          "reason": "Defines tmp_path, tmp_path_factory, tmpdir, and tmpdir_factory fixture support."
+        },
+        {
+          "repo_path": "testing/test_monkeypatch.py",
+          "grade": 2,
+          "reason": "Validates monkeypatch behavior."
+        },
+        {
+          "repo_path": "testing/test_tmpdir.py",
+          "grade": 2,
+          "reason": "Validates temporary directory/path fixtures."
+        },
+        {
+          "repo_path": "doc/en/how-to/monkeypatch.rst",
+          "grade": 1,
+          "reason": "Documents monkeypatch usage."
+        },
+        {
+          "repo_path": "doc/en/how-to/tmp_path.rst",
+          "grade": 1,
+          "reason": "Documents tmp_path and temporary path fixture usage."
+        }
+      ]
+    },
+    {
+      "id": "config-argparse-findpaths",
+      "question": "Where does pytest implement command-line option parsing, Parser/OptionGroup, rootdir discovery, config file discovery, and help/config display?",
+      "coverage_area": "config_cli",
+      "judgments": [
+        {
+          "repo_path": "src/_pytest/config/argparsing.py",
+          "grade": 3,
+          "reason": "Defines Parser, OptionGroup, argument parsing helpers, and ini option registration primitives."
+        },
+        {
+          "repo_path": "src/_pytest/config/findpaths.py",
+          "grade": 3,
+          "reason": "Implements rootdir and config file discovery for ini/pyproject/tox/setup config."
+        },
+        {
+          "repo_path": "src/_pytest/helpconfig.py",
+          "grade": 2,
+          "reason": "Implements --help, --version, and config/option display hooks."
+        },
+        {
+          "repo_path": "testing/test_parseopt.py",
+          "grade": 2,
+          "reason": "Validates command-line parser behavior."
+        },
+        {
+          "repo_path": "testing/test_findpaths.py",
+          "grade": 2,
+          "reason": "Validates rootdir/config discovery."
+        },
+        {
+          "repo_path": "testing/test_helpconfig.py",
+          "grade": 1,
+          "reason": "Validates help/config output."
+        },
+        {
+          "repo_path": "doc/en/reference/customize.rst",
+          "grade": 1,
+          "reason": "Documents pytest configuration customization."
+        }
+      ]
+    },
+    {
+      "id": "cache-lastfailed-stepwise",
+      "question": "Where does pytest implement the cache provider, --lf/--failed-first last-failed behavior, cache fixture, and stepwise run support?",
+      "coverage_area": "cache_stepwise",
+      "judgments": [
+        {
+          "repo_path": "src/_pytest/cacheprovider.py",
+          "grade": 3,
+          "reason": "Implements cache provider, --lf/--ff, cache fixture, and cache directory behavior."
+        },
+        {
+          "repo_path": "src/_pytest/stepwise.py",
+          "grade": 2,
+          "reason": "Implements stepwise test run state and behavior."
+        },
+        {
+          "repo_path": "testing/test_cacheprovider.py",
+          "grade": 2,
+          "reason": "Validates cache provider and last-failed behavior."
+        },
+        {
+          "repo_path": "testing/test_stepwise.py",
+          "grade": 1,
+          "reason": "Validates stepwise behavior."
+        },
+        {
+          "repo_path": "doc/en/how-to/cache.rst",
+          "grade": 1,
+          "reason": "Documents cache and last-failed usage."
+        }
+      ]
+    },
+    {
+      "id": "doctest-junitxml-reports",
+      "question": "Where does pytest implement doctest collection/execution, JUnit XML output, and report objects?",
+      "coverage_area": "doctest_junit_reports",
+      "judgments": [
+        {
+          "repo_path": "src/_pytest/doctest.py",
+          "grade": 3,
+          "reason": "Implements doctest collection, doctest items, doctest execution, and doctest options."
+        },
+        {
+          "repo_path": "src/_pytest/junitxml.py",
+          "grade": 3,
+          "reason": "Implements JUnit XML logging, testcase properties, and XML report generation."
+        },
+        {
+          "repo_path": "src/_pytest/reports.py",
+          "grade": 2,
+          "reason": "Defines TestReport and CollectReport data structures."
+        },
+        {
+          "repo_path": "testing/test_reports.py",
+          "grade": 1,
+          "reason": "Validates report object behavior."
+        },
+        {
+          "repo_path": "doc/en/how-to/doctest.rst",
+          "grade": 1,
+          "reason": "Documents doctest support."
+        }
+      ]
+    },
+    {
+      "id": "skipping-xfail-outcomes",
+      "question": "Where does pytest implement skip, skipif, xfail, strict xfail, imperative skip/xfail, and outcome exceptions?",
+      "coverage_area": "skipping_outcomes",
+      "judgments": [
+        {
+          "repo_path": "src/_pytest/skipping.py",
+          "grade": 3,
+          "reason": "Implements skip/skipif/xfail mark evaluation and reporting behavior."
+        },
+        {
+          "repo_path": "src/_pytest/outcomes.py",
+          "grade": 2,
+          "reason": "Defines skip, fail, xfail, exit, and outcome exception machinery."
+        },
+        {
+          "repo_path": "testing/test_skipping.py",
+          "grade": 2,
+          "reason": "Validates skipping and xfail behavior."
+        },
+        {
+          "repo_path": "doc/en/how-to/skipping.rst",
+          "grade": 1,
+          "reason": "Documents skip and xfail usage."
+        }
+      ]
+    },
+    {
+      "id": "warnings-recwarn-filters",
+      "question": "Where does pytest implement warning capture, warning filters, the recwarn fixture, deprecated-call checks, and warning summaries?",
+      "coverage_area": "warnings",
+      "judgments": [
+        {
+          "repo_path": "src/_pytest/warnings.py",
+          "grade": 3,
+          "reason": "Implements warning capture plugin, warning filters, and warning summary behavior."
+        },
+        {
+          "repo_path": "src/_pytest/recwarn.py",
+          "grade": 3,
+          "reason": "Defines recwarn and warning recording support."
+        },
+        {
+          "repo_path": "src/_pytest/warning_types.py",
+          "grade": 2,
+          "reason": "Defines pytest warning classes."
+        },
+        {
+          "repo_path": "testing/test_warnings.py",
+          "grade": 2,
+          "reason": "Validates warning capture and filtering behavior."
+        },
+        {
+          "repo_path": "testing/test_recwarn.py",
+          "grade": 2,
+          "reason": "Validates warning recording behavior."
+        },
+        {
+          "repo_path": "doc/en/how-to/capture-warnings.rst",
+          "grade": 1,
+          "reason": "Documents warning capture."
+        }
+      ]
+    }
+  ]
+}
