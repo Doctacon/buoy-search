@@ -1,0 +1,159 @@
+{
+  "metadata": {
+    "id": "mkdocs-repo-search-seed-v1",
+    "status": "seed-draft",
+    "target_repo": "mkdocs/mkdocs",
+    "namespace": "github-mkdocs-mkdocs-v1",
+    "source_plan": "artifacts/site-crawls/github-mkdocs-mkdocs-v1-plan-20260628/plan.json",
+    "commit_sha": "2862536793b3c67d9d83c33e0dd6d50a791928f8",
+    "human_approved_ground_truth": false,
+    "notes": "Assistant-drafted graded relevance labels for expanded repository ranking validation. Source-backed from the local repository plan; labels intentionally prefer indexed files under the default file-size cap when an authority file is oversize."
+  },
+  "cases": [
+    {
+      "id": "build-command-pages-files",
+      "question": "Where does MkDocs implement the build command, page rendering, dirty builds, and file copying?",
+      "coverage_area": "build",
+      "judgments": [
+        {
+          "repo_path": "mkdocs/commands/build.py",
+          "grade": 3,
+          "reason": "Implements build, page rendering, dirty builds, and output generation."
+        },
+        {
+          "repo_path": "mkdocs/structure/pages.py",
+          "grade": 2,
+          "reason": "Defines Page structure used during build."
+        },
+        {
+          "repo_path": "mkdocs/structure/files.py",
+          "grade": 2,
+          "reason": "Defines file collection and copying structures."
+        },
+        {
+          "repo_path": "mkdocs/tests/build_tests.py",
+          "grade": 1,
+          "reason": "Validates build behavior."
+        },
+        {
+          "repo_path": "docs/user-guide/cli.md",
+          "grade": 1,
+          "reason": "Documents build CLI behavior."
+        }
+      ]
+    },
+    {
+      "id": "serve-livereload",
+      "question": "Where does MkDocs implement the serve command and live-reload server integration?",
+      "coverage_area": "serve",
+      "judgments": [
+        {
+          "repo_path": "mkdocs/commands/serve.py",
+          "grade": 3,
+          "reason": "Implements the serve command."
+        },
+        {
+          "repo_path": "mkdocs/livereload/__init__.py",
+          "grade": 3,
+          "reason": "Implements live-reload server support."
+        },
+        {
+          "repo_path": "mkdocs/tests/livereload_tests.py",
+          "grade": 2,
+          "reason": "Validates livereload behavior."
+        },
+        {
+          "repo_path": "docs/user-guide/cli.md",
+          "grade": 1,
+          "reason": "Documents serve CLI behavior."
+        }
+      ]
+    },
+    {
+      "id": "configuration-options-validation",
+      "question": "Where does MkDocs define MkDocsConfig, config option types, validation, defaults, and config loading behavior?",
+      "coverage_area": "configuration",
+      "judgments": [
+        {
+          "repo_path": "mkdocs/config/defaults.py",
+          "grade": 3,
+          "reason": "Defines MkDocsConfig defaults."
+        },
+        {
+          "repo_path": "mkdocs/config/config_options.py",
+          "grade": 3,
+          "reason": "Defines config option validation types."
+        },
+        {
+          "repo_path": "mkdocs/config/base.py",
+          "grade": 2,
+          "reason": "Base config loading and validation primitives."
+        },
+        {
+          "repo_path": "mkdocs/tests/config/config_tests.py",
+          "grade": 2,
+          "reason": "Validates config behavior."
+        },
+        {
+          "repo_path": "docs/user-guide/configuration.md",
+          "grade": 1,
+          "reason": "Documents configuration."
+        }
+      ]
+    },
+    {
+      "id": "plugins-events",
+      "question": "Where does MkDocs implement BasePlugin, plugin collections, event hooks, and plugin configuration?",
+      "coverage_area": "plugins",
+      "judgments": [
+        {
+          "repo_path": "mkdocs/plugins.py",
+          "grade": 3,
+          "reason": "Defines BasePlugin, PluginCollection, event hooks, and plugin loading."
+        },
+        {
+          "repo_path": "mkdocs/tests/plugin_tests.py",
+          "grade": 2,
+          "reason": "Validates plugin behavior."
+        },
+        {
+          "repo_path": "docs/dev-guide/plugins.md",
+          "grade": 1,
+          "reason": "Documents plugin development."
+        }
+      ]
+    },
+    {
+      "id": "themes-and-docs-structure",
+      "question": "Where does MkDocs implement theme loading, navigation/page structures, and docs directory file structure?",
+      "coverage_area": "theme_structure",
+      "judgments": [
+        {
+          "repo_path": "mkdocs/theme.py",
+          "grade": 3,
+          "reason": "Defines theme loading and theme behavior."
+        },
+        {
+          "repo_path": "mkdocs/structure/nav.py",
+          "grade": 2,
+          "reason": "Defines navigation structures."
+        },
+        {
+          "repo_path": "mkdocs/structure/pages.py",
+          "grade": 2,
+          "reason": "Defines page structures and metadata."
+        },
+        {
+          "repo_path": "mkdocs/structure/files.py",
+          "grade": 2,
+          "reason": "Defines docs file collections."
+        },
+        {
+          "repo_path": "docs/dev-guide/themes.md",
+          "grade": 1,
+          "reason": "Documents theme development."
+        }
+      ]
+    }
+  ]
+}

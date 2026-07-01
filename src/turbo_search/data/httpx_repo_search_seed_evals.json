@@ -1,0 +1,149 @@
+{
+  "metadata": {
+    "id": "httpx-repo-search-seed-v1",
+    "status": "seed-draft",
+    "target_repo": "encode/httpx",
+    "namespace": "github-encode-httpx-v1",
+    "source_plan": "artifacts/site-crawls/github-encode-httpx-v1-plan-20260628/plan.json",
+    "commit_sha": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+    "human_approved_ground_truth": false,
+    "notes": "Assistant-drafted graded relevance labels for expanded repository ranking validation. Source-backed from the local repository plan; labels intentionally prefer indexed files under the default file-size cap when an authority file is oversize."
+  },
+  "cases": [
+    {
+      "id": "top-level-request-api",
+      "question": "Where does HTTPX implement top-level request/get/post/stream helpers and their relation to Client behavior?",
+      "coverage_area": "top_level_api",
+      "judgments": [
+        {
+          "repo_path": "httpx/_api.py",
+          "grade": 3,
+          "reason": "Defines top-level request, stream, get, post, put, patch, and delete helpers."
+        },
+        {
+          "repo_path": "tests/test_api.py",
+          "grade": 2,
+          "reason": "Validates top-level API helpers."
+        },
+        {
+          "repo_path": "docs/api.md",
+          "grade": 1,
+          "reason": "Documents top-level API surface."
+        }
+      ]
+    },
+    {
+      "id": "request-response-models",
+      "question": "Where does HTTPX implement Request, Response, Headers, Cookies, URL, and query parameter models?",
+      "coverage_area": "models",
+      "judgments": [
+        {
+          "repo_path": "httpx/_models.py",
+          "grade": 3,
+          "reason": "Defines Request, Response, Headers, Cookies, URL-related models, and content helpers."
+        },
+        {
+          "repo_path": "tests/models/test_requests.py",
+          "grade": 2,
+          "reason": "Validates Request model behavior."
+        },
+        {
+          "repo_path": "tests/models/test_responses.py",
+          "grade": 2,
+          "reason": "Validates Response model behavior."
+        },
+        {
+          "repo_path": "docs/quickstart.md",
+          "grade": 1,
+          "reason": "Documents request and response basics."
+        }
+      ]
+    },
+    {
+      "id": "authentication-flows",
+      "question": "Where does HTTPX implement Auth, BasicAuth, DigestAuth, NetRCAuth, and authentication flow hooks?",
+      "coverage_area": "auth",
+      "judgments": [
+        {
+          "repo_path": "httpx/_auth.py",
+          "grade": 3,
+          "reason": "Defines auth classes and auth_flow behavior."
+        },
+        {
+          "repo_path": "tests/test_auth.py",
+          "grade": 2,
+          "reason": "Validates authentication behavior."
+        },
+        {
+          "repo_path": "tests/client/test_auth.py",
+          "grade": 2,
+          "reason": "Validates client auth behavior."
+        },
+        {
+          "repo_path": "docs/advanced/authentication.md",
+          "grade": 1,
+          "reason": "Documents authentication."
+        }
+      ]
+    },
+    {
+      "id": "timeouts-limits-proxies-config",
+      "question": "Where does HTTPX implement Timeout, Limits, Proxy, SSL verify/cert configuration, and config parsing?",
+      "coverage_area": "configuration",
+      "judgments": [
+        {
+          "repo_path": "httpx/_config.py",
+          "grade": 3,
+          "reason": "Defines Timeout, Limits, Proxy, SSL and cert configuration classes."
+        },
+        {
+          "repo_path": "tests/test_config.py",
+          "grade": 2,
+          "reason": "Validates configuration classes."
+        },
+        {
+          "repo_path": "docs/advanced/timeouts.md",
+          "grade": 1,
+          "reason": "Documents timeout configuration."
+        },
+        {
+          "repo_path": "docs/advanced/resource-limits.md",
+          "grade": 1,
+          "reason": "Documents resource limits."
+        }
+      ]
+    },
+    {
+      "id": "transports-exceptions",
+      "question": "Where does HTTPX implement sync/async transports, ASGI/WSGI transports, and exception classes?",
+      "coverage_area": "transports_exceptions",
+      "judgments": [
+        {
+          "repo_path": "httpx/_transports/default.py",
+          "grade": 3,
+          "reason": "Defines default sync and async HTTP transports."
+        },
+        {
+          "repo_path": "httpx/_transports/asgi.py",
+          "grade": 2,
+          "reason": "Defines ASGI transport."
+        },
+        {
+          "repo_path": "httpx/_transports/wsgi.py",
+          "grade": 2,
+          "reason": "Defines WSGI transport."
+        },
+        {
+          "repo_path": "httpx/_exceptions.py",
+          "grade": 2,
+          "reason": "Defines HTTPX exception hierarchy."
+        },
+        {
+          "repo_path": "docs/advanced/transports.md",
+          "grade": 1,
+          "reason": "Documents transports."
+        }
+      ]
+    }
+  ]
+}

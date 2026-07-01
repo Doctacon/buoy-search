@@ -11,7 +11,7 @@ Updated: 2026-06-28
 - website rows need page-level deduplication by canonical URL;
 - GitHub repository rows need file-level grouping by `repo_path`;
 - repository files may have multiple matching chunks, but repeated evidence can also over-rank broad core files;
-- current `repo_code` scoring also applies artifact path-segment demotion, conditional example/demo, example-scaffold, and documentation/tutorial path demotion, nested private path-segment demotion, conventional-file query priors, query-intent handling, path/symbol boosts, and one-companion docs/tests role diversification.
+- current `repo_code` scoring also applies artifact path-segment demotion, conditional example/demo, example-scaffold, fixture/snapshot scaffold, and documentation/tutorial path demotion, nested private path-segment demotion, broad package-root source recognition, a small distribution-validated conventional-file subset, query-intent handling, path/symbol boosts, and one-companion docs/tests role diversification.
 
 Earlier evidence rejected universal `capped_sum_3` because it improved `turbo-search` but regressed `psf/requests`. Third-repo validation on `pallets/click` reopened the aggregation question: `capped_sum_3` was average-better across three repos, but still regressed `psf/requests`.
 
@@ -68,7 +68,7 @@ close_extra_chunk_count = count of chunks 2..3 where chunk_score >= 0.80 * best_
 
 User-supplied CLI/config ranking options continue to override namespace defaults. `--ranking-aggregation max` remains available for strict single-best-chunk file/page ranking, and `--ranking-aggregation capped-sum-3` remains available for opt-in repo or website experiments.
 
-Within `ranking_profile=repo_code`, agent artifact directory segments such as `.agents/`, `.pi/`, `.10x/`, `.loom/`, `.claude/`, `.cursor/`, and `.turbo-search/` are demoted even when embedded below another repository path segment. Example/demo paths such as `examples/`, `docs_src/`, `example_scripts/`, `/example/`, and `/examples/` are demoted for queries that are not explicitly asking for examples/tutorials/samples/demos; `docs_src/` and `tests/test_tutorial/` receive an extra demotion for non-example/tutorial queries because they are generated tutorial/example scaffold. Singular `doc/` roots and `docs/tutorial/` paths are also demoted for implementation-oriented queries that are not explicitly asking for documentation/tutorial/example material. Nested private package/topic directories such as `typer/_click/` are demoted when the private segment is not query-related, while private package roots such as `src/_pytest/` are exempt. Conventional file priors are query-aware: `core.py`, `models.py`, `utils.py`, `cli.py`, nested `_click/termui.py`, and `index.*` parent-directory matching are adjusted only for matching query intents. These are part of the default repository profile rather than separate CLI knobs.
+Within `ranking_profile=repo_code`, agent artifact directory segments such as `.agents/`, `.pi/`, `.10x/`, `.loom/`, `.claude/`, `.cursor/`, and `.turbo-search/` are demoted even when embedded below another repository path segment. Example/demo paths such as `examples/`, `docs_src/`, `example_scripts/`, `/example/`, and `/examples/` are demoted for queries that are not explicitly asking for examples/tutorials/samples/demos; `docs_src/` and `tests/test_tutorial/` receive an extra demotion for non-example/tutorial queries because they are generated tutorial/example scaffold. Fixture/snapshot scaffold paths such as `/fixtures/`, `/snapshots/`, `/resources/test/`, and `/tests/data/` receive a conservative demotion for queries that are not asking for fixtures, snapshots, or tests. Singular `doc/` roots and `docs/tutorial/` paths are also demoted for implementation-oriented queries that are not explicitly asking for documentation/tutorial/example material. Source recognition includes ordinary package-root source files such as `django/http/request.py`, `httpx/_models.py`, `rich/text.py`, `mkdocs/commands/build.py`, and `pydantic/type_adapter.py`, while docs, tests, examples, benchmarks, agent artifacts, and fixture/snapshot scaffolds remain non-source. Nested private package/topic directories such as `typer/_click/` are demoted when the private segment is not query-related, while private package roots such as `src/_pytest/` are exempt. Only the distribution-validated conventional-file subset is active by default: `cli.py` is gently demoted for non-CLI/script/runner queries, nested `_click/termui.py` is boosted for terminal UI queries, and `index.*` can match its parent directory. The rejected `_click` special demotion, `core.py`/`models.py` boosts, and parameter-query `utils.py` demotion are not default behavior. These are part of the default repository profile rather than separate CLI knobs.
 
 ## Alternatives considered
 
@@ -81,7 +81,9 @@ Within `ranking_profile=repo_code`, agent artifact directory segments such as `.
 - Repository retrieval/evals without explicit ranking flags now use a conservative repeated-file evidence bonus.
 - Website defaults remain unchanged at page/max/pool20.
 - Strict `max` and full `capped_sum_3` remain inspectable CLI/config options.
-- Further repo score improvements should target index hygiene, richer path/symbol metadata, documentation/example/private-segment-aware query routing, query-routed oversize authority files, or learned/adaptive ranking after more labeled repos.
+- Further repo score improvements must pass the distribution-aware promotion policy in `.10x/decisions/repo-ranking-promotion-policy.md`; average-score wins concentrated in one repo are targeted candidates, not general defaults.
+- The current expanded-basket repo-ranking baseline is average score `72.762`, average P@5 `0.452` across 13 repositories.
+- Further work should target index hygiene, richer path/symbol metadata, documentation/example/private-segment-aware query routing, query-routed oversize authority files, or learned/adaptive ranking after more labeled repos.
 
 ## Evidence
 
@@ -101,3 +103,6 @@ Within `ranking_profile=repo_code`, agent artifact directory segments such as `.
 - `.10x/evidence/2026-06-28-repo-example-scaffold-demotion-validation.md`
 - `.10x/evidence/2026-06-28-repo-oversize-file-card-indexing-validation.md`
 - `.10x/evidence/2026-06-28-repo-private-module-routing-validation.md`
+- `.10x/evidence/2026-06-28-expanded-repo-ranking-basket-validation.md`
+- `.10x/evidence/2026-06-28-repo-source-fixture-routing-validation.md`
+- `.10x/decisions/repo-ranking-promotion-policy.md`

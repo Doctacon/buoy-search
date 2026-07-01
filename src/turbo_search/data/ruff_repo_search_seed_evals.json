@@ -1,0 +1,149 @@
+{
+  "metadata": {
+    "id": "ruff-repo-search-seed-v1",
+    "status": "seed-draft",
+    "target_repo": "astral-sh/ruff",
+    "namespace": "github-astral-sh-ruff-v1",
+    "source_plan": "artifacts/site-crawls/github-astral-sh-ruff-v1-plan-20260628/plan.json",
+    "commit_sha": "e6856de97d72225196444b7d969b8fe084140503",
+    "human_approved_ground_truth": false,
+    "notes": "Assistant-drafted graded relevance labels for expanded repository ranking validation. Source-backed from the local repository plan; labels intentionally prefer indexed files under the default file-size cap when an authority file is oversize."
+  },
+  "cases": [
+    {
+      "id": "cli-main-check-config",
+      "question": "Where does Ruff enter the CLI, run check, and implement config/show-settings style commands?",
+      "coverage_area": "cli_commands",
+      "judgments": [
+        {
+          "repo_path": "crates/ruff/src/main.rs",
+          "grade": 3,
+          "reason": "CLI entry point that dispatches Ruff commands."
+        },
+        {
+          "repo_path": "crates/ruff/src/commands/check.rs",
+          "grade": 3,
+          "reason": "Implements the check/lint command execution path."
+        },
+        {
+          "repo_path": "crates/ruff/src/commands/config.rs",
+          "grade": 2,
+          "reason": "Implements the config command."
+        },
+        {
+          "repo_path": "crates/ruff/src/commands/show_settings.rs",
+          "grade": 2,
+          "reason": "Implements show-settings command behavior."
+        }
+      ]
+    },
+    {
+      "id": "formatter-libraries",
+      "question": "Where does Ruff implement Python formatting, formatter options, and formatting entry points?",
+      "coverage_area": "formatting",
+      "judgments": [
+        {
+          "repo_path": "crates/ruff_python_formatter/src/lib.rs",
+          "grade": 3,
+          "reason": "Python formatter public entry points and options."
+        },
+        {
+          "repo_path": "crates/ruff_formatter/src/lib.rs",
+          "grade": 2,
+          "reason": "Generic formatter infrastructure used by the Python formatter."
+        },
+        {
+          "repo_path": "crates/ruff/src/commands/format_stdin.rs",
+          "grade": 2,
+          "reason": "CLI formatting path for stdin."
+        },
+        {
+          "repo_path": "crates/ruff/resources/test/fixtures/formatted.py",
+          "grade": 1,
+          "reason": "Fixture for formatter behavior."
+        }
+      ]
+    },
+    {
+      "id": "pyflakes-unused-import-rule",
+      "question": "Where does Ruff implement unused import diagnostics and rule selection/registry support?",
+      "coverage_area": "lint_rule_unused_imports",
+      "judgments": [
+        {
+          "repo_path": "crates/ruff_linter/src/rules/pyflakes/rules/unused_import.rs",
+          "grade": 3,
+          "reason": "Implements the Pyflakes unused import diagnostic."
+        },
+        {
+          "repo_path": "crates/ruff_linter/src/rule_selector.rs",
+          "grade": 2,
+          "reason": "Defines rule selector behavior used to enable/disable rules."
+        },
+        {
+          "repo_path": "crates/ruff_linter/src/registry/rule_set.rs",
+          "grade": 2,
+          "reason": "Maintains sets of active rules."
+        },
+        {
+          "repo_path": "crates/ruff/tests/snapshots/integration_test__rule_f401.snap",
+          "grade": 1,
+          "reason": "Snapshot covering F401 unused import behavior."
+        }
+      ]
+    },
+    {
+      "id": "parser-and-source-progress",
+      "question": "Where does Ruff implement Python parser infrastructure and parser progress tracking?",
+      "coverage_area": "parser",
+      "judgments": [
+        {
+          "repo_path": "crates/ruff_python_parser/src/lib.rs",
+          "grade": 3,
+          "reason": "Public parser crate entry point."
+        },
+        {
+          "repo_path": "crates/ruff_python_parser/src/parser/progress.rs",
+          "grade": 2,
+          "reason": "Parser progress guard/tracking implementation."
+        },
+        {
+          "repo_path": "crates/ruff_python_parser/README.md",
+          "grade": 1,
+          "reason": "Parser crate documentation."
+        },
+        {
+          "repo_path": "crates/ruff_benchmark/benches/parser.rs",
+          "grade": 1,
+          "reason": "Parser benchmark entry point."
+        }
+      ]
+    },
+    {
+      "id": "server-and-settings",
+      "question": "Where does Ruff implement language server behavior and linter settings resolution?",
+      "coverage_area": "server_and_settings",
+      "judgments": [
+        {
+          "repo_path": "crates/ruff_server/src/server.rs",
+          "grade": 3,
+          "reason": "Language server implementation."
+        },
+        {
+          "repo_path": "crates/ruff_linter/src/settings/mod.rs",
+          "grade": 3,
+          "reason": "Linter settings structures and resolution."
+        },
+        {
+          "repo_path": "crates/ruff_workspace/src/pyproject.rs",
+          "grade": 2,
+          "reason": "Pyproject and workspace configuration discovery."
+        },
+        {
+          "repo_path": "crates/ruff/src/commands/show_settings.rs",
+          "grade": 1,
+          "reason": "CLI command exposing resolved settings."
+        }
+      ]
+    }
+  ]
+}

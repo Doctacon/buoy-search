@@ -37,10 +37,11 @@ ranking_aggregation = adaptive_sum_3
 - `docs/tutorial/` paths receive an extra demotion for non-documentation/tutorial/example queries;
 - example/demo paths such as `examples/`, `docs_src/`, `example_scripts/`, `/example/`, and `/examples/` are demoted for non-example queries;
 - example scaffold paths such as `docs_src/` and `tests/test_tutorial/` receive an extra demotion for non-example/tutorial queries;
+- fixture/snapshot scaffold paths such as `/fixtures/`, `/snapshots/`, `/resources/test/`, and `/tests/data/` receive a conservative extra demotion for queries that are not asking for fixtures, snapshots, or tests;
 - nested private path segments such as `typer/_click/` are demoted when the private segment is not query-related, while private package roots such as `src/_pytest/` are exempt;
 - `tests/` files get a light boost because repository evals often ask where behavior is validated;
-- source/config files are mostly neutral, with conservative query-aware boosts for exact source filename matches and Python `def`/`class` declarations already present in retrieved chunks;
-- conventional module names are query-aware: `core.py` gets a command/runtime boost, `models.py` gets a parameter metadata boost, broad `utils.py` is demoted for parameter metadata queries unless utilities are requested, non-CLI `cli.py` hits are gently demoted, nested `_click/termui.py` gets a terminal-UI boost, and `index.*` can match its parent directory name;
+- source/config files are mostly neutral, with conservative query-aware boosts for exact source filename matches and Python `def`/`class` declarations already present in retrieved chunks; source-path recognition includes ordinary top-level package files such as `django/http/request.py`, `httpx/_models.py`, `rich/text.py`, `mkdocs/commands/build.py`, and `pydantic/type_adapter.py`, not just `src/` and `lib/`;
+- a small conventional-file subset is query-aware: non-CLI `cli.py` hits are gently demoted, nested `_click/termui.py` gets a terminal-UI boost, and `index.*` can match its parent directory name;
 - when top five lacks docs/tests and rank 1 is an implementation file, one strong docs/tests companion may be promoted into slot five without replacing the top implementation hit.
 
 Generic website rows without `repo_path` remain chunk-keyed and are not collapsed by file ranking.
@@ -77,7 +78,9 @@ Embedded agent-artifact path-segment demotion is also part of the default `repo_
 
 Example scaffold path demotion is also part of the default `repo_code` profile. Against the embedded-agent-artifact baseline, it improved Typer (`64.734 -> 66.121`) while leaving turbo-search, Requests, Click, and pytest unchanged. Evidence: `.10x/evidence/2026-06-28-repo-example-scaffold-demotion-validation.md`.
 
-Private-module routing and conventional-file query priors are also part of the default `repo_code` profile. Against the example-scaffold baseline, they improved turbo-search (`87.760 -> 87.830`) and Typer (`66.121 -> 74.702`) while leaving Requests, Click, and pytest unchanged. The reset-target cumulative five-repo average-score gain is `79.785 -> 81.793` (`+2.007`). Evidence: `.10x/evidence/2026-06-28-repo-private-module-routing-validation.md`.
+The full private-module routing candidate (`_click` special demotion, `core.py`/`models.py` boosts, and parameter-query `utils.py` demotion) reached the five-repo `+2.007` reset target but failed expanded distribution validation because 81.8% of positive gain came from one repo. It is not a general default. The smaller accepted subset (`cli.py` non-CLI demotion, `_click/termui.py` terminal boost, and `index.*` parent-directory matching) passed 13-repo distribution validation: all-repo average score `70.310 -> 70.545`, P@5 `0.448 -> 0.452`, positive gains on turbo-search, Typer, and Django, no repo-level score/P@5 regressions, and largest gain share 59.9%. Evidence: `.10x/evidence/2026-06-28-expanded-repo-ranking-basket-validation.md`.
+
+Broad package-root source recognition plus conservative fixture/snapshot scaffold demotion passed the 13-repo distribution policy and met the user's next +2.0 target: average score `70.545 -> 72.762` (`+2.216`), P@5 unchanged, positive gains on 8 repos, no score/P@5 regressions, and largest gain share 23.5%. Evidence: `.10x/evidence/2026-06-28-repo-source-fixture-routing-validation.md`.
 
 Oversize file-card indexing (`--repo-oversize-file-cards`) remains opt-in only. It improved Click but regressed turbo-search, Requests, pytest, and Typer in five-repo validation. Evidence: `.10x/evidence/2026-06-28-repo-oversize-file-card-indexing-validation.md`.
 
@@ -101,3 +104,5 @@ Evidence:
 - `.10x/evidence/2026-06-28-repo-example-scaffold-demotion-validation.md`
 - `.10x/evidence/2026-06-28-repo-oversize-file-card-indexing-validation.md`
 - `.10x/evidence/2026-06-28-repo-private-module-routing-validation.md`
+- `.10x/evidence/2026-06-28-expanded-repo-ranking-basket-validation.md`
+- `.10x/evidence/2026-06-28-repo-source-fixture-routing-validation.md`

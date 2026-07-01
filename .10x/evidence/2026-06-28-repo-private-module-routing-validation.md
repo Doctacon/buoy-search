@@ -5,6 +5,8 @@ Relates-To: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md, .1
 
 # Repo Private-Module Routing Validation
 
+Follow-up note: expanded 13-repo validation later reclassified this full candidate as too gain-concentrated for a general default. See `.10x/evidence/2026-06-28-expanded-repo-ranking-basket-validation.md`. Only the smaller `cli.py`/`_click/termui.py`/`index.*` subset remains default-active.
+
 ## What was observed
 
 A combined ranking-only hypothesis passed the five-repo no-regression policy and met the user's reset target of +2.0 average repo-search score points from the embedded-agent-artifact baseline.
@@ -94,4 +96,6 @@ Challenges/limits:
 
 ## Conclusion
 
-Promote the private-module routing and conventional-file query priors inside the default `repo_code` ranking profile. This reaches the user's reset +2.0 average-score target without repo-level or P@5 regression.
+Original five-repo conclusion: promote the private-module routing and conventional-file query priors inside the default `repo_code` ranking profile because this reached the user's reset +2.0 average-score target without repo-level or P@5 regression.
+
+Revised after expanded validation: do not promote the full candidate as a general default. Keep only the distribution-validated `cli.py`/`_click/termui.py`/`index.*` subset. See `.10x/evidence/2026-06-28-expanded-repo-ranking-basket-validation.md`.

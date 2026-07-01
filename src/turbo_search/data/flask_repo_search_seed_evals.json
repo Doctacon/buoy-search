@@ -1,0 +1,154 @@
+{
+  "metadata": {
+    "id": "flask-repo-search-seed-v1",
+    "status": "seed-draft",
+    "target_repo": "pallets/flask",
+    "namespace": "github-pallets-flask-v1",
+    "source_plan": "artifacts/site-crawls/github-pallets-flask-v1-plan-20260628/plan.json",
+    "commit_sha": "36e4a824f340fdee7ed50937ba8e7f6bc7d17f81",
+    "human_approved_ground_truth": false,
+    "notes": "Assistant-drafted graded relevance labels for expanded repository ranking validation. Source-backed from the local repository plan; labels intentionally prefer indexed files under the default file-size cap when an authority file is oversize."
+  },
+  "cases": [
+    {
+      "id": "sansio-app-routing",
+      "question": "Where does Flask implement the sans-IO application object, route registration, add_url_rule, and application setup behavior?",
+      "coverage_area": "app_routing",
+      "judgments": [
+        {
+          "repo_path": "src/flask/sansio/app.py",
+          "grade": 3,
+          "reason": "Defines the sans-IO App base and route/setup behavior."
+        },
+        {
+          "repo_path": "src/flask/sansio/scaffold.py",
+          "grade": 2,
+          "reason": "Shared scaffold behavior for apps and blueprints."
+        },
+        {
+          "repo_path": "docs/api.rst",
+          "grade": 1,
+          "reason": "Documents app APIs."
+        }
+      ]
+    },
+    {
+      "id": "blueprints-registration",
+      "question": "Where does Flask implement Blueprint registration, deferred setup functions, and blueprint URL rules?",
+      "coverage_area": "blueprints",
+      "judgments": [
+        {
+          "repo_path": "src/flask/blueprints.py",
+          "grade": 3,
+          "reason": "Public Blueprint class and registration behavior."
+        },
+        {
+          "repo_path": "src/flask/sansio/blueprints.py",
+          "grade": 3,
+          "reason": "Sans-IO blueprint registration and deferred function implementation."
+        },
+        {
+          "repo_path": "tests/test_blueprints.py",
+          "grade": 2,
+          "reason": "Validates blueprint behavior."
+        },
+        {
+          "repo_path": "docs/blueprints.rst",
+          "grade": 1,
+          "reason": "Documents blueprints."
+        }
+      ]
+    },
+    {
+      "id": "request-app-contexts",
+      "question": "Where does Flask manage request context, app context, after_this_request, and context globals?",
+      "coverage_area": "context",
+      "judgments": [
+        {
+          "repo_path": "src/flask/ctx.py",
+          "grade": 3,
+          "reason": "Defines RequestContext, AppContext, after_this_request, and context push/pop behavior."
+        },
+        {
+          "repo_path": "src/flask/globals.py",
+          "grade": 2,
+          "reason": "Defines context local proxies like request, session, and current_app."
+        },
+        {
+          "repo_path": "tests/test_reqctx.py",
+          "grade": 2,
+          "reason": "Validates request context behavior."
+        },
+        {
+          "repo_path": "docs/reqcontext.rst",
+          "grade": 1,
+          "reason": "Documents request context behavior."
+        }
+      ]
+    },
+    {
+      "id": "sessions-json-templating",
+      "question": "Where does Flask implement sessions, JSON providers, and template rendering helpers?",
+      "coverage_area": "sessions_json_templates",
+      "judgments": [
+        {
+          "repo_path": "src/flask/sessions.py",
+          "grade": 3,
+          "reason": "Defines session interfaces and secure cookie sessions."
+        },
+        {
+          "repo_path": "src/flask/json/provider.py",
+          "grade": 3,
+          "reason": "Defines JSON provider behavior."
+        },
+        {
+          "repo_path": "src/flask/templating.py",
+          "grade": 2,
+          "reason": "Defines template rendering and signal helpers."
+        },
+        {
+          "repo_path": "tests/test_session_interface.py",
+          "grade": 1,
+          "reason": "Validates session interface behavior."
+        },
+        {
+          "repo_path": "tests/test_json.py",
+          "grade": 1,
+          "reason": "Validates JSON behavior."
+        }
+      ]
+    },
+    {
+      "id": "flask-cli-testing",
+      "question": "Where does Flask implement CLI loading, FlaskGroup, app discovery, and test client/CLI runner helpers?",
+      "coverage_area": "cli_testing",
+      "judgments": [
+        {
+          "repo_path": "src/flask/cli.py",
+          "grade": 3,
+          "reason": "Implements ScriptInfo, FlaskGroup, app loading, and CLI helpers."
+        },
+        {
+          "repo_path": "src/flask/testing.py",
+          "grade": 3,
+          "reason": "Implements FlaskClient and FlaskCliRunner testing helpers."
+        },
+        {
+          "repo_path": "tests/test_cli.py",
+          "grade": 2,
+          "reason": "Validates CLI behavior."
+        },
+        {
+          "repo_path": "tests/test_testing.py",
+          "grade": 1,
+          "reason": "Validates testing helpers."
+        },
+        {
+          "repo_path": "docs/cli.rst",
+          "grade": 1,
+          "reason": "Documents Flask CLI usage."
+        }
+      ]
+    }
+  ]
+}

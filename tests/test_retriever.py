@@ -11,6 +11,7 @@ from turbo_search.retriever import (
     SearchHit,
     bm25_rank_by,
     build_multi_query_subqueries,
+    is_source_path,
     rank_hits,
     ranking_profile_multiplier,
 )
@@ -352,7 +353,7 @@ class RetrieverTests(unittest.TestCase):
                 "repo_code",
                 query="Where is Click command conversion implemented?",
             ),
-            0.80,
+            1.0,
         )
         self.assertEqual(
             ranking_profile_multiplier(
@@ -376,7 +377,7 @@ class RetrieverTests(unittest.TestCase):
                 "repo_code",
                 query="Where is command group runtime implemented?",
             ),
-            1.25,
+            1.0,
         )
         self.assertEqual(
             ranking_profile_multiplier(
@@ -384,7 +385,7 @@ class RetrieverTests(unittest.TestCase):
                 "repo_code",
                 query="Where are option and argument parameter metadata defined?",
             ),
-            1.25,
+            1.0,
         )
         self.assertEqual(
             ranking_profile_multiplier(
@@ -392,7 +393,7 @@ class RetrieverTests(unittest.TestCase):
                 "repo_code",
                 query="Where are option and argument parameter metadata defined?",
             ),
-            0.75,
+            1.0,
         )
         self.assertAlmostEqual(
             ranking_profile_multiplier(
@@ -418,6 +419,30 @@ class RetrieverTests(unittest.TestCase):
             ),
             1.1648,
         )
+        self.assertAlmostEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="fixture", repo_path="crates/ruff/tests/cli/snapshots/lint.snap"),
+                "repo_code",
+                query="Where is Ruff lint command output implemented?",
+            ),
+            0.8,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="fixture", repo_path="crates/ruff/tests/cli/snapshots/lint.snap"),
+                "repo_code",
+                query="Where is the lint snapshot fixture?",
+            ),
+            1.0,
+        )
+
+    def test_source_path_recognizes_package_roots_without_fixture_noise(self) -> None:
+        self.assertTrue(is_source_path("django/http/request.py"))
+        self.assertTrue(is_source_path("rich/text.py"))
+        self.assertTrue(is_source_path("src/black/resources/black.schema.json"))
+        self.assertFalse(is_source_path("docs/source/text.rst"))
+        self.assertFalse(is_source_path("tests/test_text.py"))
+        self.assertFalse(is_source_path("crates/ruff/tests/cli/snapshots/lint.snap"))
 
     def test_repo_code_profile_uses_query_intent_for_implementation_vs_experiment_files(self) -> None:
         implementation_query = "Where is the repository search composite eval metric implemented and validated?"

@@ -1,0 +1,179 @@
+{
+  "metadata": {
+    "id": "rich-repo-search-seed-v1",
+    "status": "seed-draft",
+    "target_repo": "Textualize/rich",
+    "namespace": "github-textualize-rich-v1",
+    "source_plan": "artifacts/site-crawls/github-textualize-rich-v1-plan-20260628/plan.json",
+    "commit_sha": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f",
+    "human_approved_ground_truth": false,
+    "notes": "Assistant-drafted graded relevance labels for expanded repository ranking validation. Source-backed from the local repository plan; labels intentionally prefer indexed files under the default file-size cap when an authority file is oversize."
+  },
+  "cases": [
+    {
+      "id": "text-markup-highlighting",
+      "question": "Where does Rich implement Text objects, markup conversion, spans, styling, and regex highlighting?",
+      "coverage_area": "text",
+      "judgments": [
+        {
+          "repo_path": "rich/text.py",
+          "grade": 3,
+          "reason": "Defines Text, spans, markup conversion, and highlighting helpers."
+        },
+        {
+          "repo_path": "rich/markup.py",
+          "grade": 2,
+          "reason": "Parses Rich markup into styled text."
+        },
+        {
+          "repo_path": "tests/test_text.py",
+          "grade": 2,
+          "reason": "Validates Text behavior."
+        },
+        {
+          "repo_path": "tests/test_markup.py",
+          "grade": 1,
+          "reason": "Validates markup behavior."
+        },
+        {
+          "repo_path": "docs/source/text.rst",
+          "grade": 1,
+          "reason": "Documents Text behavior."
+        }
+      ]
+    },
+    {
+      "id": "tables-panels-layout",
+      "question": "Where does Rich implement Table columns/rows, Panel rendering, and layout containers?",
+      "coverage_area": "tables_panels_layout",
+      "judgments": [
+        {
+          "repo_path": "rich/table.py",
+          "grade": 3,
+          "reason": "Defines Table columns, rows, rendering, and table options."
+        },
+        {
+          "repo_path": "rich/panel.py",
+          "grade": 2,
+          "reason": "Defines Panel rendering."
+        },
+        {
+          "repo_path": "rich/layout.py",
+          "grade": 2,
+          "reason": "Defines layout containers."
+        },
+        {
+          "repo_path": "tests/test_table.py",
+          "grade": 2,
+          "reason": "Validates table behavior."
+        },
+        {
+          "repo_path": "docs/source/tables.rst",
+          "grade": 1,
+          "reason": "Documents tables."
+        }
+      ]
+    },
+    {
+      "id": "live-rendering-status-progress-docs",
+      "question": "Where does Rich implement live rendering and status/progress support around refreshable terminal output?",
+      "coverage_area": "live_status_progress",
+      "judgments": [
+        {
+          "repo_path": "rich/live.py",
+          "grade": 3,
+          "reason": "Defines Live rendering and refresh behavior."
+        },
+        {
+          "repo_path": "rich/status.py",
+          "grade": 2,
+          "reason": "Defines Status rendering helper."
+        },
+        {
+          "repo_path": "rich/progress_bar.py",
+          "grade": 2,
+          "reason": "Defines lower-level progress bar rendering."
+        },
+        {
+          "repo_path": "tests/test_live.py",
+          "grade": 2,
+          "reason": "Validates live rendering."
+        },
+        {
+          "repo_path": "tests/test_progress.py",
+          "grade": 1,
+          "reason": "Validates progress behavior."
+        },
+        {
+          "repo_path": "docs/source/progress.rst",
+          "grade": 1,
+          "reason": "Documents progress bars."
+        }
+      ]
+    },
+    {
+      "id": "syntax-markdown-traceback",
+      "question": "Where does Rich implement syntax highlighting, Markdown rendering, and rich traceback rendering?",
+      "coverage_area": "syntax_markdown_traceback",
+      "judgments": [
+        {
+          "repo_path": "rich/syntax.py",
+          "grade": 3,
+          "reason": "Defines Syntax highlighting and themes."
+        },
+        {
+          "repo_path": "rich/markdown.py",
+          "grade": 2,
+          "reason": "Defines Markdown rendering."
+        },
+        {
+          "repo_path": "rich/traceback.py",
+          "grade": 3,
+          "reason": "Defines rich traceback rendering."
+        },
+        {
+          "repo_path": "tests/test_syntax.py",
+          "grade": 2,
+          "reason": "Validates syntax highlighting."
+        },
+        {
+          "repo_path": "tests/test_traceback.py",
+          "grade": 1,
+          "reason": "Validates traceback behavior."
+        }
+      ]
+    },
+    {
+      "id": "prompt-logging-console-adapters",
+      "question": "Where does Rich implement prompts, confirm prompts, rich logging handlers, and console adapters/proxies?",
+      "coverage_area": "prompt_logging",
+      "judgments": [
+        {
+          "repo_path": "rich/prompt.py",
+          "grade": 3,
+          "reason": "Defines Prompt, Confirm, IntPrompt, FloatPrompt, and prompting behavior."
+        },
+        {
+          "repo_path": "rich/logging.py",
+          "grade": 3,
+          "reason": "Defines RichHandler logging integration."
+        },
+        {
+          "repo_path": "rich/file_proxy.py",
+          "grade": 2,
+          "reason": "Defines file proxy support for console redirection."
+        },
+        {
+          "repo_path": "tests/test_prompt.py",
+          "grade": 2,
+          "reason": "Validates prompt behavior."
+        },
+        {
+          "repo_path": "tests/test_logging.py",
+          "grade": 1,
+          "reason": "Validates logging behavior."
+        }
+      ]
+    }
+  ]
+}

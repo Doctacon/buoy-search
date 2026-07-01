@@ -16,6 +16,16 @@ VALIDATION_BASKET_EVAL_DATASETS = (
     Path("src/turbo_search/data/ruff_site_search_seed_evals.json"),
     Path("src/turbo_search/data/typer_site_search_seed_evals.json"),
 )
+EXPANDED_REPO_EVAL_DATASETS = (
+    Path("src/turbo_search/data/black_repo_search_seed_evals.json"),
+    Path("src/turbo_search/data/ruff_repo_search_seed_evals.json"),
+    Path("src/turbo_search/data/flask_repo_search_seed_evals.json"),
+    Path("src/turbo_search/data/django_repo_search_seed_evals.json"),
+    Path("src/turbo_search/data/pydantic_repo_search_seed_evals.json"),
+    Path("src/turbo_search/data/httpx_repo_search_seed_evals.json"),
+    Path("src/turbo_search/data/mkdocs_repo_search_seed_evals.json"),
+    Path("src/turbo_search/data/rich_repo_search_seed_evals.json"),
+)
 EXPECTED_TURBO_SEARCH_COVERAGE_AREAS = {
     "github_repository_ingestion_flow",
     "plan_apply_safety_local_only_behavior",
@@ -54,6 +64,17 @@ class EvalHarnessTests(unittest.TestCase):
                 self.assertGreaterEqual(len(cases), 8)
                 for case in cases:
                     self.assertTrue(case.judgments)
+                    self.assertTrue(all(judgment.grade > 0 for judgment in case.judgments))
+
+    def test_loads_expanded_repo_eval_datasets(self) -> None:
+        for dataset in EXPANDED_REPO_EVAL_DATASETS:
+            with self.subTest(dataset=str(dataset)):
+                cases = load_eval_cases(dataset)
+
+                self.assertGreaterEqual(len(cases), 5)
+                for case in cases:
+                    self.assertTrue(case.judgments)
+                    self.assertTrue(all(judgment.repo_path for judgment in case.judgments))
                     self.assertTrue(all(judgment.grade > 0 for judgment in case.judgments))
 
     def test_score_hits_passes_on_expected_url_in_top_k(self) -> None:

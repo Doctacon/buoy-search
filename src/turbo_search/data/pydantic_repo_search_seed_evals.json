@@ -1,0 +1,139 @@
+{
+  "metadata": {
+    "id": "pydantic-repo-search-seed-v1",
+    "status": "seed-draft",
+    "target_repo": "pydantic/pydantic",
+    "namespace": "github-pydantic-pydantic-v1",
+    "source_plan": "artifacts/site-crawls/github-pydantic-pydantic-v1-plan-20260628/plan.json",
+    "commit_sha": "080c741ecf4e113b9c7487de16ffbba5182f03bf",
+    "human_approved_ground_truth": false,
+    "notes": "Assistant-drafted graded relevance labels for expanded repository ranking validation. Source-backed from the local repository plan; labels intentionally prefer indexed files under the default file-size cap when an authority file is oversize."
+  },
+  "cases": [
+    {
+      "id": "type-adapter-validation-serialization",
+      "question": "Where does Pydantic implement TypeAdapter validation, dump_python, dump_json, json_schema, and rebuild behavior?",
+      "coverage_area": "type_adapter",
+      "judgments": [
+        {
+          "repo_path": "pydantic/type_adapter.py",
+          "grade": 3,
+          "reason": "Defines TypeAdapter validation, serialization, json schema, and rebuild APIs."
+        },
+        {
+          "repo_path": "tests/test_type_adapter.py",
+          "grade": 2,
+          "reason": "Validates TypeAdapter behavior."
+        },
+        {
+          "repo_path": "docs/concepts/type_adapter.md",
+          "grade": 1,
+          "reason": "Documents TypeAdapter usage."
+        }
+      ]
+    },
+    {
+      "id": "functional-validators",
+      "question": "Where does Pydantic implement field_validator, model_validator, BeforeValidator, AfterValidator, WrapValidator, and validation decorator metadata?",
+      "coverage_area": "validators",
+      "judgments": [
+        {
+          "repo_path": "pydantic/functional_validators.py",
+          "grade": 3,
+          "reason": "Defines functional validators and validator decorators."
+        },
+        {
+          "repo_path": "tests/test_validators_dataclass.py",
+          "grade": 1,
+          "reason": "Validates validator behavior on dataclasses."
+        },
+        {
+          "repo_path": "tests/test_model_validator.py",
+          "grade": 2,
+          "reason": "Validates model_validator behavior."
+        },
+        {
+          "repo_path": "docs/concepts/validators.md",
+          "grade": 1,
+          "reason": "Documents validators."
+        }
+      ]
+    },
+    {
+      "id": "functional-serializers",
+      "question": "Where does Pydantic implement field_serializer, model_serializer, PlainSerializer, WrapSerializer, and serializer metadata?",
+      "coverage_area": "serializers",
+      "judgments": [
+        {
+          "repo_path": "pydantic/functional_serializers.py",
+          "grade": 3,
+          "reason": "Defines functional serializers and serializer decorators."
+        },
+        {
+          "repo_path": "tests/test_serialize.py",
+          "grade": 2,
+          "reason": "Validates serialization behavior."
+        },
+        {
+          "repo_path": "docs/concepts/serialization.md",
+          "grade": 1,
+          "reason": "Documents serialization behavior."
+        }
+      ]
+    },
+    {
+      "id": "config-dict-model-settings",
+      "question": "Where does Pydantic define ConfigDict options such as extra, frozen, validate_assignment, aliases, and model configuration behavior?",
+      "coverage_area": "configuration",
+      "judgments": [
+        {
+          "repo_path": "pydantic/config.py",
+          "grade": 3,
+          "reason": "Defines ConfigDict and model configuration options."
+        },
+        {
+          "repo_path": "tests/test_config.py",
+          "grade": 2,
+          "reason": "Validates model configuration behavior."
+        },
+        {
+          "repo_path": "docs/concepts/config.md",
+          "grade": 1,
+          "reason": "Documents configuration options."
+        },
+        {
+          "repo_path": "docs/api/config.md",
+          "grade": 1,
+          "reason": "API documentation for config."
+        }
+      ]
+    },
+    {
+      "id": "model-construction-fields",
+      "question": "Where does Pydantic collect model fields and construct model classes with ModelMetaclass and complete_model_class?",
+      "coverage_area": "model_construction",
+      "judgments": [
+        {
+          "repo_path": "pydantic/_internal/_model_construction.py",
+          "grade": 3,
+          "reason": "Defines ModelMetaclass and model class completion."
+        },
+        {
+          "repo_path": "pydantic/_internal/_fields.py",
+          "grade": 3,
+          "reason": "Collects model fields and field metadata."
+        },
+        {
+          "repo_path": "tests/test_construction.py",
+          "grade": 2,
+          "reason": "Validates model construction behavior."
+        },
+        {
+          "repo_path": "tests/test_fields.py",
+          "grade": 1,
+          "reason": "Validates field behavior."
+        }
+      ]
+    }
+  ]
+}

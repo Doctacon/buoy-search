@@ -1,0 +1,139 @@
+{
+  "metadata": {
+    "id": "black-repo-search-seed-v1",
+    "status": "seed-draft",
+    "target_repo": "psf/black",
+    "namespace": "github-psf-black-v1",
+    "source_plan": "artifacts/site-crawls/github-psf-black-v1-plan-20260628/plan.json",
+    "commit_sha": "c4c9a93111309459a3f0e1e268160f7ef2159077",
+    "human_approved_ground_truth": false,
+    "notes": "Assistant-drafted graded relevance labels for expanded repository ranking validation. Source-backed from the local repository plan; labels intentionally prefer indexed files under the default file-size cap when an authority file is oversize."
+  },
+  "cases": [
+    {
+      "id": "mode-target-version-preview",
+      "question": "Where does Black define formatting Mode, target Python versions, preview/unstable feature flags, and line-length behavior?",
+      "coverage_area": "formatting_mode",
+      "judgments": [
+        {
+          "repo_path": "src/black/mode.py",
+          "grade": 3,
+          "reason": "Defines Mode, TargetVersion, Feature, Preview, and formatting configuration semantics."
+        },
+        {
+          "repo_path": "docs/usage_and_configuration/the_basics.md",
+          "grade": 1,
+          "reason": "Documents command-line configuration such as line length and target versions."
+        },
+        {
+          "repo_path": "tests/test_format.py",
+          "grade": 1,
+          "reason": "Validates formatting behavior controlled by mode options."
+        }
+      ]
+    },
+    {
+      "id": "file-discovery-include-exclude",
+      "question": "Where does Black discover Python files, find the project root, apply include/exclude/force-exclude patterns, and handle gitignore filtering?",
+      "coverage_area": "file_discovery",
+      "judgments": [
+        {
+          "repo_path": "src/black/files.py",
+          "grade": 3,
+          "reason": "Implements project-root discovery, gitignore handling, include/exclude filtering, and Python file generation."
+        },
+        {
+          "repo_path": "docs/usage_and_configuration/file_collection_and_discovery.md",
+          "grade": 2,
+          "reason": "Documents file collection, include/exclude, and discovery behavior."
+        },
+        {
+          "repo_path": "tests/data/include_exclude_tests/pyproject.toml",
+          "grade": 1,
+          "reason": "Fixture for include/exclude file discovery behavior."
+        }
+      ]
+    },
+    {
+      "id": "cache-read-write",
+      "question": "Where does Black implement cache read/write behavior, source hashing, and cache filtering for formatted files?",
+      "coverage_area": "cache",
+      "judgments": [
+        {
+          "repo_path": "src/black/cache.py",
+          "grade": 3,
+          "reason": "Defines Cache and read/write/filter behavior for Black cache entries."
+        },
+        {
+          "repo_path": "src/black/files.py",
+          "grade": 1,
+          "reason": "File metadata and source path handling feed cache decisions."
+        },
+        {
+          "repo_path": "docs/usage_and_configuration/the_basics.md",
+          "grade": 1,
+          "reason": "User documentation mentions cache behavior and cache control options."
+        }
+      ]
+    },
+    {
+      "id": "parser-comments-string-normalization",
+      "question": "Where does Black parse Python source and handle comments, fmt off/on markers, string normalization, and output rendering helpers?",
+      "coverage_area": "parser_and_comments",
+      "judgments": [
+        {
+          "repo_path": "src/black/parsing.py",
+          "grade": 3,
+          "reason": "Implements lib2to3 and AST parsing helpers."
+        },
+        {
+          "repo_path": "src/black/comments.py",
+          "grade": 3,
+          "reason": "Implements comment handling and fmt off/on normalization."
+        },
+        {
+          "repo_path": "src/black/strings.py",
+          "grade": 2,
+          "reason": "Implements string normalization helpers."
+        },
+        {
+          "repo_path": "src/black/output.py",
+          "grade": 1,
+          "reason": "Provides output/rendering helper functions used around formatting."
+        }
+      ]
+    },
+    {
+      "id": "schema-and-pyproject-configuration",
+      "question": "Where does Black define and generate its pyproject configuration schema?",
+      "coverage_area": "configuration_schema",
+      "judgments": [
+        {
+          "repo_path": "src/black/schema.py",
+          "grade": 3,
+          "reason": "Defines schema generation helpers for Black configuration."
+        },
+        {
+          "repo_path": "src/black/resources/black.schema.json",
+          "grade": 3,
+          "reason": "Generated JSON schema for Black pyproject configuration."
+        },
+        {
+          "repo_path": "scripts/generate_schema.py",
+          "grade": 2,
+          "reason": "Script that regenerates the schema resource."
+        },
+        {
+          "repo_path": "tests/test_schema.py",
+          "grade": 2,
+          "reason": "Validates schema behavior."
+        },
+        {
+          "repo_path": "docs/usage_and_configuration/the_basics.md",
+          "grade": 1,
+          "reason": "Documents pyproject configuration options."
+        }
+      ]
+    }
+  ]
+}

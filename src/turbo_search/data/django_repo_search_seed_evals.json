@@ -1,0 +1,154 @@
+{
+  "metadata": {
+    "id": "django-repo-search-seed-v1",
+    "status": "seed-draft",
+    "target_repo": "django/django",
+    "namespace": "github-django-django-v1",
+    "source_plan": "artifacts/site-crawls/github-django-django-v1-plan-20260628/plan.json",
+    "commit_sha": "54495840a6a8b09ec40c793495e6541a3c0d3d5b",
+    "human_approved_ground_truth": false,
+    "notes": "Assistant-drafted graded relevance labels for expanded repository ranking validation. Source-backed from the local repository plan; labels intentionally prefer indexed files under the default file-size cap when an authority file is oversize."
+  },
+  "cases": [
+    {
+      "id": "forms-validation-cleaning",
+      "question": "Where does Django implement Form/BaseForm validation, full_clean, fields, errors, and form rendering?",
+      "coverage_area": "forms",
+      "judgments": [
+        {
+          "repo_path": "django/forms/forms.py",
+          "grade": 3,
+          "reason": "Defines BaseForm/Form validation, cleaning, errors, and rendering behavior."
+        },
+        {
+          "repo_path": "django/forms/fields.py",
+          "grade": 2,
+          "reason": "Defines form fields and validation hooks."
+        },
+        {
+          "repo_path": "tests/forms_tests/field_tests/test_base.py",
+          "grade": 1,
+          "reason": "Validates base form field behavior."
+        },
+        {
+          "repo_path": "docs/topics/forms/index.txt",
+          "grade": 1,
+          "reason": "Documents Django forms."
+        }
+      ]
+    },
+    {
+      "id": "url-resolver-routing",
+      "question": "Where does Django resolve URL patterns, URLResolver, URLPattern, path converters, and reverse lookup behavior?",
+      "coverage_area": "urls",
+      "judgments": [
+        {
+          "repo_path": "django/urls/resolvers.py",
+          "grade": 3,
+          "reason": "Defines URLResolver, URLPattern, resolve, and reverse lookup internals."
+        },
+        {
+          "repo_path": "django/urls/conf.py",
+          "grade": 2,
+          "reason": "Defines path/include URL configuration helpers."
+        },
+        {
+          "repo_path": "django/urls/converters.py",
+          "grade": 2,
+          "reason": "Defines path converter behavior."
+        },
+        {
+          "repo_path": "tests/urlpatterns_reverse/test_localeregexdescriptor.py",
+          "grade": 1,
+          "reason": "Validates URL resolver regex descriptor behavior."
+        },
+        {
+          "repo_path": "docs/topics/http/urls.txt",
+          "grade": 1,
+          "reason": "Documents URL routing."
+        }
+      ]
+    },
+    {
+      "id": "management-command-base",
+      "question": "Where does Django implement management BaseCommand, CommandParser, execute, checks, and output handling?",
+      "coverage_area": "management_commands",
+      "judgments": [
+        {
+          "repo_path": "django/core/management/base.py",
+          "grade": 3,
+          "reason": "Defines BaseCommand, CommandParser, execute, checks, and output wrappers."
+        },
+        {
+          "repo_path": "django/core/management/__init__.py",
+          "grade": 2,
+          "reason": "Management command discovery and execution helpers."
+        },
+        {
+          "repo_path": "tests/user_commands/tests.py",
+          "grade": 2,
+          "reason": "Validates user management commands."
+        },
+        {
+          "repo_path": "docs/howto/custom-management-commands.txt",
+          "grade": 1,
+          "reason": "Documents custom management commands."
+        }
+      ]
+    },
+    {
+      "id": "http-request-response",
+      "question": "Where does Django implement HttpRequest, QueryDict, HttpResponse, streaming responses, and cookie/header handling?",
+      "coverage_area": "http",
+      "judgments": [
+        {
+          "repo_path": "django/http/request.py",
+          "grade": 3,
+          "reason": "Defines HttpRequest, QueryDict, and request parsing helpers."
+        },
+        {
+          "repo_path": "django/http/response.py",
+          "grade": 3,
+          "reason": "Defines HttpResponse and streaming response classes."
+        },
+        {
+          "repo_path": "tests/requests_tests/test_accept_header.py",
+          "grade": 1,
+          "reason": "Validates request Accept header behavior."
+        },
+        {
+          "repo_path": "tests/responses/test_cookie.py",
+          "grade": 1,
+          "reason": "Validates response cookie behavior."
+        }
+      ]
+    },
+    {
+      "id": "template-lexer-parser-render",
+      "question": "Where does Django implement the template engine Lexer, Parser, Template, tokens, and rendering context?",
+      "coverage_area": "templates",
+      "judgments": [
+        {
+          "repo_path": "django/template/base.py",
+          "grade": 3,
+          "reason": "Defines Template, Lexer, Parser, Token, Node, and rendering primitives."
+        },
+        {
+          "repo_path": "django/template/context.py",
+          "grade": 2,
+          "reason": "Defines template Context and RenderContext behavior."
+        },
+        {
+          "repo_path": "tests/template_tests/test_parser.py",
+          "grade": 2,
+          "reason": "Validates parser behavior."
+        },
+        {
+          "repo_path": "docs/ref/templates/language.txt",
+          "grade": 1,
+          "reason": "Documents template language behavior."
+        }
+      ]
+    }
+  ]
+}

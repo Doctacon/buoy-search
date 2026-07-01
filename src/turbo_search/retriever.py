@@ -632,54 +632,6 @@ DOCUMENTATION_INTENT_TOKENS = {
     "tutorial",
     "tutorials",
 }
-VENDORED_CLICK_LOW_LEVEL_TOKENS = {
-    "abort",
-    "badparameter",
-    "bools",
-    "datetime",
-    "echo",
-    "enum",
-    "exception",
-    "exceptions",
-    "exit",
-    "file",
-    "launch",
-    "numbers",
-    "parameter",
-    "path",
-    "progress",
-    "prompt",
-    "termui",
-    "terminal",
-    "types",
-    "uuid",
-}
-COMMAND_RUNTIME_TOKENS = {
-    "callback",
-    "command",
-    "commands",
-    "group",
-    "groups",
-    "invocation",
-    "invoke",
-    "lookup",
-    "registration",
-    "runtime",
-    "subcommand",
-}
-PARAMETER_METADATA_TOKENS = {
-    "annotated",
-    "argument",
-    "arguments",
-    "default",
-    "defaults",
-    "metadata",
-    "option",
-    "options",
-    "parameter",
-    "parameters",
-}
-UTILITY_INTENT_TOKENS = {"helper", "helpers", "util", "utilities", "utility", "utils"}
 CLI_INTENT_TOKENS = {"cli", "command", "commands", "runner", "script", "scripts"}
 TERMINAL_UI_TOKENS = {
     "app",
@@ -696,6 +648,31 @@ TERMINAL_UI_TOKENS = {
     "style",
     "terminal",
 }
+FIXTURE_INTENT_TOKENS = {"fixture", "fixtures", "snapshot", "snapshots", "test", "testing", "tests"}
+SOURCE_FILE_EXTENSIONS = {
+    ".c",
+    ".cc",
+    ".cpp",
+    ".cs",
+    ".go",
+    ".h",
+    ".hpp",
+    ".java",
+    ".js",
+    ".jsx",
+    ".kt",
+    ".lua",
+    ".php",
+    ".py",
+    ".pyi",
+    ".rb",
+    ".rs",
+    ".sh",
+    ".swift",
+    ".ts",
+    ".tsx",
+}
+NON_SOURCE_PATH_PREFIXES = ("docs/", "doc/", "tests/", "test/", "examples/", "example/", "benchmarks/", "benchmark/")
 PATH_SYMBOL_STOP_TOKENS = {
     "and",
     "are",
@@ -843,16 +820,12 @@ def ranking_profile_multiplier(hit: SearchHit, profile: str, *, query: str = "")
         multiplier *= 0.80
     if is_repo_example_scaffold_path(lower_path) and not query_tokens & EXAMPLE_INTENT_TOKENS:
         multiplier *= 0.80
+    if is_repo_fixture_scaffold_path(lower_path) and not query_tokens & FIXTURE_INTENT_TOKENS:
+        multiplier *= 0.80
     if path_tokens & EXPERIMENT_PATH_TOKENS and not query_tokens & EXPERIMENT_INTENT_TOKENS:
         multiplier *= 0.70
     if lower_path.startswith("src/") and query_tokens & IMPLEMENTATION_INTENT_TOKENS:
         multiplier *= 1.12
-    if not private_path_misses_query and lower_path.endswith("/core.py") and query_tokens & COMMAND_RUNTIME_TOKENS:
-        multiplier *= 1.25
-    if lower_path.endswith("/models.py") and query_tokens & PARAMETER_METADATA_TOKENS:
-        multiplier *= 1.25
-    if lower_path.endswith("/utils.py") and query_tokens & PARAMETER_METADATA_TOKENS and not query_tokens & UTILITY_INTENT_TOKENS:
-        multiplier *= 0.75
     if lower_path.endswith("/cli.py") and not query_tokens & CLI_INTENT_TOKENS:
         multiplier *= 0.90
     if "/_click/termui.py" in f"/{lower_path}" and query_tokens & TERMINAL_UI_TOKENS:
@@ -888,6 +861,11 @@ def index_parent_matches_query(lower_path: str, *, query: str = "") -> bool:
     )
 
 
+def is_repo_fixture_scaffold_path(lower_path: str) -> bool:
+    normalized = f"/{normalize_path(lower_path).casefold()}"
+    return any(marker in normalized for marker in ("/fixtures/", "/snapshots/", "/resources/test/", "/tests/data/"))
+
+
 def nested_private_path_segment_misses_query(path: str, *, query: str = "") -> bool:
     """Return true for nested private package/topic dirs absent from the query."""
 
@@ -900,8 +878,6 @@ def nested_private_path_segment_misses_query(path: str, *, query: str = "") -> b
         if index <= package_index or not segment.startswith("_"):
             continue
         segment_tokens = ranking_signal_tokens(segment)
-        if segment == "_click" and not query_tokens & VENDORED_CLICK_LOW_LEVEL_TOKENS:
-            return True
         if not segment_tokens or related_token_count(query_tokens, segment_tokens) == 0:
             return True
     return False
@@ -1046,7 +1022,19 @@ def ranking_signal_tokens(value: str) -> set[str]:
 
 
 def is_source_path(path: str) -> bool:
-    return path.startswith(("src/", "lib/"))
+    normalized = normalize_path(path).casefold()
+    if normalized.startswith(NON_SOURCE_PATH_PREFIXES):
+        return False
+    if path_has_agent_artifact_segment(normalized) or is_repo_fixture_scaffold_path(normalized):
+        return False
+    if normalized.startswith(("src/", "lib/")):
+        return True
+    return file_extension(normalized) in SOURCE_FILE_EXTENSIONS
+
+
+def file_extension(path: str) -> str:
+    name = path.rsplit("/", 1)[-1]
+    return f".{name.rsplit('.', 1)[1].casefold()}" if "." in name else ""
 
 
 def is_docs_path(path: str) -> bool:
