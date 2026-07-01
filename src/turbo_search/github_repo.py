@@ -38,6 +38,7 @@ GITHUB_API_VERSION = "2022-11-28"
 USER_AGENT = "turbo-search/0.1"
 DEFAULT_REPO_MAX_FILE_BYTES = DEFAULT_GITHUB_REPO_MAX_FILE_BYTES
 DEFAULT_CODE_CHUNK_LINES = 80
+OVERSIZE_FILE_CARD_SAMPLE_BYTES = 200 * 1024
 REPO_MARKDOWN_EXTENSIONS = {".md", ".markdown", ".mdx"}
 REPO_PROSE_EXTENSIONS = {".txt", ".rst", ".adoc"}
 REPO_SOURCE_EXTENSIONS = {
@@ -410,6 +411,7 @@ def crawl_github_repo(source: GitHubRepoSource, options: CrawlOptions) -> dict[s
         max_file_bytes=options.repo_max_file_bytes,
         include_search_metadata=options.repo_search_metadata,
         include_file_cards=options.repo_file_cards,
+        include_oversize_file_cards=options.repo_oversize_file_cards,
     )
     plan = process_corpus(
         pages_dir,
@@ -472,6 +474,7 @@ def build_github_repo_summary(
         "repo_max_file_bytes": options.repo_max_file_bytes,
         "repo_search_metadata": options.repo_search_metadata,
         "repo_file_cards": options.repo_file_cards,
+        "repo_oversize_file_cards": options.repo_oversize_file_cards,
         "file_card_pages_generated": stats.file_card_pages_generated,
         "include_paths": list(options.include_paths),
         "exclude_paths": list(options.exclude_paths),
@@ -511,6 +514,7 @@ def build_github_repo_corpus(
     code_chunk_lines: int = DEFAULT_CODE_CHUNK_LINES,
     include_search_metadata: bool = False,
     include_file_cards: bool = False,
+    include_oversize_file_cards: bool = False,
     runner: Runner = subprocess.run,
     git_timeout: int = DEFAULT_GIT_TIMEOUT,
 ) -> GitHubRepoCorpus:
@@ -519,6 +523,7 @@ def build_github_repo_corpus(
     tracked_paths = list_tracked_files(acquisition.checkout_dir, runner=runner, timeout=git_timeout)
     stats = GitHubRepoCorpusStats(files_discovered=len(tracked_paths))
     selected: list[GitHubRepoFile] = []
+    oversize_file_cards: list[GitHubRepoFile] = []
     pages_dir.mkdir(parents=True, exist_ok=True)
     for stale_page in pages_dir.glob("*.md"):
         stale_page.unlink()
@@ -534,6 +539,10 @@ def build_github_repo_corpus(
             )
             if decision is not None:
                 increment_skip(stats, decision)
+                if decision == "oversize" and include_oversize_file_cards:
+                    oversize_card = github_repo_file_for_oversize_card(acquisition, repo_path)
+                    if oversize_card is not None:
+                        oversize_file_cards.append(oversize_card)
                 continue
             if max_files is not None and len(selected) >= max_files:
                 stats.files_skipped_limit += 1
@@ -581,6 +590,7 @@ def build_github_repo_corpus(
             page_kind="source",
         )
 
+    file_card_count = 0
     if include_file_cards:
         for index, repo_file in enumerate(selected, start=len(selected) + 1):
             path = pages_dir / page_filename(repo_file.blob_url, f"{repo_file.repo_path}-file-card", index)
@@ -593,7 +603,22 @@ def build_github_repo_corpus(
                 title=f"{repo_file.repo_path} file metadata",
                 page_kind="file_card",
             )
-        stats.file_card_pages_generated = len(selected)
+            file_card_count += 1
+    if include_oversize_file_cards:
+        start_index = len(selected) + file_card_count + 1
+        for index, repo_file in enumerate(oversize_file_cards, start=start_index):
+            path = pages_dir / page_filename(repo_file.blob_url, f"{repo_file.repo_path}-oversize-file-card", index)
+            write_repo_markdown_page(
+                path,
+                repo_file,
+                acquisition=acquisition,
+                crawl_timestamp=crawl_timestamp,
+                markdown=markdown_for_repo_file_card(repo_file),
+                title=f"{repo_file.repo_path} file metadata",
+                page_kind="oversize_file_card",
+            )
+            file_card_count += 1
+    stats.file_card_pages_generated = file_card_count
 
     stats.files_selected = len(selected)
     return GitHubRepoCorpus(pages_dir=pages_dir, selected_files=selected, stats=stats)
@@ -646,6 +671,31 @@ def list_tracked_files(
         purpose="list tracked repository files",
     )
     return [path for path in output.split("\0") if path]
+
+
+def github_repo_file_for_oversize_card(
+    acquisition: GitHubRepoAcquisition,
+    repo_path: str,
+    *,
+    sample_bytes: int = OVERSIZE_FILE_CARD_SAMPLE_BYTES,
+) -> GitHubRepoFile | None:
+    absolute_path = acquisition.checkout_dir / repo_path
+    try:
+        sample = absolute_path.read_bytes()[:sample_bytes]
+        if b"\0" in sample:
+            return None
+        text = sample.decode("utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    return GitHubRepoFile(
+        repo_path=repo_path,
+        absolute_path=absolute_path,
+        size_bytes=absolute_path.stat().st_size,
+        language=language_for_path(repo_path),
+        text=text,
+        source_hash=sha256_text(text),
+        blob_url=github_blob_url(acquisition, repo_path),
+    )
 
 
 def repo_file_skip_reason(

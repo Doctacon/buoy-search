@@ -226,6 +226,13 @@ class RetrieverTests(unittest.TestCase):
         )
         self.assertEqual(
             ranking_profile_multiplier(
+                SearchHit(id="nested-agent", repo_path="typer/.agents/skills/typer/SKILL.md"),
+                "repo_code",
+            ),
+            0.20,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
                 SearchHit(id="eval-data", repo_path="src/turbo_search/data/repo_search_seed_evals.json"),
                 "repo_code",
             ),
@@ -243,6 +250,22 @@ class RetrieverTests(unittest.TestCase):
             ),
             0.70,
         )
+        self.assertAlmostEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="docs-src", repo_path="docs_src/testing/app01.py"),
+                "repo_code",
+                query="Where is CliRunner testing support implemented?",
+            ),
+            0.56,
+        )
+        self.assertAlmostEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="tutorial-test", repo_path="tests/test_tutorial/test_typer_app/test_tutorial001.py"),
+                "repo_code",
+                query="Where is Typer app registration implemented?",
+            ),
+            0.88,
+        )
         self.assertEqual(
             ranking_profile_multiplier(
                 SearchHit(id="example", repo_path="examples/termui/app.py"),
@@ -250,6 +273,14 @@ class RetrieverTests(unittest.TestCase):
                 query="Where is the terminal prompt example?",
             ),
             1.0,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="tutorial-test", repo_path="tests/test_tutorial/test_typer_app/test_tutorial001.py"),
+                "repo_code",
+                query="Where is the Typer app tutorial?",
+            ),
+            1.10,
         )
         self.assertEqual(
             ranking_profile_multiplier(
@@ -289,23 +320,103 @@ class RetrieverTests(unittest.TestCase):
                 "repo_code",
                 query="Where is command runtime implemented?",
             ),
-            0.56,
+            0.84,
         )
-        self.assertEqual(
+        self.assertAlmostEqual(
             ranking_profile_multiplier(
                 SearchHit(id="tutorial", repo_path="docs/tutorial/commands/index.md"),
                 "repo_code",
                 query="Where is the command tutorial?",
             ),
-            0.70,
+            1.05,
         )
-        self.assertEqual(
+        self.assertAlmostEqual(
             ranking_profile_multiplier(
                 SearchHit(id="tutorial", repo_path="docs/tutorial/commands/index.md"),
                 "repo_code",
                 query="Where is the command example?",
             ),
-            0.70,
+            1.05,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="private-topic", repo_path="typer/_click/core.py"),
+                "repo_code",
+                query="Where is completion implemented?",
+            ),
+            0.80,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="private-topic", repo_path="typer/_click/core.py"),
+                "repo_code",
+                query="Where is Click command conversion implemented?",
+            ),
+            0.80,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="private-topic", repo_path="typer/_click/termui.py"),
+                "repo_code",
+                query="Where are Click terminal prompt helpers implemented?",
+            ),
+            1.20,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="private-package-root", repo_path="src/_pytest/logging.py"),
+                "repo_code",
+                query="pytest logging capture",
+            ),
+            1.04,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="core", repo_path="typer/core.py"),
+                "repo_code",
+                query="Where is command group runtime implemented?",
+            ),
+            1.25,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="models", repo_path="typer/models.py"),
+                "repo_code",
+                query="Where are option and argument parameter metadata defined?",
+            ),
+            1.25,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="utils", repo_path="typer/utils.py"),
+                "repo_code",
+                query="Where are option and argument parameter metadata defined?",
+            ),
+            0.75,
+        )
+        self.assertAlmostEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="utils", repo_path="src/requests/utils.py"),
+                "repo_code",
+                query="Where are Requests utility helpers implemented?",
+            ),
+            1.1648,
+        )
+        self.assertAlmostEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="cli", repo_path="src/turbo_search/cli.py"),
+                "repo_code",
+                query="Where is local planning implemented?",
+            ),
+            1.008,
+        )
+        self.assertAlmostEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="cli", repo_path="src/turbo_search/cli.py"),
+                "repo_code",
+                query="Where is the CLI command runner implemented?",
+            ),
+            1.1648,
         )
 
     def test_repo_code_profile_uses_query_intent_for_implementation_vs_experiment_files(self) -> None:

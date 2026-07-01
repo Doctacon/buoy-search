@@ -106,6 +106,7 @@ def fake_github_crawl_summary(source, options: CrawlOptions) -> dict[str, object
         "repo_max_file_bytes": options.repo_max_file_bytes,
         "repo_search_metadata": options.repo_search_metadata,
         "repo_file_cards": options.repo_file_cards,
+        "repo_oversize_file_cards": options.repo_oversize_file_cards,
         "file_card_pages_generated": 1 if options.repo_file_cards else 0,
         "include_paths": list(options.include_paths),
         "exclude_paths": list(options.exclude_paths),
@@ -339,6 +340,7 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(options.max_pages, 5000)
                 self.assertEqual(options.max_chunks, 100000)
                 self.assertFalse(options.repo_file_cards)
+                self.assertFalse(options.repo_oversize_file_cards)
                 write_fake_github_page(options.out_dir / "pages")
                 return fake_github_crawl_summary(source, options)
 
@@ -447,6 +449,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(options.repo_max_file_bytes, 123456)
             self.assertTrue(options.repo_search_metadata)
             self.assertTrue(options.repo_file_cards)
+            self.assertTrue(options.repo_oversize_file_cards)
             write_fake_github_page(options.out_dir / "pages")
             return fake_github_crawl_summary(source, options)
 
@@ -466,6 +469,7 @@ class CliTests(unittest.TestCase):
                             "123456",
                             "--repo-search-metadata",
                             "--repo-file-cards",
+                            "--repo-oversize-file-cards",
                             "--json",
                         ]
                     )
@@ -490,6 +494,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(plan["crawl_options"]["repo_max_file_bytes"], 123456)
         self.assertTrue(plan["crawl_options"]["repo_search_metadata"])
         self.assertTrue(plan["crawl_options"]["repo_file_cards"])
+        self.assertTrue(plan["crawl_options"]["repo_oversize_file_cards"])
         github_mock.assert_called_once()
         site_mock.assert_not_called()
 

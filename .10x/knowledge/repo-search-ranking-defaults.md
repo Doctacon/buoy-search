@@ -30,14 +30,17 @@ ranking_aggregation = adaptive_sum_3
 
 `ranking_profile=repo_code` is a gentle post-fusion path prior for repository rows only:
 
-- process/project-agent and run-artifact paths such as `.pi/`, `.10x/`, `.loom/`, `.claude/`, `.cursor/`, `.turbo-search/`, `artifacts/`, and `autoresearch/` are demoted strongly;
+- process/project-agent artifact directory segments such as `.pi/`, `.10x/`, `.agents/`, `.loom/`, `.claude/`, `.cursor/`, and `.turbo-search/` are demoted strongly even when embedded below another path segment; root-level run artifacts `artifacts/` and `autoresearch/` are also demoted strongly;
 - eval/fixture/dataset JSON under `/data/` is demoted strongly so answer-key-like files do not dominate implementation queries;
 - `docs/`, README/CHANGELOG, and other Markdown files are demoted gently, with a partial recovery for exact documentation filename matches such as `docs/api.rst` on API queries;
 - singular `doc/` documentation roots are demoted for non-documentation/example queries;
 - `docs/tutorial/` paths receive an extra demotion for non-documentation/tutorial/example queries;
 - example/demo paths such as `examples/`, `docs_src/`, `example_scripts/`, `/example/`, and `/examples/` are demoted for non-example queries;
+- example scaffold paths such as `docs_src/` and `tests/test_tutorial/` receive an extra demotion for non-example/tutorial queries;
+- nested private path segments such as `typer/_click/` are demoted when the private segment is not query-related, while private package roots such as `src/_pytest/` are exempt;
 - `tests/` files get a light boost because repository evals often ask where behavior is validated;
 - source/config files are mostly neutral, with conservative query-aware boosts for exact source filename matches and Python `def`/`class` declarations already present in retrieved chunks;
+- conventional module names are query-aware: `core.py` gets a command/runtime boost, `models.py` gets a parameter metadata boost, broad `utils.py` is demoted for parameter metadata queries unless utilities are requested, non-CLI `cli.py` hits are gently demoted, nested `_click/termui.py` gets a terminal-UI boost, and `index.*` can match its parent directory name;
 - when top five lacks docs/tests and rank 1 is an implementation file, one strong docs/tests companion may be promoted into slot five without replacing the top implementation hit.
 
 Generic website rows without `repo_path` remain chunk-keyed and are not collapsed by file ranking.
@@ -68,6 +71,16 @@ Conditional example/demo path demotion is now part of the default `repo_code` pr
 
 Query-aware documentation path demotion is also part of the default `repo_code` profile. Against the example-demotion baseline, singular `doc/` plus `docs/tutorial/` demotion improved pytest (`86.042 -> 89.191`) and Typer (`59.710 -> 62.787`) while leaving turbo-search, Requests, and Click unchanged. Evidence: `.10x/evidence/2026-06-28-repo-documentation-path-demotion-validation.md`.
 
+Nested private path-segment demotion is also part of the default `repo_code` profile. Against the documentation-demotion baseline, it improved Typer (`62.787 -> 64.411`) while leaving turbo-search, Requests, Click, and pytest unchanged. Evidence: `.10x/evidence/2026-06-28-repo-nested-private-path-demotion-validation.md`.
+
+Embedded agent-artifact path-segment demotion is also part of the default `repo_code` profile. Against the nested-private baseline, it improved Typer (`64.411 -> 64.734`) while leaving turbo-search, Requests, Click, and pytest unchanged. The cumulative five-repo average-score gain from the pre-example baseline is now `77.765 -> 79.785` (`+2.020`). Evidence: `.10x/evidence/2026-06-28-repo-embedded-agent-artifact-demotion-validation.md`.
+
+Example scaffold path demotion is also part of the default `repo_code` profile. Against the embedded-agent-artifact baseline, it improved Typer (`64.734 -> 66.121`) while leaving turbo-search, Requests, Click, and pytest unchanged. Evidence: `.10x/evidence/2026-06-28-repo-example-scaffold-demotion-validation.md`.
+
+Private-module routing and conventional-file query priors are also part of the default `repo_code` profile. Against the example-scaffold baseline, they improved turbo-search (`87.760 -> 87.830`) and Typer (`66.121 -> 74.702`) while leaving Requests, Click, and pytest unchanged. The reset-target cumulative five-repo average-score gain is `79.785 -> 81.793` (`+2.007`). Evidence: `.10x/evidence/2026-06-28-repo-private-module-routing-validation.md`.
+
+Oversize file-card indexing (`--repo-oversize-file-cards`) remains opt-in only. It improved Click but regressed turbo-search, Requests, pytest, and Typer in five-repo validation. Evidence: `.10x/evidence/2026-06-28-repo-oversize-file-card-indexing-validation.md`.
+
 Evidence:
 
 - `.10x/evidence/2026-06-28-repo-search-file-ranking-promotion-validation.md`
@@ -83,3 +96,8 @@ Evidence:
 - `.10x/evidence/2026-06-28-repo-file-card-metadata-validation.md`
 - `.10x/evidence/2026-06-28-repo-example-path-demotion-validation.md`
 - `.10x/evidence/2026-06-28-repo-documentation-path-demotion-validation.md`
+- `.10x/evidence/2026-06-28-repo-nested-private-path-demotion-validation.md`
+- `.10x/evidence/2026-06-28-repo-embedded-agent-artifact-demotion-validation.md`
+- `.10x/evidence/2026-06-28-repo-example-scaffold-demotion-validation.md`
+- `.10x/evidence/2026-06-28-repo-oversize-file-card-indexing-validation.md`
+- `.10x/evidence/2026-06-28-repo-private-module-routing-validation.md`

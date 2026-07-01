@@ -29,6 +29,7 @@ RANKING_MODES = {"chunk", "file", "page"}
 RANKING_PROFILES = {"none", "repo_code"}
 RANKING_AGGREGATIONS = {"max", "adaptive_sum_3", "capped_sum_3"}
 RRF_K = 60
+AGENT_ARTIFACT_PATH_SEGMENTS = {".10x", ".agents", ".claude", ".cursor", ".loom", ".pi", ".turbo-search"}
 RETRIEVAL_ATTRIBUTES = [
     "title",
     "url",
@@ -631,6 +632,70 @@ DOCUMENTATION_INTENT_TOKENS = {
     "tutorial",
     "tutorials",
 }
+VENDORED_CLICK_LOW_LEVEL_TOKENS = {
+    "abort",
+    "badparameter",
+    "bools",
+    "datetime",
+    "echo",
+    "enum",
+    "exception",
+    "exceptions",
+    "exit",
+    "file",
+    "launch",
+    "numbers",
+    "parameter",
+    "path",
+    "progress",
+    "prompt",
+    "termui",
+    "terminal",
+    "types",
+    "uuid",
+}
+COMMAND_RUNTIME_TOKENS = {
+    "callback",
+    "command",
+    "commands",
+    "group",
+    "groups",
+    "invocation",
+    "invoke",
+    "lookup",
+    "registration",
+    "runtime",
+    "subcommand",
+}
+PARAMETER_METADATA_TOKENS = {
+    "annotated",
+    "argument",
+    "arguments",
+    "default",
+    "defaults",
+    "metadata",
+    "option",
+    "options",
+    "parameter",
+    "parameters",
+}
+UTILITY_INTENT_TOKENS = {"helper", "helpers", "util", "utilities", "utility", "utils"}
+CLI_INTENT_TOKENS = {"cli", "command", "commands", "runner", "script", "scripts"}
+TERMINAL_UI_TOKENS = {
+    "app",
+    "appdir",
+    "confirm",
+    "dir",
+    "echo",
+    "get",
+    "launch",
+    "progress",
+    "progressbar",
+    "prompt",
+    "secho",
+    "style",
+    "terminal",
+}
 PATH_SYMBOL_STOP_TOKENS = {
     "and",
     "are",
@@ -757,7 +822,7 @@ def ranking_profile_multiplier(hit: SearchHit, profile: str, *, query: str = "")
     query_tokens = lexical_tokens(query)
     path_tokens = lexical_tokens(path)
     multiplier = 1.0
-    if lower_path.startswith((".pi/", ".10x/", ".loom/", ".claude/", ".cursor/", ".turbo-search/", "artifacts/", "autoresearch/")):
+    if path_has_agent_artifact_segment(lower_path) or lower_path.startswith(("artifacts/", "autoresearch/")):
         multiplier *= 0.20
     elif lower_path.endswith(".json") and "/data/" in lower_path and any(
         marker in lower_path for marker in ("eval", "fixture", "seed", "dataset")
@@ -773,10 +838,27 @@ def ranking_profile_multiplier(hit: SearchHit, profile: str, *, query: str = "")
         multiplier *= 0.80
     if lower_path.startswith("docs/tutorial/") and not query_tokens & (DOCUMENTATION_INTENT_TOKENS | EXAMPLE_INTENT_TOKENS):
         multiplier *= 0.80
+    private_path_misses_query = nested_private_path_segment_misses_query(path, query=query)
+    if private_path_misses_query:
+        multiplier *= 0.80
+    if is_repo_example_scaffold_path(lower_path) and not query_tokens & EXAMPLE_INTENT_TOKENS:
+        multiplier *= 0.80
     if path_tokens & EXPERIMENT_PATH_TOKENS and not query_tokens & EXPERIMENT_INTENT_TOKENS:
         multiplier *= 0.70
     if lower_path.startswith("src/") and query_tokens & IMPLEMENTATION_INTENT_TOKENS:
         multiplier *= 1.12
+    if not private_path_misses_query and lower_path.endswith("/core.py") and query_tokens & COMMAND_RUNTIME_TOKENS:
+        multiplier *= 1.25
+    if lower_path.endswith("/models.py") and query_tokens & PARAMETER_METADATA_TOKENS:
+        multiplier *= 1.25
+    if lower_path.endswith("/utils.py") and query_tokens & PARAMETER_METADATA_TOKENS and not query_tokens & UTILITY_INTENT_TOKENS:
+        multiplier *= 0.75
+    if lower_path.endswith("/cli.py") and not query_tokens & CLI_INTENT_TOKENS:
+        multiplier *= 0.90
+    if "/_click/termui.py" in f"/{lower_path}" and query_tokens & TERMINAL_UI_TOKENS:
+        multiplier *= 1.20
+    if index_parent_matches_query(lower_path, query=query):
+        multiplier *= 1.50
     multiplier *= repo_path_symbol_multiplier(hit, query=query)
     return multiplier
 
@@ -788,6 +870,41 @@ def is_repo_example_path(lower_path: str) -> bool:
         or "/example/" in lower_path
         or "/examples/" in lower_path
     )
+
+
+def path_has_agent_artifact_segment(lower_path: str) -> bool:
+    return bool(set(normalize_path(lower_path).casefold().split("/")[:-1]) & AGENT_ARTIFACT_PATH_SEGMENTS)
+
+
+def is_repo_example_scaffold_path(lower_path: str) -> bool:
+    return normalize_path(lower_path).casefold().startswith(("docs_src/", "tests/test_tutorial/"))
+
+
+def index_parent_matches_query(lower_path: str, *, query: str = "") -> bool:
+    parts = normalize_path(lower_path).casefold().split("/")
+    return len(parts) >= 2 and parts[-1].startswith("index.") and file_stem_matches_query(
+        ranking_signal_tokens(query),
+        parts[-2],
+    )
+
+
+def nested_private_path_segment_misses_query(path: str, *, query: str = "") -> bool:
+    """Return true for nested private package/topic dirs absent from the query."""
+
+    query_tokens = ranking_signal_tokens(query)
+    parts = normalize_path(path).casefold().split("/")
+    if len(parts) < 3:
+        return False
+    package_index = 1 if parts[0] in {"src", "lib"} else 0
+    for index, segment in enumerate(parts[:-1]):
+        if index <= package_index or not segment.startswith("_"):
+            continue
+        segment_tokens = ranking_signal_tokens(segment)
+        if segment == "_click" and not query_tokens & VENDORED_CLICK_LOW_LEVEL_TOKENS:
+            return True
+        if not segment_tokens or related_token_count(query_tokens, segment_tokens) == 0:
+            return True
+    return False
 
 
 def repo_path_symbol_multiplier(hit: SearchHit, *, query: str = "") -> float:

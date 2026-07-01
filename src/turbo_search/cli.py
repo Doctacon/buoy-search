@@ -131,6 +131,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="GitHub repo only: add separate searchable file metadata card pages without changing code chunks.",
     )
     crawl_parser.add_argument(
+        "--repo-oversize-file-cards",
+        action="store_true",
+        help="GitHub repo only: add metadata card pages for oversize files that are skipped for code chunking.",
+    )
+    crawl_parser.add_argument(
         "--concurrent-requests",
         type=positive_int,
         default=DEFAULT_CRAWL_CONCURRENT_REQUESTS,
@@ -274,6 +279,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--repo-file-cards",
         action="store_true",
         help="GitHub repo only: add separate searchable file metadata card pages without changing code chunks.",
+    )
+    plan_parser.add_argument(
+        "--repo-oversize-file-cards",
+        action="store_true",
+        help="GitHub repo only: add metadata card pages for oversize files that are skipped for code chunking.",
     )
     plan_parser.add_argument(
         "--concurrent-requests",
@@ -657,6 +667,7 @@ def _run_crawl(args: argparse.Namespace) -> int:
         repo_max_file_bytes=args.repo_max_file_bytes,
         repo_search_metadata=args.repo_search_metadata,
         repo_file_cards=args.repo_file_cards,
+        repo_oversize_file_cards=args.repo_oversize_file_cards,
         concurrent_requests=args.concurrent_requests,
         concurrent_requests_per_domain=args.concurrent_requests_per_domain,
         download_delay=args.download_delay,
@@ -708,6 +719,7 @@ def _run_plan(args: argparse.Namespace) -> int:
         repo_max_file_bytes=args.repo_max_file_bytes,
         repo_search_metadata=args.repo_search_metadata,
         repo_file_cards=args.repo_file_cards,
+        repo_oversize_file_cards=args.repo_oversize_file_cards,
         concurrent_requests=args.concurrent_requests,
         concurrent_requests_per_domain=args.concurrent_requests_per_domain,
         download_delay=args.download_delay,
@@ -783,6 +795,7 @@ def plan_crawl_options(args: argparse.Namespace) -> dict[str, object]:
         "repo_max_file_bytes": args.repo_max_file_bytes,
         "repo_search_metadata": args.repo_search_metadata,
         "repo_file_cards": args.repo_file_cards,
+        "repo_oversize_file_cards": args.repo_oversize_file_cards,
         "concurrent_requests": args.concurrent_requests,
         "concurrent_requests_per_domain": args.concurrent_requests_per_domain,
         "download_delay": args.download_delay,

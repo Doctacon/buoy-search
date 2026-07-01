@@ -281,6 +281,39 @@ class GitHubRepoAcquisitionTests(unittest.TestCase):
             self.assertEqual(plan.stats.files_error, 0)
             self.assertGreaterEqual(plan.stats.chunks_generated, 4)
 
+    def test_build_corpus_can_write_file_cards_for_oversize_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            large_source = "class HugeApp:\n    pass\n\ndef run_huge_app():\n    return HugeApp()\n" + "# filler\n" * 20
+            remote = create_local_git_repo(
+                root / "remote",
+                files={
+                    "README.md": "# Docs\n",
+                    "src/huge_app.py": large_source,
+                },
+            )
+            acquisition = acquire_from_local_remote(root, remote)
+
+            corpus = build_github_repo_corpus(
+                acquisition,
+                root / "pages",
+                max_file_bytes=40,
+                include_oversize_file_cards=True,
+            )
+
+            self.assertEqual(corpus.stats.files_selected, 1)
+            self.assertEqual(corpus.stats.files_skipped_oversize, 1)
+            self.assertEqual(corpus.stats.file_card_pages_generated, 1)
+            generated = sorted((root / "pages").glob("*.md"))
+            self.assertEqual(len(generated), 2)
+            documents = [parse_markdown_file(path, root / "pages") for path in generated]
+            card = next(document for document in documents if document.metadata.get("repo_page_kind") == "oversize_file_card")
+            self.assertEqual(card.title, "src/huge_app.py file metadata")
+            self.assertEqual(card.metadata["repo_path"], "src/huge_app.py")
+            self.assertIn("Path tokens: src huge app", card.body)
+            self.assertIn("Symbols: HugeApp, run_huge_app", card.body)
+            self.assertNotIn("```python", card.body)
+
     def test_build_corpus_honors_repo_subdir_and_max_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

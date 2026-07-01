@@ -132,6 +132,7 @@ class CrawlOptions:
     repo_max_file_bytes: int = DEFAULT_GITHUB_REPO_MAX_FILE_BYTES
     repo_search_metadata: bool = False
     repo_file_cards: bool = False
+    repo_oversize_file_cards: bool = False
     concurrent_requests: int = DEFAULT_CRAWL_CONCURRENT_REQUESTS
     concurrent_requests_per_domain: int = DEFAULT_CRAWL_CONCURRENT_REQUESTS_PER_DOMAIN
     download_delay: float = DEFAULT_CRAWL_DOWNLOAD_DELAY
