@@ -208,6 +208,79 @@ class GitHubRepoAcquisitionTests(unittest.TestCase):
             self.assertEqual(plan.stats.files_error, 0)
             self.assertGreaterEqual(plan.stats.chunks_generated, 2)
 
+    def test_build_corpus_can_include_large_file_with_search_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = "\n".join(
+                [
+                    "class AlphaClass:",
+                    "    pass",
+                    "",
+                    "def helper_function():",
+                    "    return AlphaClass()",
+                ]
+                + ["value = 1"] * 20
+            )
+            remote = create_local_git_repo(root / "remote", files={"README.md": "# Docs\n", "src/large_module.py": source})
+            acquisition = acquire_from_local_remote(root, remote)
+
+            default_corpus = build_github_repo_corpus(acquisition, root / "default-pages", max_file_bytes=50)
+            metadata_corpus = build_github_repo_corpus(
+                acquisition,
+                root / "metadata-pages",
+                max_file_bytes=2000,
+                code_chunk_lines=4,
+                include_search_metadata=True,
+            )
+
+            self.assertEqual(default_corpus.stats.files_skipped_oversize, 1)
+            self.assertEqual(metadata_corpus.stats.files_selected, 2)
+            generated = next(
+                path
+                for path in (root / "metadata-pages").glob("*.md")
+                if parse_markdown_file(path, root / "metadata-pages").metadata["repo_path"] == "src/large_module.py"
+            )
+            body = parse_markdown_file(generated, root / "metadata-pages").body
+            self.assertIn("Search metadata:", body)
+            self.assertIn("Path tokens: src large module", body)
+            self.assertIn("Symbols: AlphaClass, helper_function", body)
+            self.assertIn("Symbol tokens: alpha class helper function", body)
+            self.assertIn("Symbol breadcrumbs: AlphaClass, helper_function", body)
+
+    def test_build_corpus_can_write_separate_file_cards(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            remote = create_local_git_repo(
+                root / "remote",
+                files={
+                    "README.md": "# Docs\n",
+                    "src/app.py": "class App:\n    pass\n\ndef run_app():\n    return App()\n",
+                },
+            )
+            acquisition = acquire_from_local_remote(root, remote)
+
+            corpus = build_github_repo_corpus(acquisition, root / "pages", include_file_cards=True)
+
+            self.assertEqual(corpus.stats.files_selected, 2)
+            self.assertEqual(corpus.stats.file_card_pages_generated, 2)
+            generated = sorted((root / "pages").glob("*.md"))
+            self.assertEqual(len(generated), 4)
+            documents = [parse_markdown_file(path, root / "pages") for path in generated]
+            card = next(document for document in documents if document.metadata.get("repo_page_kind") == "file_card" and document.metadata["repo_path"] == "src/app.py")
+            source_page = next(document for document in documents if document.metadata.get("repo_page_kind") == "source" and document.metadata["repo_path"] == "src/app.py")
+            self.assertEqual(card.title, "src/app.py file metadata")
+            self.assertEqual(card.metadata["source_kind"], "github_repo")
+            self.assertEqual(card.metadata["repo_full_name"], "owner/repo")
+            self.assertIn("# File metadata: src/app.py", card.body)
+            self.assertIn("Path tokens: src app", card.body)
+            self.assertIn("Symbols: App, run_app", card.body)
+            self.assertIn("Symbol tokens: app run", card.body)
+            self.assertNotIn("Search metadata:", source_page.body)
+
+            plan = process_corpus(root / "pages")
+            self.assertEqual(plan.stats.files_error, 0)
+            self.assertGreaterEqual(plan.stats.chunks_generated, 4)
+
     def test_build_corpus_honors_repo_subdir_and_max_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -51,7 +51,7 @@ The plan compares generated chunks to local applied state under `.turbo-search/s
 - `sitemap`: use robots/sitemap discovery; fall back to link crawling only when the sitemap path yields no pages. Use this for a lighter, sitemap-trusting crawl.
 - `link`: ignore sitemap URLs and crawl same-site links from the base URL.
 
-Hybrid/link crawling still obeys robots.txt, host restrictions, page caps, concurrency, and delay settings. Default website planning caps are `250` pages and `10000` chunks; default GitHub repository caps are `5000` repo files and `100000` chunks. Lower them for smoke tests or raise them for unusually large sources.
+Hybrid/link crawling still obeys robots.txt, host restrictions, page caps, concurrency, and delay settings. Default website planning caps are `250` pages and `10000` chunks; default GitHub repository caps are `5000` repo files, `100000` chunks, and `51200` bytes per text file. Lower them for smoke tests or raise them for unusually large sources.
 
 ### Path filters and URL canonicalization
 
@@ -69,11 +69,13 @@ For websites:
 - trailing slashes are stripped by default so `/docs/query` and `/docs/query/` canonicalize to one page.
 - `--keep-trailing-slash` preserves trailing-slash variants when a site needs that behavior.
 
-For GitHub repositories, `--include-path` and `--exclude-path` match repo-relative file paths. Default repo planning excludes generated/vendor directories plus local agent memory/run artifacts such as `.10x/`, `.loom/`, `.pi/`, `.turbo-search/`, `artifacts/`, `autoresearch/`, and eval fixture JSON under `/data/` so repository search stays focused on source, tests, and user-facing docs.
+For GitHub repositories, `--include-path` and `--exclude-path` match repo-relative file paths. Default repo planning excludes generated/vendor directories plus local agent memory/run artifacts such as `.10x/`, `.loom/`, `.pi/`, `.turbo-search/`, `artifacts/`, `autoresearch/`, and eval fixture JSON under `/data/` so repository search stays focused on source, tests, and user-facing docs. Repo-ranking experiments can opt into larger text files with `--repo-max-file-bytes`, searchable path/Python-symbol metadata inside generated code pages with `--repo-search-metadata`, or separate searchable metadata card pages with `--repo-file-cards`; these options do not change default repo planning.
 
 ```bash
 uv run turbo-search plan https://github.com/owner/repo --include-path 'docs/**'
 uv run turbo-search plan https://github.com/owner/repo --exclude-path 'dist/**'
+uv run turbo-search plan https://github.com/owner/repo --repo-max-file-bytes 200000 --repo-search-metadata
+uv run turbo-search plan https://github.com/owner/repo --repo-file-cards
 ```
 
 ## Apply preflight

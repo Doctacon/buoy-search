@@ -4,7 +4,7 @@ Updated: 2026-06-28
 
 # Repo and Website Ranking Defaults
 
-`turbo-search` retrieval defaults to hybrid ANN + BM25 + RRF followed by namespace-aware final ranking. GitHub repo planning also excludes generated/vendor directories plus local agent memory/run artifacts (`.10x/`, `.loom/`, `.pi/`, `.turbo-search/`, `artifacts/`, `autoresearch/`) and eval fixture JSON under `/data/` by default so repository search stays focused on source, tests, and user-facing docs.
+`turbo-search` retrieval defaults to hybrid ANN + BM25 + RRF followed by namespace-aware final ranking. GitHub repo planning also excludes generated/vendor directories plus local agent memory/run artifacts (`.10x/`, `.loom/`, `.pi/`, `.turbo-search/`, `artifacts/`, `autoresearch/`) and eval fixture JSON under `/data/` by default so repository search stays focused on source, tests, and user-facing docs. Repo planning skips text files above 51200 bytes by default; experiments can opt into larger files with `--repo-max-file-bytes` and searchable path/Python-symbol text with `--repo-search-metadata`.
 
 Website namespaces (`site-*`) default to:
 
@@ -55,6 +55,10 @@ The repo default was first promoted after live retrieval-only experiments improv
 
 Expanded validation on `pytest-dev/pytest` and `fastapi/typer` kept the repo default unchanged. Adaptive aggregation beat strict max on both new repos (`pytest: 84.742 vs 83.585`, `Typer: 59.423 vs 56.139`) and raw chunk by a large margin. Full `capped_sum_3` improved pytest (`88.278`) but regressed Typer (`52.663`), so capped remains opt-in under the no-regression policy. The Typer repo score is lower than other repo corpora partly because the current 50 KiB repo file cap skips central files such as `typer/main.py` and `typer/params.py`; see `.10x/tickets/2026-06-28-repo-oversize-source-indexing.md`.
 
+Live ablations on pytest and Typer showed metadata-only indexing is promising while oversize indexing is not default-safe. `--repo-search-metadata` with the default file-size cap improved existing seed scores (`pytest: 84.742 -> 85.971`, `Typer: 59.423 -> 62.062`). `--repo-max-file-bytes 200000` recovered authority-file queries targeting previously skipped central files (`pytest: 23.136 -> 78.622`, `Typer: 27.002 -> 69.619`) but regressed existing seed scores, so oversize remains opt-in or future query-routed behavior.
+
+Metadata-only cross-repo validation improved the five-repo average score/P@5 and improved pytest, Typer, and Click, but regressed turbo-search (`87.760 -> 85.568`) and Requests (`84.426 -> 84.000`) by composite score. Under the no-regression policy, do not promote metadata-only as a default. Keep `--repo-search-metadata` opt-in until metadata placement/scoring is retuned. Evidence: `.10x/evidence/2026-06-28-repo-search-metadata-cross-repo-validation.md`.
+
 Evidence:
 
 - `.10x/evidence/2026-06-28-repo-search-file-ranking-promotion-validation.md`
@@ -65,3 +69,4 @@ Evidence:
 - `.10x/evidence/2026-06-28-cross-repo-click-validation.md`
 - `.10x/evidence/2026-06-28-repo-adaptive-aggregation-validation.md`
 - `.10x/evidence/2026-06-28-cross-corpus-live-retrieval-evals.md`
+- `.10x/evidence/2026-06-28-repo-oversize-metadata-live-eval.md`

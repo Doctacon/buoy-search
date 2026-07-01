@@ -37,3 +37,4 @@ Expanded Ruff and Typer site evals improved with `page / none / pool20 / capped_
 ## Progress and notes
 
 - 2026-06-28: Opened after expanded Ruff/Typer docs evals improved with capped aggregation while existing Pi-site evidence prevents automatic promotion under no-regression policy.
+- 2026-06-28: Tested `adaptive_sum_3` against max and capped across turbopuffer, SQLMesh, Pi, Ruff docs, and Typer docs. Adaptive regressed turbopuffer composite score; capped still regressed Pi slightly. Website default remains `page/none/pool20/max` under no-regression policy. Evidence: `.10x/evidence/2026-06-28-website-adaptive-aggregation-review.md`.

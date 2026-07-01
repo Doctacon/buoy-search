@@ -76,10 +76,11 @@ website max_pages: 250
 website max_chunks: 10000
 GitHub repo max_files: 5000
 GitHub repo max_chunks: 100000
+GitHub repo max_file_bytes: 51200
 strip_trailing_slash: true
 ```
 
-GitHub repo planning excludes generated/vendor directories plus local agent memory/run artifacts such as `.10x/`, `.loom/`, `.pi/`, `.turbo-search/`, `artifacts/`, `autoresearch/`, and eval fixture JSON under `/data/` by default.
+GitHub repo planning excludes generated/vendor directories plus local agent memory/run artifacts such as `.10x/`, `.loom/`, `.pi/`, `.turbo-search/`, `artifacts/`, `autoresearch/`, and eval fixture JSON under `/data/` by default. For repo-ranking experiments, use `--repo-max-file-bytes` to include larger text files, `--repo-search-metadata` to add searchable path/Python-symbol metadata to generated code pages, or `--repo-file-cards` to add separate searchable metadata card pages per file while keeping code chunks clean; these are opt-in and do not change the default plan.
 
 Useful filters:
 

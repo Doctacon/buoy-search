@@ -28,6 +28,7 @@ from turbo_search.crawler import (
     DEFAULT_CRAWL_MAX_PAGES,
     DEFAULT_CRAWL_STRATEGY,
     DEFAULT_GITHUB_REPO_MAX_CHUNKS,
+    DEFAULT_GITHUB_REPO_MAX_FILE_BYTES,
     DEFAULT_GITHUB_REPO_MAX_FILES,
     GitHubRepoSource,
     CrawlOptions,
@@ -112,6 +113,22 @@ def build_parser() -> argparse.ArgumentParser:
             "Maximum chunks to generate. Defaults: "
             f"websites={DEFAULT_CRAWL_MAX_CHUNKS}, GitHub repos={DEFAULT_GITHUB_REPO_MAX_CHUNKS}."
         ),
+    )
+    crawl_parser.add_argument(
+        "--repo-max-file-bytes",
+        type=positive_int,
+        default=DEFAULT_GITHUB_REPO_MAX_FILE_BYTES,
+        help="GitHub repo only: maximum bytes per text file to include before chunking.",
+    )
+    crawl_parser.add_argument(
+        "--repo-search-metadata",
+        action="store_true",
+        help="GitHub repo only: include searchable path and Python symbol metadata in generated code pages.",
+    )
+    crawl_parser.add_argument(
+        "--repo-file-cards",
+        action="store_true",
+        help="GitHub repo only: add separate searchable file metadata card pages without changing code chunks.",
     )
     crawl_parser.add_argument(
         "--concurrent-requests",
@@ -241,6 +258,22 @@ def build_parser() -> argparse.ArgumentParser:
             "Maximum chunks to generate. Defaults: "
             f"websites={DEFAULT_CRAWL_MAX_CHUNKS}, GitHub repos={DEFAULT_GITHUB_REPO_MAX_CHUNKS}."
         ),
+    )
+    plan_parser.add_argument(
+        "--repo-max-file-bytes",
+        type=positive_int,
+        default=DEFAULT_GITHUB_REPO_MAX_FILE_BYTES,
+        help="GitHub repo only: maximum bytes per text file to include before chunking.",
+    )
+    plan_parser.add_argument(
+        "--repo-search-metadata",
+        action="store_true",
+        help="GitHub repo only: include searchable path and Python symbol metadata in generated code pages.",
+    )
+    plan_parser.add_argument(
+        "--repo-file-cards",
+        action="store_true",
+        help="GitHub repo only: add separate searchable file metadata card pages without changing code chunks.",
     )
     plan_parser.add_argument(
         "--concurrent-requests",
@@ -621,6 +654,9 @@ def _run_crawl(args: argparse.Namespace) -> int:
         out_dir=out_dir,
         max_pages=args.max_pages,
         max_chunks=args.max_chunks,
+        repo_max_file_bytes=args.repo_max_file_bytes,
+        repo_search_metadata=args.repo_search_metadata,
+        repo_file_cards=args.repo_file_cards,
         concurrent_requests=args.concurrent_requests,
         concurrent_requests_per_domain=args.concurrent_requests_per_domain,
         download_delay=args.download_delay,
@@ -669,6 +705,9 @@ def _run_plan(args: argparse.Namespace) -> int:
         out_dir=out_dir,
         max_pages=args.max_pages,
         max_chunks=args.max_chunks,
+        repo_max_file_bytes=args.repo_max_file_bytes,
+        repo_search_metadata=args.repo_search_metadata,
+        repo_file_cards=args.repo_file_cards,
         concurrent_requests=args.concurrent_requests,
         concurrent_requests_per_domain=args.concurrent_requests_per_domain,
         download_delay=args.download_delay,
@@ -741,6 +780,9 @@ def plan_crawl_options(args: argparse.Namespace) -> dict[str, object]:
     return {
         "max_pages": args.max_pages,
         "max_chunks": args.max_chunks,
+        "repo_max_file_bytes": args.repo_max_file_bytes,
+        "repo_search_metadata": args.repo_search_metadata,
+        "repo_file_cards": args.repo_file_cards,
         "concurrent_requests": args.concurrent_requests,
         "concurrent_requests_per_domain": args.concurrent_requests_per_domain,
         "download_delay": args.download_delay,

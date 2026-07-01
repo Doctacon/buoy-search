@@ -103,6 +103,10 @@ def fake_github_crawl_summary(source, options: CrawlOptions) -> dict[str, object
         "pages_dir": str(options.out_dir / "pages"),
         "max_pages": options.max_pages,
         "max_chunks": options.max_chunks,
+        "repo_max_file_bytes": options.repo_max_file_bytes,
+        "repo_search_metadata": options.repo_search_metadata,
+        "repo_file_cards": options.repo_file_cards,
+        "file_card_pages_generated": 1 if options.repo_file_cards else 0,
         "include_paths": list(options.include_paths),
         "exclude_paths": list(options.exclude_paths),
         "strip_trailing_slash": options.strip_trailing_slash,
@@ -334,6 +338,7 @@ class CliTests(unittest.TestCase):
             def fake_github_crawl(source, options: CrawlOptions) -> dict[str, object]:  # noqa: ANN001
                 self.assertEqual(options.max_pages, 5000)
                 self.assertEqual(options.max_chunks, 100000)
+                self.assertFalse(options.repo_file_cards)
                 write_fake_github_page(options.out_dir / "pages")
                 return fake_github_crawl_summary(source, options)
 
@@ -439,6 +444,9 @@ class CliTests(unittest.TestCase):
         def fake_github_crawl(source, options: CrawlOptions) -> dict[str, object]:  # noqa: ANN001
             self.assertEqual(options.max_pages, 5000)
             self.assertEqual(options.max_chunks, 100000)
+            self.assertEqual(options.repo_max_file_bytes, 123456)
+            self.assertTrue(options.repo_search_metadata)
+            self.assertTrue(options.repo_file_cards)
             write_fake_github_page(options.out_dir / "pages")
             return fake_github_crawl_summary(source, options)
 
@@ -454,6 +462,10 @@ class CliTests(unittest.TestCase):
                             str(out_dir),
                             "--state-root",
                             str(state_root),
+                            "--repo-max-file-bytes",
+                            "123456",
+                            "--repo-search-metadata",
+                            "--repo-file-cards",
                             "--json",
                         ]
                     )
@@ -474,6 +486,10 @@ class CliTests(unittest.TestCase):
         chunk = manifest["chunks"][0]
         self.assertEqual(chunk["source_metadata"]["source_kind"], "github_repo")
         self.assertEqual(chunk["source_metadata"]["repo_path"], "README.md")
+        plan = json.loads((out_dir / "plan.json").read_text(encoding="utf-8"))
+        self.assertEqual(plan["crawl_options"]["repo_max_file_bytes"], 123456)
+        self.assertTrue(plan["crawl_options"]["repo_search_metadata"])
+        self.assertTrue(plan["crawl_options"]["repo_file_cards"])
         github_mock.assert_called_once()
         site_mock.assert_not_called()
 

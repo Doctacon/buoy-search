@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from fnmatch import fnmatchcase
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 from typing import Any, Callable, Sequence
@@ -21,13 +22,21 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 from turbo_search.chunker import IndexingPlan, process_corpus, sha256_text
-from turbo_search.crawler import GitHubRepoSource, CrawlOptions, namespace_candidate, page_filename, summarize_sample_chunks, yaml_scalar
+from turbo_search.crawler import (
+    DEFAULT_GITHUB_REPO_MAX_FILE_BYTES,
+    GitHubRepoSource,
+    CrawlOptions,
+    namespace_candidate,
+    page_filename,
+    summarize_sample_chunks,
+    yaml_scalar,
+)
 
 DEFAULT_GITHUB_API_TIMEOUT = 15
 DEFAULT_GIT_TIMEOUT = 300
 GITHUB_API_VERSION = "2022-11-28"
 USER_AGENT = "turbo-search/0.1"
-DEFAULT_REPO_MAX_FILE_BYTES = 50 * 1024
+DEFAULT_REPO_MAX_FILE_BYTES = DEFAULT_GITHUB_REPO_MAX_FILE_BYTES
 DEFAULT_CODE_CHUNK_LINES = 80
 REPO_MARKDOWN_EXTENSIONS = {".md", ".markdown", ".mdx"}
 REPO_PROSE_EXTENSIONS = {".txt", ".rst", ".adoc"}
@@ -156,6 +165,7 @@ class GitHubRepoCorpusStats:
 
     files_discovered: int = 0
     files_selected: int = 0
+    file_card_pages_generated: int = 0
     files_skipped_binary: int = 0
     files_skipped_empty: int = 0
     files_skipped_oversize: int = 0
@@ -397,6 +407,9 @@ def crawl_github_repo(source: GitHubRepoSource, options: CrawlOptions) -> dict[s
         include_paths=options.include_paths,
         exclude_paths=options.exclude_paths,
         max_files=options.max_pages,
+        max_file_bytes=options.repo_max_file_bytes,
+        include_search_metadata=options.repo_search_metadata,
+        include_file_cards=options.repo_file_cards,
     )
     plan = process_corpus(
         pages_dir,
@@ -456,6 +469,10 @@ def build_github_repo_summary(
         "pages_dir": str(pages_dir),
         "max_pages": options.max_pages,
         "max_chunks": options.max_chunks,
+        "repo_max_file_bytes": options.repo_max_file_bytes,
+        "repo_search_metadata": options.repo_search_metadata,
+        "repo_file_cards": options.repo_file_cards,
+        "file_card_pages_generated": stats.file_card_pages_generated,
         "include_paths": list(options.include_paths),
         "exclude_paths": list(options.exclude_paths),
         "strip_trailing_slash": options.strip_trailing_slash,
@@ -492,6 +509,8 @@ def build_github_repo_corpus(
     max_files: int | None = None,
     max_file_bytes: int = DEFAULT_REPO_MAX_FILE_BYTES,
     code_chunk_lines: int = DEFAULT_CODE_CHUNK_LINES,
+    include_search_metadata: bool = False,
+    include_file_cards: bool = False,
     runner: Runner = subprocess.run,
     git_timeout: int = DEFAULT_GIT_TIMEOUT,
 ) -> GitHubRepoCorpus:
@@ -546,32 +565,72 @@ def build_github_repo_corpus(
 
     crawl_timestamp = datetime.now(timezone.utc).isoformat()
     for index, repo_file in enumerate(selected, start=1):
-        markdown = markdown_for_repo_file(repo_file, code_chunk_lines=code_chunk_lines)
+        markdown = markdown_for_repo_file(
+            repo_file,
+            code_chunk_lines=code_chunk_lines,
+            include_search_metadata=include_search_metadata,
+        )
         path = pages_dir / page_filename(repo_file.blob_url, repo_file.repo_path, index)
-        frontmatter = {
-            "url": repo_file.blob_url,
-            "title": repo_file.repo_path,
-            "status": 200,
-            "content_type": "text/plain; charset=utf-8",
-            "source_kind": "github_repo",
-            "repo_full_name": acquisition.metadata.repo_full_name,
-            "repo_owner": acquisition.metadata.owner,
-            "repo_name": acquisition.metadata.repo,
-            "repo_ref": acquisition.resolved_ref,
-            "commit_sha": acquisition.commit_sha,
-            "repo_path": repo_file.repo_path,
-            "language": repo_file.language,
-            "source_hash": repo_file.source_hash,
-            "crawl_timestamp": crawl_timestamp,
-            "fetcher": acquisition.acquisition_strategy,
-        }
-        lines = ["---"]
-        lines.extend(f"{key}: {yaml_scalar(value)}" for key, value in frontmatter.items())
-        lines.extend(["---", "", markdown.strip(), ""])
-        path.write_text("\n".join(lines), encoding="utf-8")
+        write_repo_markdown_page(
+            path,
+            repo_file,
+            acquisition=acquisition,
+            crawl_timestamp=crawl_timestamp,
+            markdown=markdown,
+            title=repo_file.repo_path,
+            page_kind="source",
+        )
+
+    if include_file_cards:
+        for index, repo_file in enumerate(selected, start=len(selected) + 1):
+            path = pages_dir / page_filename(repo_file.blob_url, f"{repo_file.repo_path}-file-card", index)
+            write_repo_markdown_page(
+                path,
+                repo_file,
+                acquisition=acquisition,
+                crawl_timestamp=crawl_timestamp,
+                markdown=markdown_for_repo_file_card(repo_file),
+                title=f"{repo_file.repo_path} file metadata",
+                page_kind="file_card",
+            )
+        stats.file_card_pages_generated = len(selected)
 
     stats.files_selected = len(selected)
     return GitHubRepoCorpus(pages_dir=pages_dir, selected_files=selected, stats=stats)
+
+
+def write_repo_markdown_page(
+    path: Path,
+    repo_file: GitHubRepoFile,
+    *,
+    acquisition: GitHubRepoAcquisition,
+    crawl_timestamp: str,
+    markdown: str,
+    title: str,
+    page_kind: str,
+) -> None:
+    frontmatter = {
+        "url": repo_file.blob_url,
+        "title": title,
+        "status": 200,
+        "content_type": "text/plain; charset=utf-8",
+        "source_kind": "github_repo",
+        "repo_full_name": acquisition.metadata.repo_full_name,
+        "repo_owner": acquisition.metadata.owner,
+        "repo_name": acquisition.metadata.repo,
+        "repo_ref": acquisition.resolved_ref,
+        "commit_sha": acquisition.commit_sha,
+        "repo_path": repo_file.repo_path,
+        "language": repo_file.language,
+        "repo_page_kind": page_kind,
+        "source_hash": repo_file.source_hash,
+        "crawl_timestamp": crawl_timestamp,
+        "fetcher": acquisition.acquisition_strategy,
+    }
+    lines = ["---"]
+    lines.extend(f"{key}: {yaml_scalar(value)}" for key, value in frontmatter.items())
+    lines.extend(["---", "", markdown.strip(), ""])
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def list_tracked_files(
@@ -730,16 +789,30 @@ def github_blob_url(acquisition: GitHubRepoAcquisition, repo_path: str) -> str:
     return f"{acquisition.metadata.repo_root_url}/blob/{ref}/{path}"
 
 
-def markdown_for_repo_file(repo_file: GitHubRepoFile, *, code_chunk_lines: int = DEFAULT_CODE_CHUNK_LINES) -> str:
+def markdown_for_repo_file(
+    repo_file: GitHubRepoFile,
+    *,
+    code_chunk_lines: int = DEFAULT_CODE_CHUNK_LINES,
+    include_search_metadata: bool = False,
+) -> str:
     suffix = Path(repo_file.repo_path).suffix.lower()
     if suffix in REPO_MARKDOWN_EXTENSIONS:
         return repo_file.text
     if suffix in REPO_PROSE_EXTENSIONS:
         return f"# {repo_file.repo_path}\n\n{repo_file.text.strip()}"
-    return code_markdown_for_repo_file(repo_file, code_chunk_lines=code_chunk_lines)
+    return code_markdown_for_repo_file(
+        repo_file,
+        code_chunk_lines=code_chunk_lines,
+        include_search_metadata=include_search_metadata,
+    )
 
 
-def code_markdown_for_repo_file(repo_file: GitHubRepoFile, *, code_chunk_lines: int) -> str:
+def code_markdown_for_repo_file(
+    repo_file: GitHubRepoFile,
+    *,
+    code_chunk_lines: int,
+    include_search_metadata: bool = False,
+) -> str:
     lines = repo_file.text.splitlines()
     fence = "~~~~" if "```" in repo_file.text else "```"
     language = repo_file.language if repo_file.language != "text" else ""
@@ -749,20 +822,99 @@ def code_markdown_for_repo_file(repo_file: GitHubRepoFile, *, code_chunk_lines: 
         f"Repository file: `{repo_file.repo_path}`",
         f"Language: `{repo_file.language}`",
     ]
+    symbol_positions = extract_repo_symbol_positions(lines, repo_file.language) if include_search_metadata else []
+    if include_search_metadata:
+        chunks.extend(["", *repo_search_metadata_lines(repo_file)])
     for start in range(0, len(lines), code_chunk_lines):
         end = min(start + code_chunk_lines, len(lines))
-        block = "\n".join(lines[start:end])
-        chunks.extend(
+        block_lines = lines[start:end]
+        block = "\n".join(block_lines)
+        chunk_symbols = [symbol for line_number, symbol in symbol_positions if start < line_number <= end]
+        prior_symbols = [symbol for line_number, symbol in symbol_positions if line_number <= start + 1]
+        breadcrumb_symbols = chunk_symbols or prior_symbols[-3:]
+        section_lines = [
+            "",
+            f"## Lines {start + 1}-{end}",
+            "",
+        ]
+        if include_search_metadata and breadcrumb_symbols:
+            section_lines.extend([f"Symbol breadcrumbs: {', '.join(breadcrumb_symbols[:20])}", ""])
+        section_lines.extend(
             [
-                "",
-                f"## Lines {start + 1}-{end}",
-                "",
                 f"{fence}{language}",
                 block,
                 fence,
             ]
         )
+        chunks.extend(section_lines)
     return "\n".join(chunks)
+
+
+def markdown_for_repo_file_card(repo_file: GitHubRepoFile) -> str:
+    return "\n".join(
+        [
+            f"# File metadata: {repo_file.repo_path}",
+            "",
+            f"Repository file: `{repo_file.repo_path}`",
+            f"Language: `{repo_file.language}`",
+            "",
+            *repo_search_metadata_lines(repo_file),
+        ]
+    )
+
+
+def repo_search_metadata_lines(repo_file: GitHubRepoFile) -> list[str]:
+    symbols = extract_repo_symbols(repo_file.text, repo_file.language)
+    path_tokens = split_identifier_tokens(Path(repo_file.repo_path).with_suffix("").as_posix().replace("/", " "))
+    symbol_tokens = split_identifier_tokens(" ".join(symbols))
+    lines = [
+        "Search metadata:",
+        f"Path tokens: {' '.join(path_tokens[:80])}",
+        f"File stem: {Path(repo_file.repo_path).stem}",
+    ]
+    if symbols:
+        lines.append(f"Symbols: {', '.join(symbols[:80])}")
+    if symbol_tokens:
+        lines.append(f"Symbol tokens: {' '.join(symbol_tokens[:120])}")
+    return lines
+
+
+def extract_repo_symbols(text: str, language: str) -> list[str]:
+    return unique_symbols(symbol for _line_number, symbol in extract_repo_symbol_positions(text.splitlines(), language))
+
+
+def extract_repo_symbol_positions(lines: Sequence[str], language: str) -> list[tuple[int, str]]:
+    if language != "python":
+        return []
+    positions: list[tuple[int, str]] = []
+    pattern = re.compile(r"^\s*(?:async\s+def|def|class)\s+([A-Za-z_][A-Za-z0-9_]*)")
+    for line_number, line in enumerate(lines, start=1):
+        match = pattern.match(line)
+        if match:
+            positions.append((line_number, match.group(1)))
+    return positions
+
+
+def unique_symbols(symbols: Sequence[str]) -> list[str]:
+    unique: list[str] = []
+    seen: set[str] = set()
+    for symbol in symbols:
+        if symbol not in seen:
+            seen.add(symbol)
+            unique.append(symbol)
+    return unique
+
+
+def split_identifier_tokens(value: str) -> list[str]:
+    tokens: list[str] = []
+    seen: set[str] = set()
+    for raw_token in re.split(r"[^A-Za-z0-9]+", value):
+        for token in re.findall(r"[A-Z]+(?=[A-Z][a-z]|$)|[A-Z]?[a-z]+|[0-9]+", raw_token):
+            cleaned = token.casefold()
+            if cleaned and cleaned not in seen:
+                seen.add(cleaned)
+                tokens.append(cleaned)
+    return tokens
 
 
 def run_git_stdout(
