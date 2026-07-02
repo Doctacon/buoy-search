@@ -10,7 +10,7 @@ For a new public website, the shortest local-only planning command is:
 uv run turbo-search plan "https://example.com/"
 ```
 
-From 2026-07-02 onward, interactive text-mode `plan` and `crawl` runs show a default one-line progress indicator on stderr. It updates in place with crawl/plan phases so long crawls do not feel stalled and do not spam terminal output. The renderer truncates messages to terminal width so long URLs do not soft-wrap into apparent new lines.
+From 2026-07-02 onward, interactive text-mode `plan` and `crawl` runs show a default one-line progress indicator on stderr. It updates in place with crawl/plan phases so long crawls do not feel stalled and do not spam terminal output. The renderer truncates messages to terminal width so long URLs do not soft-wrap into apparent new lines. Progress labels use `cap=` for crawl limits; sitemap crawl labels add a sitemap-derived URL estimate when available instead of treating the cap as the known total.
 
 Default website planning caps are `3000` pages and `120000` chunks. Use lower caps for smoke tests or when you only need a subset.
 

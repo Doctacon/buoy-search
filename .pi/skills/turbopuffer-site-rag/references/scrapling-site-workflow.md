@@ -54,7 +54,7 @@ uv run turbo-search plan \
   --css-selector ".md-content__inner"
 ```
 
-Interactive text-mode `crawl` and `plan` runs show a one-line stderr progress indicator by default. It is suppressed for `--json`, non-TTY stderr, and `--no-progress`.
+Interactive text-mode `crawl` and `plan` runs show a one-line stderr progress indicator by default. It is suppressed for `--json`, non-TTY stderr, and `--no-progress`. Progress labels use explicit `cap=` wording for crawl limits; sitemap crawl labels include a sitemap-derived page estimate after matching sitemap URLs are discovered.
 
 Expected safety fields for crawl/plan:
 

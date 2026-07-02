@@ -159,6 +159,21 @@ def progress_url_label(url: str, *, max_length: int = 80) -> str:
     return f"{text[: max_length - 1]}…"
 
 
+def sitemap_attempt_total(sitemap_url_count: int, cap: int) -> int | None:
+    if sitemap_url_count <= 0:
+        return None
+    return min(sitemap_url_count, cap)
+
+
+def sitemap_page_progress_label(pages_scraped: int, *, sitemap_url_count: int, cap: int) -> str:
+    total = sitemap_attempt_total(sitemap_url_count, cap)
+    if total is None:
+        return f"{pages_scraped}; cap={cap}"
+    if sitemap_url_count > cap:
+        return f"{pages_scraped}/{total}; sitemap={sitemap_url_count}; cap={cap}"
+    return f"{pages_scraped}/{total}; cap={cap}"
+
+
 @dataclass(frozen=True)
 class CrawledPage:
     """One page extracted by Scrapling for dry-run chunking."""
@@ -492,7 +507,7 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
             self._scheduled_urls: set[str] = {page_identity_url(_base_url, strip_trailing_slash=_strip_trailing_slash)}
             self._pages_scraped = 0
             self._links = LinkExtractor(allow_domains=_allowed_host)
-            emit_progress(_progress_callback, f"crawl link: queued=1/{_max_pages}; pages=0; {progress_url_label(_base_url)}")
+            emit_progress(_progress_callback, f"crawl link: pages=0; queued=1; cap={_max_pages}; {progress_url_label(_base_url)}")
             super().__init__()
 
         async def parse(self, response):
@@ -511,7 +526,7 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
                 self._pages_scraped += 1
                 emit_progress(
                     _progress_callback,
-                    f"crawl link: pages={self._pages_scraped}/{_max_pages}; queued={len(self._scheduled_urls)}; {progress_url_label(page.url)}",
+                    f"crawl link: pages={self._pages_scraped}; queued={len(self._scheduled_urls)}; cap={_max_pages}; {progress_url_label(page.url)}",
                 )
                 yield page.__dict__
 
@@ -534,7 +549,7 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
                 self._scheduled_urls.add(url_key)
                 emit_progress(
                     _progress_callback,
-                    f"crawl link: pages={self._pages_scraped}/{_max_pages}; queued={len(self._scheduled_urls)}; {progress_url_label(url)}",
+                    f"crawl link: pages={self._pages_scraped}; queued={len(self._scheduled_urls)}; cap={_max_pages}; {progress_url_label(url)}",
                 )
                 yield response.follow(url, callback=self.parse)
 
@@ -569,13 +584,14 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
 
         def __init__(self) -> None:
             self._scheduled_page_urls: set[str] = set()
+            self._estimated_sitemap_page_urls: set[str] = set()
             self._pages_scraped = 0
             self._allowed_links = LinkExtractor(allow_domains=_allowed_host)
-            emit_progress(_progress_callback, f"crawl sitemap: discovering up to {_max_pages} pages")
+            emit_progress(_progress_callback, f"crawl sitemap: discovering pages; cap={_max_pages}")
             super().__init__()
 
         def _dispatch(self, response, url, rules):  # noqa: ANN001 - matches Scrapling template hook.
-            if len(self._scheduled_page_urls) >= _max_pages:
+            if _progress_callback is None and len(self._scheduled_page_urls) >= _max_pages:
                 return None
             if not self._allowed_links.matches(url):
                 return None
@@ -587,12 +603,22 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
             ):
                 return None
             url_key = page_identity_url(url, strip_trailing_slash=_strip_trailing_slash)
-            if url_key in self._scheduled_page_urls:
+            if _progress_callback is not None:
+                if url_key in self._estimated_sitemap_page_urls:
+                    return None
+                self._estimated_sitemap_page_urls.add(url_key)
+            elif url_key in self._scheduled_page_urls:
+                return None
+            if len(self._scheduled_page_urls) >= _max_pages:
+                emit_progress(
+                    _progress_callback,
+                    f"crawl sitemap: sitemap={len(self._estimated_sitemap_page_urls)}; queued={len(self._scheduled_page_urls)}; cap={_max_pages}; {progress_url_label(url)}",
+                )
                 return None
             self._scheduled_page_urls.add(url_key)
             emit_progress(
                 _progress_callback,
-                f"crawl sitemap: queued={len(self._scheduled_page_urls)}/{_max_pages}; {progress_url_label(url)}",
+                f"crawl sitemap: sitemap={len(self._estimated_sitemap_page_urls)}; queued={len(self._scheduled_page_urls)}; cap={_max_pages}; {progress_url_label(url)}",
             )
             return response.follow(url, callback=self.parse)
 
@@ -606,7 +632,7 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
                 self._pages_scraped += 1
                 emit_progress(
                     _progress_callback,
-                    f"crawl sitemap: pages={self._pages_scraped}/{_max_pages}; queued={len(self._scheduled_page_urls)}; {progress_url_label(page.url)}",
+                    f"crawl sitemap: pages={sitemap_page_progress_label(self._pages_scraped, sitemap_url_count=len(self._estimated_sitemap_page_urls), cap=_max_pages)}; queued={len(self._scheduled_page_urls)}; {progress_url_label(page.url)}",
                 )
                 yield page.__dict__
 

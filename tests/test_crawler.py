@@ -14,6 +14,7 @@ from turbo_search.crawler import (
     CrawlOptions,
     GitHubRepoSource,
     WebsiteSource,
+    build_sitemap_spider_class,
     canonicalize_page_url,
     allowed_domains_for_url,
     crawl_pages,
@@ -24,6 +25,7 @@ from turbo_search.crawler import (
     namespace_candidate,
     page_filename,
     parse_github_repo_url,
+    sitemap_page_progress_label,
     sitemap_seed_urls,
     source_id_for_url,
     validate_base_url,
@@ -134,6 +136,43 @@ class CrawlerHelperTests(unittest.TestCase):
                 "https://example.com/sitemap_index.xml",
             ],
         )
+
+    def test_sitemap_page_progress_label_uses_estimate_not_cap_when_available(self) -> None:
+        self.assertEqual(sitemap_page_progress_label(1, sitemap_url_count=0, cap=3000), "1; cap=3000")
+        self.assertEqual(sitemap_page_progress_label(1, sitemap_url_count=842, cap=3000), "1/842; cap=3000")
+        self.assertEqual(
+            sitemap_page_progress_label(1, sitemap_url_count=5231, cap=3000),
+            "1/3000; sitemap=5231; cap=3000",
+        )
+
+    def test_sitemap_spider_estimates_unique_filtered_urls_beyond_cap(self) -> None:
+        events: list[str] = []
+        options = CrawlOptions(
+            base_url="https://example.com/docs/",
+            out_dir=Path("unused"),
+            max_pages=2,
+            include_paths=("/docs/**",),
+            progress_callback=events.append,
+        )
+        spider_cls = build_sitemap_spider_class(options, "example.com")
+        spider = spider_cls()
+
+        class Response:
+            def follow(self, url, callback=None):
+                return (url, callback)
+
+        response = Response()
+
+        self.assertIsNotNone(spider._dispatch(response, "https://example.com/docs/a", []))
+        self.assertIsNotNone(spider._dispatch(response, "https://example.com/docs/b", []))
+        self.assertIsNone(spider._dispatch(response, "https://example.com/blog/c", []))
+        self.assertIsNone(spider._dispatch(response, "https://example.com/docs/a#duplicate", []))
+        self.assertIsNone(spider._dispatch(response, "https://example.com/docs/c", []))
+
+        self.assertIn("crawl sitemap: discovering pages; cap=2", events)
+        self.assertIn("crawl sitemap: sitemap=1; queued=1; cap=2; https://example.com/docs/a", events)
+        self.assertIn("crawl sitemap: sitemap=2; queued=2; cap=2; https://example.com/docs/b", events)
+        self.assertIn("crawl sitemap: sitemap=3; queued=2; cap=2; https://example.com/docs/c", events)
 
     def test_url_path_filters_support_include_exclude_and_globs(self) -> None:
         self.assertTrue(
