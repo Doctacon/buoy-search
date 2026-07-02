@@ -633,6 +633,56 @@ DOCUMENTATION_INTENT_TOKENS = {
     "tutorials",
 }
 CLI_INTENT_TOKENS = {"cli", "command", "commands", "runner", "script", "scripts"}
+COMMAND_RUNTIME_TOKENS = {
+    "callback",
+    "command",
+    "commands",
+    "execute",
+    "execution",
+    "group",
+    "groups",
+    "invocation",
+    "invoke",
+    "lookup",
+    "main",
+    "registration",
+    "runtime",
+    "subcommand",
+}
+PARAMETER_METADATA_TOKENS = {
+    "annotated",
+    "argument",
+    "arguments",
+    "default",
+    "defaults",
+    "field",
+    "fields",
+    "metadata",
+    "model",
+    "models",
+    "option",
+    "options",
+    "parameter",
+    "parameters",
+}
+UTILITY_INTENT_TOKENS = {"helper", "helpers", "util", "utilities", "utility", "utils"}
+DUNDER_INIT_PUBLIC_TOKENS = {
+    "api",
+    "entry",
+    "entrypoint",
+    "export",
+    "exports",
+    "init",
+    "initialization",
+    "initialize",
+    "level",
+    "main",
+    "module",
+    "public",
+    "reexport",
+    "reexports",
+    "top",
+}
 TERMINAL_UI_TOKENS = {
     "app",
     "appdir",
@@ -815,6 +865,8 @@ def ranking_profile_multiplier(hit: SearchHit, profile: str, *, query: str = "")
         multiplier *= 0.80
     if lower_path.startswith("docs/tutorial/") and not query_tokens & (DOCUMENTATION_INTENT_TOKENS | EXAMPLE_INTENT_TOKENS):
         multiplier *= 0.80
+    if lower_path.startswith("docs/source/") and not query_tokens & DOCUMENTATION_INTENT_TOKENS:
+        multiplier *= 0.80
     private_path_misses_query = nested_private_path_segment_misses_query(path, query=query)
     if private_path_misses_query:
         multiplier *= 0.80
@@ -826,6 +878,20 @@ def ranking_profile_multiplier(hit: SearchHit, profile: str, *, query: str = "")
         multiplier *= 0.70
     if lower_path.startswith("src/") and query_tokens & IMPLEMENTATION_INTENT_TOKENS:
         multiplier *= 1.12
+    if rust_crate_root_entrypoint_matches_query(lower_path, query=query):
+        multiplier *= 1.35
+    if lower_path.endswith("/__init__.py") and not query_tokens & DUNDER_INIT_PUBLIC_TOKENS:
+        multiplier *= 0.82
+    if lower_path.endswith("/core.py") and query_tokens & COMMAND_RUNTIME_TOKENS:
+        multiplier *= 1.20
+    if lower_path.endswith("/models.py") and query_tokens & PARAMETER_METADATA_TOKENS:
+        multiplier *= 1.20
+    if (
+        lower_path.endswith("/utils.py")
+        and query_tokens & PARAMETER_METADATA_TOKENS
+        and not query_tokens & UTILITY_INTENT_TOKENS
+    ):
+        multiplier *= 0.75
     if lower_path.endswith("/cli.py") and not query_tokens & CLI_INTENT_TOKENS:
         multiplier *= 0.90
     if "/_click/termui.py" in f"/{lower_path}" and query_tokens & TERMINAL_UI_TOKENS:
@@ -861,6 +927,18 @@ def index_parent_matches_query(lower_path: str, *, query: str = "") -> bool:
     )
 
 
+def rust_crate_root_entrypoint_matches_query(lower_path: str, *, query: str = "") -> bool:
+    parts = normalize_path(lower_path).casefold().split("/")
+    if (
+        len(parts) != 4
+        or parts[0] != "crates"
+        or parts[2] != "src"
+        or parts[3] not in {"lib.rs", "main.rs"}
+    ):
+        return False
+    return related_token_count(ranking_signal_tokens(query), ranking_signal_tokens(parts[1])) >= 1
+
+
 def is_repo_fixture_scaffold_path(lower_path: str) -> bool:
     normalized = f"/{normalize_path(lower_path).casefold()}"
     return any(marker in normalized for marker in ("/fixtures/", "/snapshots/", "/resources/test/", "/tests/data/"))
@@ -874,8 +952,11 @@ def nested_private_path_segment_misses_query(path: str, *, query: str = "") -> b
     if len(parts) < 3:
         return False
     package_index = 1 if parts[0] in {"src", "lib"} else 0
+    path_tokens = ranking_signal_tokens(path)
     for index, segment in enumerate(parts[:-1]):
         if index <= package_index or not segment.startswith("_"):
+            continue
+        if segment == "_internal" and related_token_count(query_tokens, path_tokens) >= 2:
             continue
         segment_tokens = ranking_signal_tokens(segment)
         if not segment_tokens or related_token_count(query_tokens, segment_tokens) == 0:

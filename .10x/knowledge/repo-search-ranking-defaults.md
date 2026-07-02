@@ -1,6 +1,6 @@
 Status: active
 Created: 2026-06-28
-Updated: 2026-06-28
+Updated: 2026-07-01
 
 # Repo and Website Ranking Defaults
 
@@ -38,9 +38,13 @@ ranking_aggregation = adaptive_sum_3
 - example/demo paths such as `examples/`, `docs_src/`, `example_scripts/`, `/example/`, and `/examples/` are demoted for non-example queries;
 - example scaffold paths such as `docs_src/` and `tests/test_tutorial/` receive an extra demotion for non-example/tutorial queries;
 - fixture/snapshot scaffold paths such as `/fixtures/`, `/snapshots/`, `/resources/test/`, and `/tests/data/` receive a conservative extra demotion for queries that are not asking for fixtures, snapshots, or tests;
-- nested private path segments such as `typer/_click/` are demoted when the private segment is not query-related, while private package roots such as `src/_pytest/` are exempt;
+- nested private path segments such as `typer/_click/` are demoted when the private segment is not query-related, while private package roots such as `src/_pytest/` are exempt; `_internal` package segments are not demoted when the full path has at least two query-token matches;
 - `tests/` files get a light boost because repository evals often ask where behavior is validated;
 - source/config files are mostly neutral, with conservative query-aware boosts for exact source filename matches and Python `def`/`class` declarations already present in retrieved chunks; source-path recognition includes ordinary top-level package files such as `django/http/request.py`, `httpx/_models.py`, `rich/text.py`, `mkdocs/commands/build.py`, and `pydantic/type_adapter.py`, not just `src/` and `lib/`;
+- Rust crate root entrypoints `crates/<crate>/src/lib.rs` and `crates/<crate>/src/main.rs` are boosted when the query matches the crate name;
+- conventional Python module names are query-aware: `core.py` is boosted for command/runtime queries, `models.py` is boosted for parameter/field/model metadata queries, and `utils.py` is demoted for parameter metadata queries that are not asking for utility helpers;
+- non-public `__init__.py` files are demoted unless the query asks for public API, exports, module entrypoints, initialization, or top-level behavior;
+- `docs/source/` paths receive an extra demotion for non-documentation queries;
 - a small conventional-file subset is query-aware: non-CLI `cli.py` hits are gently demoted, nested `_click/termui.py` gets a terminal-UI boost, and `index.*` can match its parent directory name;
 - when top five lacks docs/tests and rank 1 is an implementation file, one strong docs/tests companion may be promoted into slot five without replacing the top implementation hit.
 
@@ -82,6 +86,10 @@ The full private-module routing candidate (`_click` special demotion, `core.py`/
 
 Broad package-root source recognition plus conservative fixture/snapshot scaffold demotion passed the 13-repo distribution policy and met the user's next +2.0 target: average score `70.545 -> 72.762` (`+2.216`), P@5 unchanged, positive gains on 8 repos, no score/P@5 regressions, and largest gain share 23.5%. Evidence: `.10x/evidence/2026-06-28-repo-source-fixture-routing-validation.md`.
 
+Conventional entrypoint routing passed the 13-repo distribution policy and met the user's next +2.0 target: average score `72.762 -> 74.874` (`+2.112`), P@5 `0.452 -> 0.478`, positive gains on 10 repos, no score/P@5 regressions, and largest gain share 35.2%. Evidence: `.10x/evidence/2026-07-01-repo-conventional-entrypoint-routing-validation.md`.
+
+A per-repo portfolio/routing candidate passed the next +2.0 target but is not a universal default: average score `74.874 -> 77.761` (`+2.887`), P@5 `0.478 -> 0.500`, positive gains on all 13 repos, no score/P@5 regressions, and largest gain share 21.2%. It combines selected file-card/metadata/oversize-card namespaces, candidate-depth tuning, and aggregation routing. Treat it as evidence for a future automatic selector or explicit retrieval profile, not as the current default. Evidence: `.10x/evidence/2026-07-01-repo-portfolio-routing-validation.md`.
+
 Oversize file-card indexing (`--repo-oversize-file-cards`) remains opt-in only. It improved Click but regressed turbo-search, Requests, pytest, and Typer in five-repo validation. Evidence: `.10x/evidence/2026-06-28-repo-oversize-file-card-indexing-validation.md`.
 
 Evidence:
@@ -106,3 +114,5 @@ Evidence:
 - `.10x/evidence/2026-06-28-repo-private-module-routing-validation.md`
 - `.10x/evidence/2026-06-28-expanded-repo-ranking-basket-validation.md`
 - `.10x/evidence/2026-06-28-repo-source-fixture-routing-validation.md`
+- `.10x/evidence/2026-07-01-repo-conventional-entrypoint-routing-validation.md`
+- `.10x/evidence/2026-07-01-repo-portfolio-routing-validation.md`

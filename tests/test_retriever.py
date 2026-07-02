@@ -353,7 +353,7 @@ class RetrieverTests(unittest.TestCase):
                 "repo_code",
                 query="Where is Click command conversion implemented?",
             ),
-            1.0,
+            1.20,
         )
         self.assertEqual(
             ranking_profile_multiplier(
@@ -371,13 +371,29 @@ class RetrieverTests(unittest.TestCase):
             ),
             1.04,
         )
+        self.assertAlmostEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="internal-match", repo_path="pydantic/_internal/_model_construction.py"),
+                "repo_code",
+                query="Where does Pydantic collect model fields and construct model classes?",
+            ),
+            1.04,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="internal-miss", repo_path="pydantic/_internal/_model_construction.py"),
+                "repo_code",
+                query="Where is validation implemented?",
+            ),
+            0.80,
+        )
         self.assertEqual(
             ranking_profile_multiplier(
                 SearchHit(id="core", repo_path="typer/core.py"),
                 "repo_code",
                 query="Where is command group runtime implemented?",
             ),
-            1.0,
+            1.20,
         )
         self.assertEqual(
             ranking_profile_multiplier(
@@ -385,7 +401,7 @@ class RetrieverTests(unittest.TestCase):
                 "repo_code",
                 query="Where are option and argument parameter metadata defined?",
             ),
-            1.0,
+            1.20,
         )
         self.assertEqual(
             ranking_profile_multiplier(
@@ -393,7 +409,7 @@ class RetrieverTests(unittest.TestCase):
                 "repo_code",
                 query="Where are option and argument parameter metadata defined?",
             ),
-            1.0,
+            0.75,
         )
         self.assertAlmostEqual(
             ranking_profile_multiplier(
@@ -434,6 +450,30 @@ class RetrieverTests(unittest.TestCase):
                 query="Where is the lint snapshot fixture?",
             ),
             1.0,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="rust-root", repo_path="crates/ruff_python_formatter/src/lib.rs"),
+                "repo_code",
+                query="Where does Ruff implement Python formatter options?",
+            ),
+            1.35,
+        )
+        self.assertAlmostEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="docs-source", repo_path="docs/source/text.rst"),
+                "repo_code",
+                query="Where are Text styling spans implemented?",
+            ),
+            0.728,
+        )
+        self.assertEqual(
+            ranking_profile_multiplier(
+                SearchHit(id="dunder-init", repo_path="django/http/__init__.py"),
+                "repo_code",
+                query="Where are HttpRequest and HttpResponse implemented?",
+            ),
+            0.82,
         )
 
     def test_source_path_recognizes_package_roots_without_fixture_noise(self) -> None:
