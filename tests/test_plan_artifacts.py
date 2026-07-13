@@ -79,7 +79,7 @@ class PlanArtifactTests(unittest.TestCase):
         self.assertEqual(plan["state_backend"], "local")
         self.assertEqual(
             plan["state_path"],
-            ".turbo-search/state/example-com/site-example-com-v1/last-applied.json",
+            ".turbo-search/state/example-com/site-example-com-v1/state.duckdb",
         )
         self.assertEqual(plan["diff"]["rows_to_upsert"], 1)
         self.assertEqual(plan["diff"]["chunks_to_embed"], 1)

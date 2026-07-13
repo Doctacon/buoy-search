@@ -13,7 +13,7 @@ from turbo_search.applied_state import AppliedStateRow, build_applied_state, sav
 from turbo_search.cli import OneLineProgress, build_parser, main
 from turbo_search.crawler import CrawlOptions
 from turbo_search.chunker import process_corpus
-from turbo_search.plan_artifacts import build_plan_artifacts
+from turbo_search.plan_artifacts import build_plan_artifacts, write_plan_artifacts
 
 
 def write_fake_crawl_page(pages_dir: Path) -> None:
@@ -558,10 +558,50 @@ class CliTests(unittest.TestCase):
         self.assertEqual(plan["crawl_options"]["include_paths"], ["/docs/**"])
         self.assertEqual(plan["crawl_options"]["exclude_paths"], ["/llms-full.txt"])
         self.assertTrue(plan["crawl_options"]["strip_trailing_slash"])
-        self.assertEqual(plan["state_path"], str(state_root / "state/example-com/site-example-com-v1/last-applied.json"))
+        self.assertEqual(plan["state_path"], str(state_root / "state/example-com/site-example-com-v1/state.duckdb"))
         self.assertEqual(len(manifest["pages"]), 1)
         self.assertEqual(len(chunks), 1)
         crawl_mock.assert_called_once()
+
+    def test_plan_command_removes_verified_superseded_same_namespace_plan(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        plans_root = root / "plans"
+        old_dir = plans_root / "old"
+        old_pages = old_dir / "pages"
+        write_fake_crawl_page(old_pages)
+        old_artifacts = build_plan_artifacts(
+            indexing_plan=process_corpus(old_pages),
+            base_url="https://example.com/docs/",
+            out_dir=old_dir,
+            state_root=root / "state",
+        )
+        write_plan_artifacts(old_artifacts, old_dir)
+        out_dir = plans_root / "new"
+
+        def fake_crawl(options: CrawlOptions) -> dict[str, object]:
+            write_fake_crawl_page(options.out_dir / "pages")
+            return fake_plan_crawl_summary(options)
+
+        stdout = StringIO()
+        with patch("turbo_search.cli.crawl_site", side_effect=fake_crawl):
+            with redirect_stdout(stdout):
+                result = main(
+                    [
+                        "plan",
+                        "https://example.com/docs/",
+                        "--out-dir",
+                        str(out_dir),
+                        "--state-root",
+                        str(root / "state"),
+                        "--json",
+                    ]
+                )
+
+        self.assertEqual(result, 0)
+        self.assertFalse(old_dir.exists())
+        self.assertTrue((out_dir / "plan.json").exists())
 
     def test_plan_command_stops_default_docs_version_warning_before_crawl(self) -> None:
         tmp = tempfile.TemporaryDirectory()
@@ -641,7 +681,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["site_id"], "github-doctacon-open-streaming-lab")
         self.assertEqual(
             payload["state_path"],
-            str(state_root / "state/github-doctacon-open-streaming-lab/github-doctacon-open-streaming-lab-v1/last-applied.json"),
+            str(state_root / "state/github-doctacon-open-streaming-lab/github-doctacon-open-streaming-lab-v1/state.duckdb"),
         )
         self.assertEqual(payload["files_selected"], 1)
         self.assertTrue((out_dir / "plan.json").exists())
@@ -701,7 +741,7 @@ class CliTests(unittest.TestCase):
         self.assertFalse(payload["credentials_required"])
         self.assertFalse(payload["turbopuffer_api_calls"])
         self.assertEqual(payload["diff"]["rows_to_upsert"], 1)
-        self.assertEqual(payload["state_path"], str(state_root / "state" / source_id / f"{source_id}-v1" / "last-applied.json"))
+        self.assertEqual(payload["state_path"], str(state_root / "state" / source_id / f"{source_id}-v1" / "state.duckdb"))
         self.assertTrue((out_dir / "plan.json").exists())
         self.assertTrue((out_dir / "manifest.json").exists())
         self.assertTrue((out_dir / "chunks.jsonl").exists())
@@ -769,7 +809,7 @@ class CliTests(unittest.TestCase):
         self.assertFalse(payload["credentials_required"])
         self.assertFalse(payload["turbopuffer_api_calls"])
         self.assertEqual(payload["diff"]["rows_to_upsert"], 1)
-        self.assertEqual(payload["state_path"], str(state_root / "state" / source_id / f"{source_id}-v1" / "last-applied.json"))
+        self.assertEqual(payload["state_path"], str(state_root / "state" / source_id / f"{source_id}-v1" / "state.duckdb"))
         self.assertTrue((out_dir / "plan.json").exists())
         self.assertTrue((out_dir / "manifest.json").exists())
         self.assertTrue((out_dir / "chunks.jsonl").exists())

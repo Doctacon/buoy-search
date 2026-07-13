@@ -53,7 +53,9 @@ chunks.jsonl
 pages/*.md
 ```
 
-The plan compares generated chunks to local applied state under `.turbo-search/state/...` unless `--state-root` is supplied. `.turbo-search/` is local state and is gitignored.
+The plan compares generated chunks to the embedded DuckDB ledger at `.turbo-search/state/<site-id>/<namespace>/state.duckdb` unless `--state-root` is supplied. The ledger keeps current row state plus compact apply summaries, not full row snapshots. `.turbo-search/` is local state and is gitignored.
+
+On first access, a legacy `last-applied.json` is deleted and the new DuckDB ledger starts empty. This delete-and-reset migration intentionally treats the next approved apply as a full re-upsert; it does not assume legacy local rows still exist remotely.
 
 ### Crawl discovery strategy
 
@@ -123,10 +125,16 @@ uv run turbo-search apply --approve
 Approved apply:
 
 - requires `TURBOPUFFER_API_KEY` from the environment;
+- acquires a non-blocking lock for the target `(site_id, namespace)` before loading embeddings or making a remote call;
 - embeds only rows selected by the freshly recomputed diff;
 - upserts only those rows;
 - updates local applied state only after successful live work;
-- retains stale rows by default as `retained_stale` in local state.
+- appends one compact apply summary and retains stale rows by default as `retained_stale` in local state;
+- removes the exact plan artifact directory after remote work and local-state commit both succeed.
+
+A second approved apply for the same namespace fails fast with a busy error. Different namespaces have independent local state databases and locks, so they can apply concurrently. This is an embedded local DuckDB backend; no Quack service, listener, or cross-machine shared state is configured.
+
+Pending, failed, and preflight plans are retained. After a new plan successfully writes artifacts, older verified sibling plans for the same namespace are removed. Plans for other namespaces and malformed/unverifiable directories remain untouched. Copy plans outside the artifact directory before approved apply if they are needed for audit or source retention.
 
 Do not store API keys, private vault names, item titles, share IDs, or token values in files.
 

@@ -168,7 +168,7 @@ def site_id_for_url(base_url: str) -> str:
 def state_path_for_site(site_id: str, namespace: str, *, state_root: Path = Path(".turbo-search")) -> str:
     """Return the local applied-state path for a site/namespace."""
 
-    return str(Path(state_root) / "state" / site_id / namespace / "last-applied.json")
+    return str(Path(state_root) / "state" / site_id / namespace / "state.duckdb")
 
 
 def generic_site_row_id(

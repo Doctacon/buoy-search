@@ -1,23 +1,30 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from unittest import mock
 import unittest
 
-from turbo_search import applied_state as state_module
+import duckdb
+
 from turbo_search.applied_state import (
     APPLIED_STATE_SCHEMA_VERSION,
+    DUCKDB_STATE_SCHEMA_VERSION,
     ROW_STATUS_ACTIVE,
     ROW_STATUS_DELETED,
     ROW_STATUS_RETAINED_STALE,
+    ApplyRunSummary,
     AppliedStateError,
     AppliedStateRow,
+    acquire_namespace_apply_lock,
     applied_state_paths,
     applied_state_to_json,
     build_applied_state,
     load_applied_state,
+    load_apply_run_summaries,
     save_applied_state,
 )
 
@@ -35,144 +42,199 @@ def sample_row(row_id: str = "ts_abc", *, status: str = ROW_STATUS_ACTIVE) -> Ap
     )
 
 
+def sample_state(rows: list[AppliedStateRow] | None = None):
+    return build_applied_state(
+        site_id="example-com",
+        namespace="site-example-com-v1",
+        base_url="https://example.com/docs/",
+        last_plan_id="plan_123",
+        last_apply_id="apply_123",
+        rows=rows if rows is not None else [sample_row()],
+        updated_at="2026-06-20T12:30:00+00:00",
+    )
+
+
 class AppliedStateStoreTests(unittest.TestCase):
-    def test_default_paths_include_state_root_site_namespace_and_history(self) -> None:
+    def test_default_paths_are_per_namespace_duckdb_and_legacy_cleanup(self) -> None:
         paths = applied_state_paths(site_id="example-com", namespace="site-example-com-v1")
 
+        self.assertEqual(paths.database_path, Path(".turbo-search/state/example-com/site-example-com-v1/state.duckdb"))
+        self.assertEqual(paths.legacy_state_path, Path(".turbo-search/state/example-com/site-example-com-v1/last-applied.json"))
         self.assertEqual(
-            paths.last_applied_path,
-            Path(".turbo-search/state/example-com/site-example-com-v1/last-applied.json"),
-        )
-        self.assertEqual(
-            paths.history_path("apply_123"),
-            Path(".turbo-search/state/example-com/site-example-com-v1/history/apply_123.json"),
+            paths.legacy_archive_path,
+            Path(".turbo-search/state/example-com/site-example-com-v1/legacy-json/last-applied.json"),
         )
 
-    def test_missing_state_loads_as_first_apply_empty_state(self) -> None:
+    def test_missing_state_loads_as_first_apply_without_creating_database(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
+            state_root = Path(tmp)
             state = load_applied_state(
                 site_id="example-com",
                 namespace="site-example-com-v1",
                 base_url="https://example.com/docs/#ignored",
-                state_root=Path(tmp),
+                state_root=state_root,
             )
+            paths = applied_state_paths(site_id="example-com", namespace="site-example-com-v1", state_root=state_root)
+            self.assertFalse(paths.database_path.exists())
 
         self.assertTrue(state.first_apply)
         self.assertEqual(state.schema_version, APPLIED_STATE_SCHEMA_VERSION)
-        self.assertEqual(state.site_id, "example-com")
-        self.assertEqual(state.namespace, "site-example-com-v1")
         self.assertEqual(state.base_url, "https://example.com/docs/")
         self.assertEqual(state.rows, [])
 
-    def test_save_writes_history_and_atomically_replaces_last_applied(self) -> None:
+    def test_save_loads_current_rows_in_one_duckdb_file_without_json_history(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state_root = Path(tmp)
-            state = build_applied_state(
+            expected = sample_state([sample_row(), sample_row("ts_retained", status=ROW_STATUS_RETAINED_STALE)])
+
+            paths = save_applied_state(expected, state_root=state_root)
+            loaded = load_applied_state(
                 site_id="example-com",
                 namespace="site-example-com-v1",
                 base_url="https://example.com/docs/",
-                last_plan_id="plan_123",
-                last_apply_id="apply_123",
-                rows=[sample_row()],
-                updated_at="2026-06-20T12:30:00+00:00",
+                state_root=state_root,
             )
-            original_replace = state_module.os.replace
-            replace_calls: list[tuple[str, str]] = []
 
-            def replacing(src: str | Path, dst: str | Path) -> None:
-                replace_calls.append((str(src), str(dst)))
-                original_replace(src, dst)
+            self.assertTrue(paths.database_path.exists())
+            self.assertFalse(paths.legacy_state_path.exists())
+            self.assertFalse(paths.legacy_archive_path.exists())
+            self.assertFalse((paths.state_dir / "history").exists())
+            self.assertEqual(loaded, expected)
+            with duckdb.connect(str(paths.database_path), read_only=True) as connection:
+                self.assertEqual(connection.execute("SELECT schema_version FROM state_schema").fetchall(), [(DUCKDB_STATE_SCHEMA_VERSION,)])
+                self.assertEqual(connection.execute("SELECT count(*) FROM applied_rows").fetchone(), (2,))
 
-            with mock.patch("turbo_search.applied_state.os.replace", side_effect=replacing):
-                paths = save_applied_state(state, state_root=state_root)
+    def test_apply_summaries_are_append_only_and_do_not_copy_row_snapshots(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_root = Path(tmp)
+            state = sample_state()
+            summary = ApplyRunSummary(
+                apply_id="apply_123",
+                plan_id="plan_123",
+                applied_at="2026-06-20T12:30:00+00:00",
+                rows_upserted=1,
+                rows_deleted=0,
+                retained_stale_rows=0,
+            )
+            paths = save_applied_state(state, state_root=state_root, apply_run=summary)
+            next_state = build_applied_state(
+                site_id="example-com",
+                namespace="site-example-com-v1",
+                base_url="https://example.com/docs/",
+                last_plan_id="plan_124",
+                last_apply_id="apply_124",
+                rows=[sample_row("ts_next")],
+                updated_at="2026-06-20T12:31:00+00:00",
+            )
+            next_summary = ApplyRunSummary(
+                apply_id="apply_124",
+                plan_id="plan_124",
+                applied_at="2026-06-20T12:31:00+00:00",
+                rows_upserted=1,
+                rows_deleted=0,
+                retained_stale_rows=0,
+            )
+            save_applied_state(next_state, state_root=state_root, apply_run=next_summary)
 
-            self.assertEqual(len(replace_calls), 2)
-            for src, dst in replace_calls:
-                self.assertEqual(Path(src).parent, Path(dst).parent)
-                self.assertIn(".tmp-", Path(src).name)
-            self.assertTrue(paths.history_path("apply_123").exists())
-            self.assertTrue(paths.last_applied_path.exists())
+            summaries = load_apply_run_summaries(
+                site_id="example-com",
+                namespace="site-example-com-v1",
+                state_root=state_root,
+            )
+            self.assertEqual(summaries, [summary, next_summary])
             self.assertEqual(
-                json.loads(paths.last_applied_path.read_text(encoding="utf-8")),
-                json.loads(paths.history_path("apply_123").read_text(encoding="utf-8")),
-            )
-            self.assertFalse(list(paths.state_dir.glob("*.tmp-*")))
-            self.assertFalse(list(paths.history_dir.glob("*.tmp-*")))
-
-    def test_existing_state_loads_and_validates_expected_identity(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            state_root = Path(tmp)
-            expected = build_applied_state(
-                site_id="example-com",
-                namespace="site-example-com-v1",
-                base_url="https://example.com/docs/",
-                last_plan_id="plan_123",
-                last_apply_id="apply_123",
-                rows=[sample_row()],
-                updated_at="2026-06-20T12:30:00+00:00",
-            )
-            save_applied_state(expected, state_root=state_root)
-
-            loaded = load_applied_state(
-                site_id="example-com",
-                namespace="site-example-com-v1",
-                base_url="https://example.com/docs/",
-                state_root=state_root,
-            )
-
-        self.assertFalse(loaded.first_apply)
-        self.assertEqual(loaded.last_apply_id, "apply_123")
-        self.assertEqual(loaded.rows, [sample_row()])
-
-    def test_retained_stale_and_deleted_rows_can_be_represented_and_loaded(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            state_root = Path(tmp)
-            retained = sample_row("ts_retained", status=ROW_STATUS_RETAINED_STALE)
-            deleted = sample_row("ts_deleted", status=ROW_STATUS_DELETED)
-            state = build_applied_state(
-                site_id="example-com",
-                namespace="site-example-com-v1",
-                base_url="https://example.com/docs/",
-                last_plan_id="plan_123",
-                last_apply_id="apply_123",
-                rows=[retained, deleted],
-                updated_at="2026-06-20T12:30:00+00:00",
-            )
-            save_applied_state(state, state_root=state_root)
-
-            loaded = load_applied_state(
-                site_id="example-com",
-                namespace="site-example-com-v1",
-                base_url="https://example.com/docs/",
-                state_root=state_root,
-            )
-
-        self.assertEqual([row.status for row in loaded.rows], [ROW_STATUS_RETAINED_STALE, ROW_STATUS_DELETED])
-        self.assertEqual(loaded.rows[0].row_id, "ts_retained")
-
-    def test_invalid_schema_version_fails_clearly(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            state_root = Path(tmp)
-            paths = applied_state_paths(
-                site_id="example-com",
-                namespace="site-example-com-v1",
-                state_root=state_root,
-            )
-            paths.state_dir.mkdir(parents=True)
-            payload = applied_state_to_json(
-                build_applied_state(
+                load_applied_state(
                     site_id="example-com",
                     namespace="site-example-com-v1",
                     base_url="https://example.com/docs/",
-                    last_plan_id="plan_123",
-                    last_apply_id="apply_123",
-                    rows=[sample_row()],
-                )
+                    state_root=state_root,
+                ),
+                next_state,
             )
-            payload["schema_version"] = 999
-            paths.last_applied_path.write_text(json.dumps(payload), encoding="utf-8")
+            self.assertFalse((paths.state_dir / "history").exists())
 
-            with self.assertRaisesRegex(AppliedStateError, "unsupported applied state schema_version"):
+    def test_legacy_json_is_deleted_and_resets_active_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_root = Path(tmp)
+            paths = applied_state_paths(site_id="example-com", namespace="site-example-com-v1", state_root=state_root)
+            paths.state_dir.mkdir(parents=True)
+            paths.legacy_state_path.write_text(json.dumps(applied_state_to_json(sample_state())), encoding="utf-8")
+
+            migrated = load_applied_state(
+                site_id="example-com",
+                namespace="site-example-com-v1",
+                base_url="https://example.com/docs/",
+                state_root=state_root,
+            )
+
+            self.assertTrue(migrated.first_apply)
+            self.assertEqual(migrated.rows, [])
+            self.assertTrue(paths.database_path.exists())
+            self.assertFalse(paths.legacy_state_path.exists())
+            self.assertFalse(paths.legacy_archive_path.exists())
+            self.assertFalse(paths.legacy_archive_path.parent.exists())
+            self.assertFalse(list(paths.state_dir.glob(".state.duckdb.tmp-*")))
+
+    def test_legacy_json_survives_failed_database_initialization(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_root = Path(tmp)
+            paths = applied_state_paths(site_id="example-com", namespace="site-example-com-v1", state_root=state_root)
+            paths.state_dir.mkdir(parents=True)
+            legacy_payload = json.dumps(applied_state_to_json(sample_state()))
+            paths.legacy_state_path.write_text(legacy_payload, encoding="utf-8")
+
+            with mock.patch(
+                "turbo_search.applied_state._initialize_schema",
+                side_effect=duckdb.Error("simulated initialization failure"),
+            ):
+                with self.assertRaisesRegex(AppliedStateError, "could not initialize DuckDB applied state"):
+                    load_applied_state(
+                        site_id="example-com",
+                        namespace="site-example-com-v1",
+                        base_url="https://example.com/docs/",
+                        state_root=state_root,
+                    )
+
+            self.assertEqual(paths.legacy_state_path.read_text(encoding="utf-8"), legacy_payload)
+            self.assertFalse(paths.database_path.exists())
+            self.assertFalse(list(paths.state_dir.glob(".state.duckdb.tmp-*")))
+
+    def test_legacy_migration_is_idempotent_and_purges_prior_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_root = Path(tmp)
+            paths = applied_state_paths(site_id="example-com", namespace="site-example-com-v1", state_root=state_root)
+            paths.state_dir.mkdir(parents=True)
+            paths.legacy_archive_path.parent.mkdir()
+            paths.legacy_archive_path.write_text(json.dumps(applied_state_to_json(sample_state())), encoding="utf-8")
+            paths.legacy_state_path.write_text(json.dumps(applied_state_to_json(sample_state())), encoding="utf-8")
+
+            first = load_applied_state(
+                site_id="example-com",
+                namespace="site-example-com-v1",
+                base_url="https://example.com/docs/",
+                state_root=state_root,
+            )
+            second = load_applied_state(
+                site_id="example-com",
+                namespace="site-example-com-v1",
+                base_url="https://example.com/docs/",
+                state_root=state_root,
+            )
+
+            self.assertTrue(first.first_apply)
+            self.assertTrue(second.first_apply)
+            self.assertFalse(paths.legacy_state_path.exists())
+            self.assertFalse(paths.legacy_archive_path.exists())
+            self.assertFalse(paths.legacy_archive_path.parent.exists())
+
+    def test_invalid_persisted_state_identity_fails_clearly(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_root = Path(tmp)
+            paths = save_applied_state(sample_state(), state_root=state_root)
+            with duckdb.connect(str(paths.database_path)) as connection:
+                connection.execute("UPDATE state_metadata SET namespace = 'other-namespace'")
+
+            with self.assertRaisesRegex(AppliedStateError, "namespace mismatch"):
                 load_applied_state(
                     site_id="example-com",
                     namespace="site-example-com-v1",
@@ -180,34 +242,39 @@ class AppliedStateStoreTests(unittest.TestCase):
                     state_root=state_root,
                 )
 
-    def test_conflicting_site_namespace_or_base_url_fails_clearly(self) -> None:
-        base_payload = applied_state_to_json(
-            build_applied_state(
-                site_id="example-com",
-                namespace="site-example-com-v1",
-                base_url="https://example.com/docs/",
-                last_plan_id="plan_123",
-                last_apply_id="apply_123",
-                rows=[sample_row()],
-            )
-        )
+    def test_invalid_persisted_schema_version_fails_clearly(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_root = Path(tmp)
+            paths = save_applied_state(sample_state(), state_root=state_root)
+            with duckdb.connect(str(paths.database_path)) as connection:
+                connection.execute("DELETE FROM state_schema")
+                connection.execute("INSERT INTO state_schema VALUES (999)")
 
-        for field, bad_value, expected_error in (
-            ("site_id", "other-site", "site_id mismatch"),
-            ("namespace", "other-namespace", "namespace mismatch"),
-            ("base_url", "https://example.com/other/", "base_url mismatch"),
-        ):
-            with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp:
-                state_root = Path(tmp)
-                paths = applied_state_paths(
+            with self.assertRaisesRegex(AppliedStateError, "unsupported DuckDB applied state schema version"):
+                load_applied_state(
                     site_id="example-com",
                     namespace="site-example-com-v1",
+                    base_url="https://example.com/docs/",
                     state_root=state_root,
                 )
-                paths.state_dir.mkdir(parents=True)
-                payload = dict(base_payload)
-                payload[field] = bad_value
-                paths.last_applied_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    def test_applied_rows_without_exactly_one_metadata_row_fail_clearly(self) -> None:
+        for mutation, expected_error in (
+            ("DELETE FROM state_metadata", "without state metadata"),
+            (
+                """
+                INSERT INTO state_metadata
+                SELECT schema_version, site_id, namespace, base_url, updated_at, last_plan_id, last_apply_id
+                FROM state_metadata
+                """,
+                "without exactly one metadata row",
+            ),
+        ):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as tmp:
+                state_root = Path(tmp)
+                paths = save_applied_state(sample_state(), state_root=state_root)
+                with duckdb.connect(str(paths.database_path)) as connection:
+                    connection.execute(mutation)
 
                 with self.assertRaisesRegex(AppliedStateError, expected_error):
                     load_applied_state(
@@ -217,34 +284,90 @@ class AppliedStateStoreTests(unittest.TestCase):
                         state_root=state_root,
                     )
 
-    def test_invalid_row_status_fails_clearly(self) -> None:
+    def test_same_namespace_lock_contends_across_processes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_root = Path(tmp) / "state"
+            script = """
+from pathlib import Path
+import sys
+import time
+from turbo_search.applied_state import acquire_namespace_apply_lock
+with acquire_namespace_apply_lock(site_id='example-com', namespace='site-example-com-v1', state_root=Path(sys.argv[1])):
+    print('locked', flush=True)
+    time.sleep(10)
+"""
+            process = subprocess.Popen(
+                [sys.executable, "-c", script, str(state_root)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            try:
+                self.assertEqual(process.stdout.readline().strip(), "locked")
+                with self.assertRaisesRegex(AppliedStateError, "already in progress"):
+                    with acquire_namespace_apply_lock(
+                        site_id="example-com",
+                        namespace="site-example-com-v1",
+                        state_root=state_root,
+                    ):
+                        pass
+            finally:
+                process.terminate()
+                process.communicate(timeout=5)
+
+    def test_invalid_apply_summary_is_rejected_before_state_write(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state_root = Path(tmp)
-            paths = applied_state_paths(
+            baseline = sample_state()
+            save_applied_state(baseline, state_root=state_root)
+            replacement = build_applied_state(
                 site_id="example-com",
                 namespace="site-example-com-v1",
-                state_root=state_root,
+                base_url="https://example.com/docs/",
+                last_plan_id="plan_124",
+                last_apply_id="apply_124",
+                rows=[sample_row("ts_replacement")],
+                updated_at="2026-06-20T12:31:00+00:00",
             )
-            paths.state_dir.mkdir(parents=True)
-            payload = applied_state_to_json(
-                build_applied_state(
-                    site_id="example-com",
-                    namespace="site-example-com-v1",
-                    base_url="https://example.com/docs/",
-                    last_plan_id="plan_123",
-                    last_apply_id="apply_123",
-                    rows=[sample_row()],
-                )
-            )
-            payload["rows"][0]["status"] = "weird"
-            paths.last_applied_path.write_text(json.dumps(payload), encoding="utf-8")
 
-            with self.assertRaisesRegex(AppliedStateError, "invalid status"):
+            with self.assertRaisesRegex(AppliedStateError, "apply_id must match"):
+                save_applied_state(
+                    replacement,
+                    state_root=state_root,
+                    apply_run=ApplyRunSummary(
+                        apply_id="other-apply",
+                        plan_id="plan_124",
+                        applied_at="2026-06-20T12:31:00+00:00",
+                        rows_upserted=1,
+                        rows_deleted=0,
+                        retained_stale_rows=0,
+                    ),
+                )
+
+            self.assertEqual(
                 load_applied_state(
                     site_id="example-com",
                     namespace="site-example-com-v1",
                     base_url="https://example.com/docs/",
                     state_root=state_root,
+                ),
+                baseline,
+            )
+
+    def test_apply_summary_plan_mismatch_is_rejected_before_state_write(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(AppliedStateError, "plan_id must match"):
+                save_applied_state(
+                    sample_state(),
+                    state_root=Path(tmp),
+                    apply_run=ApplyRunSummary(
+                        apply_id="apply_123",
+                        plan_id="other-plan",
+                        applied_at="2026-06-20T12:30:00+00:00",
+                        rows_upserted=1,
+                        rows_deleted=0,
+                        retained_stale_rows=0,
+                    ),
                 )
 
 

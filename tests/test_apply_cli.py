@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from io import StringIO
 import json
 import os
@@ -9,7 +9,18 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-from turbo_search.applied_state import ROW_STATUS_ACTIVE, ROW_STATUS_RETAINED_STALE, AppliedStateRow, build_applied_state, load_applied_state, save_applied_state
+from turbo_search.applied_state import (
+    ROW_STATUS_ACTIVE,
+    ROW_STATUS_RETAINED_STALE,
+    ApplyRunSummary,
+    AppliedStateError,
+    AppliedStateRow,
+    acquire_namespace_apply_lock,
+    build_applied_state,
+    load_applied_state,
+    load_apply_run_summaries,
+    save_applied_state,
+)
 from turbo_search.cli import main
 from turbo_search.chunker import process_corpus
 from turbo_search.plan_artifacts import build_plan_artifacts, write_plan_artifacts
@@ -308,11 +319,17 @@ class ApplyCliTests(unittest.TestCase):
                     env={"TURBOPUFFER_API_KEY": "test-key"},
                 )
 
+            plan_removed = not plan_path.parent.exists()
             payload = json.loads(stdout)
             loaded_state = load_applied_state(
                 site_id=artifacts.manifest.site_id,
                 namespace=artifacts.manifest.namespace,
                 base_url=artifacts.manifest.base_url,
+                state_root=state_root,
+            )
+            summaries = load_apply_run_summaries(
+                site_id=artifacts.manifest.site_id,
+                namespace=artifacts.manifest.namespace,
                 state_root=state_root,
             )
 
@@ -325,8 +342,119 @@ class ApplyCliTests(unittest.TestCase):
         self.assertIn("Beta useful docs", FakeEmbedder.texts[0])
         self.assertEqual([row["id"] for row in FakeWriter.rows], [needs_upsert.row_id])
         self.assertTrue(payload["state_updated"])
+        self.assertTrue(plan_removed)
         self.assertFalse(loaded_state.first_apply)
         self.assertEqual({row.row_id for row in loaded_state.rows if row.status == ROW_STATUS_ACTIVE}, {unchanged.row_id, needs_upsert.row_id})
+        self.assertEqual(len(summaries), 1)
+        self.assertEqual(summaries[0].apply_id, loaded_state.last_apply_id)
+        self.assertEqual(summaries[0].rows_upserted, 1)
+        self.assertEqual(summaries[0].rows_deleted, 0)
+
+    def test_successful_apply_reports_cleanup_warning_without_losing_success(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+
+            with patch("turbo_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
+                "turbo_search.apply.TurbopufferWriter", FakeWriter
+            ), patch(
+                "turbo_search.cli.cleanup_applied_plan_directory",
+                return_value=[f"could not remove plan artifact directory {plan_path.parent}: denied"],
+            ):
+                result, stdout, stderr = self.run_main(
+                    [
+                        "apply",
+                        "--plan",
+                        str(plan_path),
+                        "--namespace",
+                        artifacts.manifest.namespace,
+                        "--state-root",
+                        str(state_root),
+                        "--approve",
+                        "--json",
+                    ],
+                    env={"TURBOPUFFER_API_KEY": "test-key"},
+                )
+            plan_retained = plan_path.parent.exists()
+
+        self.assertEqual(result, 0, stderr)
+        self.assertTrue(json.loads(stdout)["approved"])
+        self.assertIn("Warning: could not remove plan artifact directory", stderr)
+        self.assertTrue(plan_retained)
+
+    def test_failed_apply_preserves_existing_state_and_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            unchanged, _needs_upsert = artifacts.manifest.chunks
+            previous_state = build_applied_state(
+                site_id=artifacts.manifest.site_id,
+                namespace=artifacts.manifest.namespace,
+                base_url=artifacts.manifest.base_url,
+                last_plan_id="plan_previous",
+                last_apply_id="apply_previous",
+                rows=[
+                    AppliedStateRow(
+                        row_id=unchanged.row_id,
+                        canonical_url=unchanged.canonical_url,
+                        page_hash=unchanged.page_hash,
+                        chunk_hash=unchanged.chunk_hash,
+                        embedding_text_hash=unchanged.embedding_text_hash,
+                        plan_id="plan_previous",
+                        applied_at="2026-06-20T12:00:00+00:00",
+                    )
+                ],
+                updated_at="2026-06-20T12:00:00+00:00",
+            )
+            previous_summary = ApplyRunSummary(
+                apply_id="apply_previous",
+                plan_id="plan_previous",
+                applied_at="2026-06-20T12:00:00+00:00",
+                rows_upserted=1,
+                rows_deleted=0,
+                retained_stale_rows=0,
+            )
+            save_applied_state(previous_state, state_root=state_root, apply_run=previous_summary)
+            FakeWriter.should_fail = True
+
+            with patch("turbo_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
+                "turbo_search.apply.TurbopufferWriter", FakeWriter
+            ):
+                result, stdout, stderr = self.run_main(
+                    [
+                        "apply",
+                        "--plan",
+                        str(plan_path),
+                        "--namespace",
+                        artifacts.manifest.namespace,
+                        "--state-root",
+                        str(state_root),
+                        "--approve",
+                        "--json",
+                    ],
+                    env={"TURBOPUFFER_API_KEY": "test-key"},
+                )
+            plan_retained = plan_path.parent.exists()
+            loaded_state = load_applied_state(
+                site_id=artifacts.manifest.site_id,
+                namespace=artifacts.manifest.namespace,
+                base_url=artifacts.manifest.base_url,
+                state_root=state_root,
+            )
+            summaries = load_apply_run_summaries(
+                site_id=artifacts.manifest.site_id,
+                namespace=artifacts.manifest.namespace,
+                state_root=state_root,
+            )
+
+        self.assertEqual(result, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("fake upsert failure", stderr)
+        self.assertTrue(plan_retained)
+        self.assertEqual(loaded_state, previous_state)
+        self.assertEqual(summaries, [previous_summary])
 
     def test_approved_apply_does_not_update_state_when_upsert_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -719,6 +847,11 @@ class ApplyCliTests(unittest.TestCase):
                 base_url=artifacts.manifest.base_url,
                 state_root=state_root,
             )
+            summaries = load_apply_run_summaries(
+                site_id=artifacts.manifest.site_id,
+                namespace=artifacts.manifest.namespace,
+                state_root=state_root,
+            )
 
         self.assertEqual(result, 2)
         self.assertEqual(stdout, "")
@@ -726,6 +859,48 @@ class ApplyCliTests(unittest.TestCase):
         self.assertEqual(FakeWriter.deletes, [])
         self.assertEqual([row.row_id for row in loaded_state.rows], [artifacts.manifest.chunks[0].row_id, stale.row_id])
         self.assertTrue(all(row.status == ROW_STATUS_ACTIVE for row in loaded_state.rows))
+        self.assertEqual(summaries, [])
+
+    def test_same_namespace_lock_fails_before_writer_construction(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+
+            @contextmanager
+            def contended_lock(**_kwargs):
+                raise AppliedStateError("approved apply is already in progress for namespace 'site-example-com-v1'")
+                yield
+
+            with patch("turbo_search.apply.acquire_namespace_apply_lock", contended_lock), patch(
+                "turbo_search.apply.TurbopufferWriter", side_effect=AssertionError("writer called")
+            ):
+                result, stdout, stderr = self.run_main(
+                    [
+                        "apply",
+                        "--plan",
+                        str(plan_path),
+                        "--namespace",
+                        artifacts.manifest.namespace,
+                        "--state-root",
+                        str(state_root),
+                        "--approve",
+                        "--json",
+                    ],
+                    env={"TURBOPUFFER_API_KEY": "test-key"},
+                )
+
+        self.assertEqual(result, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn("already in progress", stderr)
+        self.assertEqual(FakeWriter.rows, [])
+
+    def test_different_namespaces_have_independent_apply_locks(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_root = Path(tmp) / "state"
+            with acquire_namespace_apply_lock(site_id="example-com", namespace="site-one-v1", state_root=state_root):
+                with acquire_namespace_apply_lock(site_id="example-com", namespace="site-two-v1", state_root=state_root):
+                    pass
 
 
 if __name__ == "__main__":

@@ -1,23 +1,28 @@
-"""Local applied-state backend for generic site RAG indexing.
+"""Compact local DuckDB applied state for generic site RAG indexing.
 
-This module manages only local JSON state. It does not read credentials, load
-embedding models, or call turbopuffer. The state store is the incremental diff
-baseline for future plan/apply commands.
+The state store does not read credentials, load embedding models, or call
+Turbopuffer. It is the local incremental-diff baseline for future plan/apply
+commands.
 """
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Iterator, Literal
+from uuid import uuid4
+
+import duckdb
+import portalocker
 
 from turbo_search.crawler import validate_base_url
-from turbo_search.plan_artifacts import stable_json_dumps
 
 APPLIED_STATE_SCHEMA_VERSION = 1
+DUCKDB_STATE_SCHEMA_VERSION = 1
 DEFAULT_STATE_ROOT = Path(".turbo-search")
 ROW_STATUS_ACTIVE = "active"
 ROW_STATUS_RETAINED_STALE = "retained_stale"
@@ -47,11 +52,24 @@ class AppliedStateRow:
 
 
 @dataclass(frozen=True)
+class ApplyRunSummary:
+    """Small durable record of one successful approved apply."""
+
+    apply_id: str
+    plan_id: str
+    applied_at: str
+    rows_upserted: int
+    rows_deleted: int
+    retained_stale_rows: int
+
+
+@dataclass(frozen=True)
 class AppliedState:
     """Local state for one site/namespace pair.
 
-    ``first_apply`` is runtime metadata only. It is true when no state file was
-    present and is intentionally omitted from persisted JSON.
+    ``first_apply`` is runtime metadata only. It is true when the local
+    database has no active state and is intentionally not persisted as a
+    database field.
     """
 
     schema_version: int
@@ -67,14 +85,13 @@ class AppliedState:
 
 @dataclass(frozen=True)
 class AppliedStatePaths:
-    """Resolved local state paths for one site/namespace."""
+    """Resolved storage locations for one site/namespace."""
 
     state_dir: Path
-    history_dir: Path
-    last_applied_path: Path
-
-    def history_path(self, apply_id: str) -> Path:
-        return self.history_dir / f"{safe_state_filename(apply_id)}.json"
+    database_path: Path
+    lock_path: Path
+    legacy_state_path: Path
+    legacy_archive_path: Path
 
 
 def applied_state_paths(
@@ -83,16 +100,43 @@ def applied_state_paths(
     namespace: str,
     state_root: Path = DEFAULT_STATE_ROOT,
 ) -> AppliedStatePaths:
-    """Return default local applied-state paths for a site/namespace."""
+    """Return local DuckDB and legacy-cleanup paths for one state ledger."""
 
     safe_site_id = safe_state_component(site_id, label="site_id")
     safe_namespace = safe_state_component(namespace, label="namespace")
     state_dir = Path(state_root) / "state" / safe_site_id / safe_namespace
     return AppliedStatePaths(
         state_dir=state_dir,
-        history_dir=state_dir / "history",
-        last_applied_path=state_dir / "last-applied.json",
+        database_path=state_dir / "state.duckdb",
+        lock_path=state_dir / "apply.lock",
+        legacy_state_path=state_dir / "last-applied.json",
+        legacy_archive_path=state_dir / "legacy-json" / "last-applied.json",
     )
+
+
+@contextmanager
+def acquire_namespace_apply_lock(
+    *,
+    site_id: str,
+    namespace: str,
+    state_root: Path = DEFAULT_STATE_ROOT,
+) -> Iterator[None]:
+    """Fail fast when an approved apply already owns this namespace."""
+
+    paths = applied_state_paths(site_id=site_id, namespace=namespace, state_root=state_root)
+    paths.state_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        with portalocker.Lock(
+            str(paths.lock_path),
+            mode="a+",
+            timeout=0,
+            fail_when_locked=True,
+        ):
+            yield
+    except portalocker.exceptions.LockException as exc:
+        raise AppliedStateError(
+            f"approved apply is already in progress for namespace {namespace!r}; retry after it finishes"
+        ) from exc
 
 
 def load_applied_state(
@@ -102,55 +146,91 @@ def load_applied_state(
     base_url: str,
     state_root: Path = DEFAULT_STATE_ROOT,
 ) -> AppliedState:
-    """Load local state or return an explicit first-apply empty state."""
+    """Load current DuckDB state or return a first-apply empty state.
+
+    A legacy JSON ledger is deleted and replaced with an intentionally empty
+    database. It is not imported because it may describe remote rows that no
+    longer exist.
+    """
 
     normalized_base_url = validate_base_url(base_url)
     paths = applied_state_paths(site_id=site_id, namespace=namespace, state_root=state_root)
-    if not paths.last_applied_path.exists():
-        return AppliedState(
-            schema_version=APPLIED_STATE_SCHEMA_VERSION,
-            site_id=site_id,
-            namespace=namespace,
-            base_url=normalized_base_url,
-            updated_at="",
-            last_plan_id="",
-            last_apply_id="",
-            rows=[],
-            first_apply=True,
-        )
+    _migrate_legacy_state(paths)
+    if not paths.database_path.exists():
+        return _first_apply_state(site_id=site_id, namespace=namespace, base_url=normalized_base_url)
 
-    raw = json.loads(paths.last_applied_path.read_text(encoding="utf-8"))
-    state = applied_state_from_json(raw)
+    try:
+        with duckdb.connect(str(paths.database_path), read_only=True) as connection:
+            _validate_database_schema(connection)
+            metadata_rows = connection.execute(
+                """
+                SELECT schema_version, site_id, namespace, base_url, updated_at, last_plan_id, last_apply_id
+                FROM state_metadata
+                """
+            ).fetchall()
+            row_count = int(connection.execute("SELECT count(*) FROM applied_rows").fetchone()[0])
+            if not metadata_rows:
+                if row_count:
+                    raise AppliedStateError("DuckDB applied rows exist without state metadata")
+                return _first_apply_state(site_id=site_id, namespace=namespace, base_url=normalized_base_url)
+            if len(metadata_rows) != 1:
+                if row_count:
+                    raise AppliedStateError("DuckDB applied rows exist without exactly one metadata row")
+                raise AppliedStateError("DuckDB applied state must contain exactly one metadata row")
+            metadata = metadata_rows[0]
+            state = AppliedState(
+                schema_version=int(metadata[0]),
+                site_id=str(metadata[1]),
+                namespace=str(metadata[2]),
+                base_url=validate_base_url(str(metadata[3])),
+                updated_at=str(metadata[4]),
+                last_plan_id=str(metadata[5]),
+                last_apply_id=str(metadata[6]),
+                rows=[
+                    AppliedStateRow(
+                        row_id=str(row_id),
+                        canonical_url=str(canonical_url),
+                        page_hash=str(page_hash),
+                        chunk_hash=str(chunk_hash),
+                        embedding_text_hash=str(embedding_text_hash),
+                        plan_id=str(plan_id),
+                        applied_at=str(applied_at),
+                        status=str(status),  # type: ignore[arg-type]
+                    )
+                    for row_id, canonical_url, page_hash, chunk_hash, embedding_text_hash, plan_id, applied_at, status in connection.execute(
+                        """
+                        SELECT row_id, canonical_url, page_hash, chunk_hash, embedding_text_hash,
+                               plan_id, applied_at, status
+                        FROM applied_rows
+                        ORDER BY canonical_url, row_id
+                        """
+                    ).fetchall()
+                ],
+                first_apply=False,
+            )
+    except duckdb.Error as exc:
+        raise AppliedStateError(f"could not load DuckDB applied state: {exc}") from exc
+
     validate_applied_state(
         state,
         expected_site_id=site_id,
         expected_namespace=namespace,
         expected_base_url=normalized_base_url,
     )
-    return AppliedState(
-        schema_version=state.schema_version,
-        site_id=state.site_id,
-        namespace=state.namespace,
-        base_url=state.base_url,
-        updated_at=state.updated_at,
-        last_plan_id=state.last_plan_id,
-        last_apply_id=state.last_apply_id,
-        rows=state.rows,
-        first_apply=False,
-    )
+    return state
 
 
 def save_applied_state(
     state: AppliedState,
     *,
     state_root: Path = DEFAULT_STATE_ROOT,
+    apply_run: ApplyRunSummary | None = None,
 ) -> AppliedStatePaths:
-    """Persist local state history and atomically update ``last-applied.json``.
+    """Atomically replace current rows and optionally append one apply summary.
 
-    History and last-applied writes are separate files. ``last-applied.json`` is
-    replaced only after JSON serialization succeeds and the target directory is
-    prepared. Callers should invoke this only after the corresponding live apply
-    operations have succeeded.
+    Callers must invoke this only after the corresponding remote work has
+    succeeded. The later apply-integration ticket supplies exact run counts;
+    the store deliberately does not invent them.
     """
 
     validate_applied_state(
@@ -161,13 +241,114 @@ def save_applied_state(
     )
     if not state.last_apply_id:
         raise AppliedStateError("applied state last_apply_id is required before saving")
+    if apply_run is not None:
+        _validate_apply_run(apply_run, state=state)
 
     paths = applied_state_paths(site_id=state.site_id, namespace=state.namespace, state_root=state_root)
-    paths.history_dir.mkdir(parents=True, exist_ok=True)
-    payload = applied_state_to_json(state)
-    _atomic_write_json(paths.history_path(state.last_apply_id), payload)
-    _atomic_write_json(paths.last_applied_path, payload)
+    _migrate_legacy_state(paths)
+    paths.state_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        with duckdb.connect(str(paths.database_path)) as connection:
+            _initialize_schema(connection)
+            connection.execute("BEGIN TRANSACTION")
+            try:
+                connection.execute("DELETE FROM applied_rows")
+                if state.rows:
+                    connection.executemany(
+                        """
+                        INSERT INTO applied_rows (
+                            row_id, canonical_url, page_hash, chunk_hash, embedding_text_hash,
+                            plan_id, applied_at, status
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        [
+                            (
+                                row.row_id,
+                                row.canonical_url,
+                                row.page_hash,
+                                row.chunk_hash,
+                                row.embedding_text_hash,
+                                row.plan_id,
+                                row.applied_at,
+                                row.status,
+                            )
+                            for row in state.rows
+                        ],
+                    )
+                connection.execute("DELETE FROM state_metadata")
+                connection.execute(
+                    """
+                    INSERT INTO state_metadata (
+                        schema_version, site_id, namespace, base_url, updated_at, last_plan_id, last_apply_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    [
+                        APPLIED_STATE_SCHEMA_VERSION,
+                        state.site_id,
+                        state.namespace,
+                        state.base_url,
+                        state.updated_at,
+                        state.last_plan_id,
+                        state.last_apply_id,
+                    ],
+                )
+                if apply_run is not None:
+                    connection.execute(
+                        """
+                        INSERT INTO apply_runs (
+                            apply_id, plan_id, applied_at, rows_upserted, rows_deleted, retained_stale_rows
+                        ) VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        [
+                            apply_run.apply_id,
+                            apply_run.plan_id,
+                            apply_run.applied_at,
+                            apply_run.rows_upserted,
+                            apply_run.rows_deleted,
+                            apply_run.retained_stale_rows,
+                        ],
+                    )
+                connection.execute("COMMIT")
+            except Exception:
+                connection.execute("ROLLBACK")
+                raise
+    except duckdb.Error as exc:
+        raise AppliedStateError(f"could not save DuckDB applied state: {exc}") from exc
     return paths
+
+
+def load_apply_run_summaries(
+    *,
+    site_id: str,
+    namespace: str,
+    state_root: Path = DEFAULT_STATE_ROOT,
+) -> list[ApplyRunSummary]:
+    """Return retained compact apply summaries oldest first."""
+
+    paths = applied_state_paths(site_id=site_id, namespace=namespace, state_root=state_root)
+    if not paths.database_path.exists():
+        return []
+    try:
+        with duckdb.connect(str(paths.database_path), read_only=True) as connection:
+            return [
+                ApplyRunSummary(
+                    apply_id=str(apply_id),
+                    plan_id=str(plan_id),
+                    applied_at=str(applied_at),
+                    rows_upserted=int(rows_upserted),
+                    rows_deleted=int(rows_deleted),
+                    retained_stale_rows=int(retained_stale_rows),
+                )
+                for apply_id, plan_id, applied_at, rows_upserted, rows_deleted, retained_stale_rows in connection.execute(
+                    """
+                    SELECT apply_id, plan_id, applied_at, rows_upserted, rows_deleted, retained_stale_rows
+                    FROM apply_runs
+                    ORDER BY applied_at, apply_id
+                    """
+                ).fetchall()
+            ]
+    except duckdb.Error as exc:
+        raise AppliedStateError(f"could not load DuckDB apply summaries: {exc}") from exc
 
 
 def build_applied_state(
@@ -196,7 +377,7 @@ def build_applied_state(
 
 
 def applied_state_to_json(state: AppliedState) -> JsonObject:
-    """Return the persisted JSON representation of applied state."""
+    """Serialize legacy JSON state for archive fixtures and compatibility tests."""
 
     payload = asdict(state)
     payload.pop("first_apply", None)
@@ -204,7 +385,7 @@ def applied_state_to_json(state: AppliedState) -> JsonObject:
 
 
 def applied_state_from_json(payload: JsonObject) -> AppliedState:
-    """Parse local state JSON into typed state objects."""
+    """Parse a legacy JSON state payload without activating it."""
 
     if not isinstance(payload, dict):
         raise AppliedStateError("applied state must be a JSON object")
@@ -322,20 +503,130 @@ def safe_state_component(value: str, *, label: str) -> str:
     return value
 
 
-def safe_state_filename(value: str) -> str:
-    """Return a safe filename stem for an apply ID."""
+def _first_apply_state(*, site_id: str, namespace: str, base_url: str) -> AppliedState:
+    return AppliedState(
+        schema_version=APPLIED_STATE_SCHEMA_VERSION,
+        site_id=site_id,
+        namespace=namespace,
+        base_url=base_url,
+        updated_at="",
+        last_plan_id="",
+        last_apply_id="",
+        rows=[],
+        first_apply=True,
+    )
 
-    return safe_state_component(value, label="apply_id").replace(":", "-")
+
+def _migrate_legacy_state(paths: AppliedStatePaths) -> None:
+    """Delete legacy JSON only after installing an empty valid database."""
+
+    _delete_legacy_archive(paths)
+    if paths.database_path.exists():
+        if paths.legacy_state_path.exists():
+            paths.legacy_state_path.unlink()
+        return
+    if not paths.legacy_state_path.exists():
+        return
+    paths.state_dir.mkdir(parents=True, exist_ok=True)
+    _initialize_empty_database(paths)
+    paths.legacy_state_path.unlink()
 
 
-def _atomic_write_json(path: Path, payload: JsonObject) -> None:
-    """Write JSON to a temp file in the same directory, then replace target."""
+def _initialize_empty_database(paths: AppliedStatePaths) -> None:
+    """Atomically install a valid empty DuckDB ledger without risking legacy state."""
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = path.with_name(f".{path.name}.tmp-{os.getpid()}")
-    temp_path.write_text(stable_json_dumps(payload, indent=2) + "\n", encoding="utf-8")
+    temporary_path = paths.database_path.with_name(f".{paths.database_path.name}.tmp-{uuid4().hex}")
     try:
-        os.replace(temp_path, path)
+        with duckdb.connect(str(temporary_path)) as connection:
+            _initialize_schema(connection)
+        os.replace(temporary_path, paths.database_path)
+    except (duckdb.Error, OSError) as exc:
+        raise AppliedStateError(f"could not initialize DuckDB applied state: {exc}") from exc
     finally:
-        if temp_path.exists():
-            temp_path.unlink()
+        if temporary_path.exists():
+            temporary_path.unlink()
+
+
+def _delete_legacy_archive(paths: AppliedStatePaths) -> None:
+    """Remove a legacy directory left by the superseded migration."""
+
+    if paths.legacy_archive_path.is_file():
+        paths.legacy_archive_path.unlink()
+    archive_dir = paths.legacy_archive_path.parent
+    if archive_dir.is_symlink():
+        archive_dir.unlink()
+    elif archive_dir.is_dir() and not any(archive_dir.iterdir()):
+        archive_dir.rmdir()
+
+
+def _initialize_schema(connection: duckdb.DuckDBPyConnection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS state_schema (
+            schema_version INTEGER PRIMARY KEY
+        )
+        """
+    )
+    connection.execute("INSERT OR IGNORE INTO state_schema VALUES (?)", [DUCKDB_STATE_SCHEMA_VERSION])
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS state_metadata (
+            schema_version INTEGER NOT NULL,
+            site_id VARCHAR NOT NULL,
+            namespace VARCHAR NOT NULL,
+            base_url VARCHAR NOT NULL,
+            updated_at VARCHAR NOT NULL,
+            last_plan_id VARCHAR NOT NULL,
+            last_apply_id VARCHAR NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS applied_rows (
+            row_id VARCHAR PRIMARY KEY,
+            canonical_url VARCHAR NOT NULL,
+            page_hash VARCHAR NOT NULL,
+            chunk_hash VARCHAR NOT NULL,
+            embedding_text_hash VARCHAR NOT NULL,
+            plan_id VARCHAR NOT NULL,
+            applied_at VARCHAR NOT NULL,
+            status VARCHAR NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS apply_runs (
+            apply_id VARCHAR PRIMARY KEY,
+            plan_id VARCHAR NOT NULL,
+            applied_at VARCHAR NOT NULL,
+            rows_upserted BIGINT NOT NULL,
+            rows_deleted BIGINT NOT NULL,
+            retained_stale_rows BIGINT NOT NULL
+        )
+        """
+    )
+
+
+def _validate_database_schema(connection: duckdb.DuckDBPyConnection) -> None:
+    rows = connection.execute("SELECT schema_version FROM state_schema").fetchall()
+    if rows != [(DUCKDB_STATE_SCHEMA_VERSION,)]:
+        raise AppliedStateError(
+            f"unsupported DuckDB applied state schema version: {rows!r}; "
+            f"expected {DUCKDB_STATE_SCHEMA_VERSION}"
+        )
+
+
+def _validate_apply_run(apply_run: ApplyRunSummary, *, state: AppliedState) -> None:
+    if not apply_run.apply_id:
+        raise AppliedStateError("apply run apply_id is required")
+    if apply_run.plan_id != state.last_plan_id:
+        raise AppliedStateError("apply run plan_id must match applied state last_plan_id")
+    if apply_run.apply_id != state.last_apply_id:
+        raise AppliedStateError("apply run apply_id must match applied state last_apply_id")
+    if apply_run.applied_at != state.updated_at:
+        raise AppliedStateError("apply run applied_at must match applied state updated_at")
+    for field_name in ("rows_upserted", "rows_deleted", "retained_stale_rows"):
+        if getattr(apply_run, field_name) < 0:
+            raise AppliedStateError(f"apply run {field_name} must be non-negative")

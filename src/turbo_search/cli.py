@@ -62,6 +62,7 @@ from turbo_search.plan_artifacts import (
     build_plan_artifacts,
     write_plan_artifacts,
 )
+from turbo_search.plan_cleanup import cleanup_applied_plan_directory, cleanup_superseded_plan_directories
 from turbo_search.plan_diff import IncrementalPlanDiff, PlanDiffError, diff_manifest_against_state
 from turbo_search.retriever import (
     DEFAULT_CANDIDATES,
@@ -920,6 +921,12 @@ def _run_plan(args: argparse.Namespace) -> int:
         state_first_apply=state.first_apply,
     )
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+    for warning in cleanup_superseded_plan_directories(
+        out_dir / "plan.json",
+        namespace=namespace,
+        state_root=args.state_root,
+    ):
+        print(f"Warning: {warning}", file=sys.stderr)
     if args.json:
         _print_json(summary)
     else:
@@ -1031,6 +1038,8 @@ def _run_apply(args: argparse.Namespace) -> int:
         print(str(exc), file=sys.stderr)
         return 2
 
+    for warning in cleanup_applied_plan_directory(verified.plan_path, state_root=verified.state_root):
+        print(f"Warning: {warning}", file=sys.stderr)
     if args.json:
         _print_json(summary)
     else:

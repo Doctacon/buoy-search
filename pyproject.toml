@@ -13,6 +13,8 @@ dependencies = [
     "scrapling[fetchers]>=0.4.9",
     "markdownify>=1.2.0",
     "markitdown[docx,pdf,pptx,xls,xlsx]",
+    "duckdb>=1.5.4",
+    "portalocker>=3.2.0",
 ]
 
 [project.scripts]

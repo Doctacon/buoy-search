@@ -64,7 +64,19 @@ The namespace is derived from the site, for example:
 https://example.com/ -> site-example-com-v1
 ```
 
-Plan artifacts are written under `artifacts/site-crawls/...` and local applied state is written under `.turbo-search/state/...`. Both are local/generated paths and are gitignored.
+Plan artifacts are written under `artifacts/site-crawls/...` and local applied state is written under `.turbo-search/state/...`. Both are local/generated paths and are gitignored. A plan remains available while pending, preflighted, or retrying after a failed apply; its directory is removed automatically after a successful `apply --approve`, or when a newer verified plan for the same namespace supersedes it. Preserve a copy outside the artifact directory before approved apply if you need long-term audit/source records.
+
+## Local applied state and concurrent applies
+
+Each `(site, namespace)` has an embedded DuckDB ledger at:
+
+```text
+.turbo-search/state/<site-id>/<namespace>/state.duckdb
+```
+
+It stores the current applied rows plus compact per-apply summaries; it does not create full row snapshots. A legacy `last-applied.json` is deleted and the new ledger starts empty. This intentionally makes the next approved apply re-upsert the reviewed corpus rather than trusting rows that may no longer exist remotely.
+
+`apply --approve` takes a fail-fast lock for that namespace before loading embeddings or writing remotely. A second apply for the same namespace exits with a busy error; applies for different namespaces can proceed independently. This is embedded local state—there is no Quack service or listener.
 
 ## Index a local document file
 

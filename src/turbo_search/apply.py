@@ -18,9 +18,11 @@ from typing import Any, Sequence
 from turbo_search.applied_state import (
     ROW_STATUS_ACTIVE,
     ROW_STATUS_RETAINED_STALE,
+    ApplyRunSummary,
     AppliedState,
     AppliedStateError,
     AppliedStateRow,
+    acquire_namespace_apply_lock,
     build_applied_state,
     load_applied_state,
     save_applied_state,
@@ -193,39 +195,55 @@ def run_approved_apply(
     if not api_key:
         raise RuntimeError("TURBOPUFFER_API_KEY must be set in the environment for approved apply.")
 
-    applied_at = datetime.now(timezone.utc).isoformat()
-    rows_to_upsert = [verified.chunks_by_row_id[record.row_id] for record in verified.diff.rows_to_upsert_records]
-    rows_written = 0
-    rows_deleted = 0
-    embeddings_generated = 0
-    writer: TurbopufferWriter | None = None
-    if rows_to_upsert or (delete_stale and stale_row_ids):
-        writer = TurbopufferWriter(
-            config=config,
-            api_key=api_key,
-            schema=GENERIC_SITE_TURBOPUFFER_SCHEMA,
+    with acquire_namespace_apply_lock(
+        site_id=verified.manifest.site_id,
+        namespace=namespace,
+        state_root=verified.state_root,
+    ):
+        applied_at = datetime.now(timezone.utc).isoformat()
+        rows_to_upsert = [verified.chunks_by_row_id[record.row_id] for record in verified.diff.rows_to_upsert_records]
+        rows_written = 0
+        rows_deleted = 0
+        embeddings_generated = 0
+        writer: TurbopufferWriter | None = None
+        if rows_to_upsert or (delete_stale and stale_row_ids):
+            writer = TurbopufferWriter(
+                config=config,
+                api_key=api_key,
+                schema=GENERIC_SITE_TURBOPUFFER_SCHEMA,
+            )
+
+        if rows_to_upsert:
+            embedder = SentenceTransformerEmbedder(config.embedding_model)
+            assert writer is not None
+            for batch in batched(rows_to_upsert, batch_size):
+                vectors = embedder.encode([embedding_text_for_chunk(chunk) for chunk in batch])
+                embeddings_generated += len(vectors)
+                rows = [
+                    build_generic_site_row(chunk, vector, plan_id=str(verified.plan["plan_id"]), applied_at=applied_at)
+                    for chunk, vector in zip(batch, vectors, strict=True)
+                ]
+                writer.upsert_rows(rows)
+                rows_written += len(rows)
+
+        if delete_stale and stale_row_ids:
+            assert writer is not None
+            writer.delete_rows(stale_row_ids)
+            rows_deleted = len(stale_row_ids)
+
+        next_state = build_state_after_apply(verified, applied_at=applied_at, delete_stale=delete_stale)
+        save_applied_state(
+            next_state,
+            state_root=verified.state_root,
+            apply_run=ApplyRunSummary(
+                apply_id=next_state.last_apply_id,
+                plan_id=next_state.last_plan_id,
+                applied_at=next_state.updated_at,
+                rows_upserted=rows_written,
+                rows_deleted=rows_deleted,
+                retained_stale_rows=sum(row.status == ROW_STATUS_RETAINED_STALE for row in next_state.rows),
+            ),
         )
-
-    if rows_to_upsert:
-        embedder = SentenceTransformerEmbedder(config.embedding_model)
-        assert writer is not None
-        for batch in batched(rows_to_upsert, batch_size):
-            vectors = embedder.encode([embedding_text_for_chunk(chunk) for chunk in batch])
-            embeddings_generated += len(vectors)
-            rows = [
-                build_generic_site_row(chunk, vector, plan_id=str(verified.plan["plan_id"]), applied_at=applied_at)
-                for chunk, vector in zip(batch, vectors, strict=True)
-            ]
-            writer.upsert_rows(rows)
-            rows_written += len(rows)
-
-    if delete_stale and stale_row_ids:
-        assert writer is not None
-        writer.delete_rows(stale_row_ids)
-        rows_deleted = len(stale_row_ids)
-
-    next_state = build_state_after_apply(verified, applied_at=applied_at, delete_stale=delete_stale)
-    save_applied_state(next_state, state_root=verified.state_root)
     return build_apply_summary(
         verified=verified,
         namespace=namespace,

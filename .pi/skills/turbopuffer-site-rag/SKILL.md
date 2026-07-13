@@ -13,6 +13,34 @@ Run `uv run turbo-search ...` commands from the `turbo-search` repository root.
 
 If this skill is installed globally by symlink, resolve the symlink target to find the repository clone. Otherwise, ask the user for the local clone path before running repo commands from another directory.
 
+## Credentials from `.env`
+
+`turbo-search` deliberately reads `TURBOPUFFER_API_KEY` from the process environment; it does not parse `.env` itself. When the repository `.env` is the intended credential source, load it only into the command subshell so an inherited key cannot silently override it:
+
+```bash
+(
+  set -a
+  . ./.env
+  set +a
+  uv run turbo-search <command>
+)
+```
+
+Do not print, persist, or copy the key. `TURBOPUFFER_REGION`, `TURBOPUFFER_NAMESPACE`, and `TURBO_SEARCH_EMBEDDING_MODEL` remain optional non-secret environment overrides; CLI flags can override the first two per command.
+
+## Compact applied state
+
+Each `(site_id, namespace)` has an embedded local DuckDB ledger at:
+
+```text
+.turbo-search/state/<site-id>/<namespace>/state.duckdb
+```
+
+- The ledger stores current row state plus compact apply summaries, not full row snapshots.
+- On first access, a legacy `last-applied.json` is deleted and active state starts empty. The next approved apply must therefore re-upsert the reviewed corpus; do not assume old local rows still exist remotely.
+- `apply --approve` takes a non-blocking lock for that namespace before embeddings or Turbopuffer writes. A same-namespace contender fails with a busy error; different namespaces have independent databases and can apply concurrently.
+- This is embedded local state: do not add or depend on Quack, a listener, or shared cross-machine state.
+
 ## Non-negotiable guardrails
 
 - Do **not** persist API keys, Proton Pass output, tokens, private vault names, private item titles, or share IDs to disk.
@@ -36,7 +64,7 @@ The polished workflow is Terraform-like:
 3. `turbo-search apply --approve`: explicit live path. Require `TURBOPUFFER_API_KEY` in the environment, embed/upsert only new or changed chunks, and update local applied state after success.
 4. `--delete-stale`: extra delete guardrail. Stale rows are retained by default; live stale deletion requires both `--approve` and `--delete-stale`.
 
-Plan artifacts are Markdown/JSON-first: `plan.json`, `summary.json`, `manifest.json`, `chunks.jsonl`, and `pages/*.md`. Local applied state lives under `.turbo-search/state/...` and is gitignored.
+Plan artifacts are Markdown/JSON-first: `plan.json`, `summary.json`, `manifest.json`, `chunks.jsonl`, and `pages/*.md`. Pending, failed, and preflight plans remain for review/retry; successful approved apply removes its exact plan directory, and a new verified plan removes older same-namespace sibling plans. Copy artifacts elsewhere before approved apply when long-term audit/source retention is needed. Local applied state lives under `.turbo-search/state/.../state.duckdb` and is gitignored.
 
 See [Scrapling site workflow](references/scrapling-site-workflow.md) for commands and design notes.
 
@@ -69,19 +97,18 @@ uv run turbo-search apply
 `apply` defaults to the newest `artifacts/site-crawls/**/plan.json` and the namespace recorded in that plan. Use `--json` for scripts/automation. Use `--plan` or `--namespace` only when overriding those defaults.
 
 3. Confirm the namespace, rows to upsert, embeddings to generate, stale row counts, and whether stale deletion is desired. Default: retain stale rows; never delete namespaces here.
-4. Retrieve the turbopuffer API key into shell memory only and set environment variables only in the active shell:
+4. When the repository `.env` is the approved credential source, load it only in the command subshell; the CLI reads the resulting process environment and never prints or stores the key:
 
 ```bash
-export TURBOPUFFER_REGION=gcp-us-central1
-export TURBOPUFFER_NAMESPACE=<approved-namespace>
-export TURBOPUFFER_API_KEY=<retrieved into shell memory only>
+(
+  set -a
+  . ./.env
+  set +a
+  uv run turbo-search apply --approve
+)
 ```
 
-5. Run approved apply only after explicit approval:
+   Otherwise, set `TURBOPUFFER_API_KEY` only in the active shell and run the same approved command. Pass `--region` and `--namespace` when the reviewed plan requires non-default values.
 
-```bash
-uv run turbo-search apply --approve
-```
-
-6. Delete stale rows only when explicitly requested with both `--approve` and `--delete-stale`.
-7. Record evidence with counts and command shape, never secret values, private vault names, item titles, share IDs, or token/API-key values.
+5. Delete stale rows only when explicitly requested with both `--approve` and `--delete-stale`.
+6. Record evidence with counts and command shape, never secret values, private vault names, item titles, share IDs, or token/API-key values.
