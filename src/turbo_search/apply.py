@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 from turbo_search.applied_state import (
     ROW_STATUS_ACTIVE,
@@ -184,8 +184,18 @@ def run_approved_apply(
     namespace: str,
     batch_size: int,
     delete_stale: bool = False,
+    progress_callback: Callable[[str], None] | None = None,
 ) -> JsonObject:
     """Embed/upsert only diff rows, optionally delete stale rows, then update state."""
+
+    def emit_progress(message: str) -> None:
+        if progress_callback is None:
+            return
+        try:
+            progress_callback(message)
+        except Exception:
+            # Progress is advisory; it must not interrupt a live apply.
+            return
 
     stale_row_ids = stale_row_ids_for_delete(verified)
     if delete_stale and not stale_row_ids:
@@ -195,6 +205,7 @@ def run_approved_apply(
     if not api_key:
         raise RuntimeError("TURBOPUFFER_API_KEY must be set in the environment for approved apply.")
 
+    emit_progress("apply: acquiring namespace lock")
     with acquire_namespace_apply_lock(
         site_id=verified.manifest.site_id,
         namespace=namespace,
@@ -206,6 +217,9 @@ def run_approved_apply(
         rows_deleted = 0
         embeddings_generated = 0
         writer: TurbopufferWriter | None = None
+        total_rows = len(rows_to_upsert)
+        total_batches = (total_rows + batch_size - 1) // batch_size
+        emit_progress(f"apply: preparing embedding/upsert; rows={total_rows}; batches={total_batches}")
         if rows_to_upsert or (delete_stale and stale_row_ids):
             writer = TurbopufferWriter(
                 config=config,
@@ -216,7 +230,7 @@ def run_approved_apply(
         if rows_to_upsert:
             embedder = SentenceTransformerEmbedder(config.embedding_model)
             assert writer is not None
-            for batch in batched(rows_to_upsert, batch_size):
+            for batch_index, batch in enumerate(batched(rows_to_upsert, batch_size), start=1):
                 vectors = embedder.encode([embedding_text_for_chunk(chunk) for chunk in batch])
                 embeddings_generated += len(vectors)
                 rows = [
@@ -225,12 +239,17 @@ def run_approved_apply(
                 ]
                 writer.upsert_rows(rows)
                 rows_written += len(rows)
+                emit_progress(
+                    f"apply: embedding/upserting batches={batch_index}/{total_batches}; rows={rows_written}/{total_rows}"
+                )
 
         if delete_stale and stale_row_ids:
+            emit_progress(f"apply: deleting stale rows={len(stale_row_ids)}")
             assert writer is not None
             writer.delete_rows(stale_row_ids)
             rows_deleted = len(stale_row_ids)
 
+        emit_progress("apply: committing local state")
         next_state = build_state_after_apply(verified, applied_at=applied_at, delete_stale=delete_stale)
         save_applied_state(
             next_state,

@@ -101,9 +101,15 @@ class OneLineProgress:
         if not force and now - self._last_update < self.min_interval:
             return
         self._last_update = now
+        try:
+            self.stream.write(f"\r\x1b[K{self._fit_message(message)}")
+            self.stream.flush()
+        except Exception:
+            # Progress is advisory; a broken stderr must not affect the command.
+            self.enabled = False
+            self._wrote = False
+            return
         self._wrote = True
-        self.stream.write(f"\r\x1b[K{self._fit_message(message)}")
-        self.stream.flush()
 
     def _fit_message(self, message: str) -> str:
         width = self.terminal_width or shutil.get_terminal_size(fallback=(80, 20)).columns
@@ -117,8 +123,14 @@ class OneLineProgress:
     def finish(self) -> None:
         if not self.enabled or not self._wrote:
             return
-        self.stream.write("\r\x1b[K")
-        self.stream.flush()
+        try:
+            self.stream.write("\r\x1b[K")
+            self.stream.flush()
+        except Exception:
+            # Progress is advisory; a broken stderr must not affect the command.
+            self.enabled = False
+            self._wrote = False
+            return
         self._wrote = False
 
 
@@ -518,6 +530,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="Print JSON output. Text summary is used by default.",
+    )
+    apply_parser.add_argument(
+        "--no-progress",
+        action="store_true",
+        help="Disable the default one-line interactive progress indicator.",
     )
     apply_parser.set_defaults(func=_run_apply)
 
@@ -1000,6 +1017,8 @@ def plan_summary(
 
 
 def _run_apply(args: argparse.Namespace) -> int:
+    progress = OneLineProgress(enabled=should_show_progress(args))
+    progress.update("apply: verifying plan", force=True)
     try:
         plan_path = args.plan if args.plan is not None else discover_latest_plan_path()
         verified = load_verified_apply_plan(
@@ -1008,6 +1027,7 @@ def _run_apply(args: argparse.Namespace) -> int:
             state_root=args.state_root,
         )
     except (ApplyPlanError, AppliedStateError, PlanDiffError, OSError, ValueError, json.JSONDecodeError) as exc:
+        progress.finish()
         print(str(exc), file=sys.stderr)
         return 2
 
@@ -1019,6 +1039,7 @@ def _run_apply(args: argparse.Namespace) -> int:
             approved=False,
             delete_stale=args.delete_stale,
         )
+        progress.finish()
         if args.json:
             _print_json(summary)
         else:
@@ -1033,12 +1054,20 @@ def _run_apply(args: argparse.Namespace) -> int:
             namespace=namespace,
             batch_size=args.batch_size,
             delete_stale=args.delete_stale,
+            progress_callback=lambda message: progress.update(message, force=True) if progress.enabled else None,
         )
     except (RuntimeError, AppliedStateError, OSError, ValueError) as exc:
-        print(str(exc), file=sys.stderr)
+        progress.finish()
+        try:
+            print(str(exc), file=sys.stderr)
+        except OSError:
+            pass
         return 2
 
-    for warning in cleanup_applied_plan_directory(verified.plan_path, state_root=verified.state_root):
+    progress.update("apply: cleaning up successful plan", force=True)
+    cleanup_warnings = cleanup_applied_plan_directory(verified.plan_path, state_root=verified.state_root)
+    progress.finish()
+    for warning in cleanup_warnings:
         print(f"Warning: {warning}", file=sys.stderr)
     if args.json:
         _print_json(summary)

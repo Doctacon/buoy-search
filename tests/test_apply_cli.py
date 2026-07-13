@@ -9,6 +9,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
+from turbo_search.apply import load_verified_apply_plan, run_approved_apply
 from turbo_search.applied_state import (
     ROW_STATUS_ACTIVE,
     ROW_STATUS_RETAINED_STALE,
@@ -23,7 +24,18 @@ from turbo_search.applied_state import (
 )
 from turbo_search.cli import main
 from turbo_search.chunker import process_corpus
+from turbo_search.config import RuntimeConfig
 from turbo_search.plan_artifacts import build_plan_artifacts, write_plan_artifacts
+
+
+class TtyStringIO(StringIO):
+    def isatty(self) -> bool:
+        return True
+
+
+class FailingTtyStringIO(TtyStringIO):
+    def write(self, value: str) -> int:
+        raise OSError("simulated stderr failure")
 
 
 class FakeEmbedder:
@@ -158,9 +170,15 @@ class ApplyCliTests(unittest.TestCase):
     def setUp(self) -> None:
         reset_fakes()
 
-    def run_main(self, args: list[str], *, env: dict[str, str] | None = None):
+    def run_main(
+        self,
+        args: list[str],
+        *,
+        env: dict[str, str] | None = None,
+        stderr: StringIO | None = None,
+    ):
         stdout = StringIO()
-        stderr = StringIO()
+        stderr = stderr or StringIO()
         env_patch = {} if env is None else env
         with patch.dict("os.environ", env_patch, clear=True):
             with redirect_stdout(stdout), redirect_stderr(stderr):
@@ -901,6 +919,262 @@ class ApplyCliTests(unittest.TestCase):
             with acquire_namespace_apply_lock(site_id="example-com", namespace="site-one-v1", state_root=state_root):
                 with acquire_namespace_apply_lock(site_id="example-com", namespace="site-two-v1", state_root=state_root):
                     pass
+
+    def test_approved_apply_tty_progress_reports_phases_and_each_batch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            with patch("turbo_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
+                "turbo_search.apply.TurbopufferWriter", FakeWriter
+            ):
+                result, _stdout, stderr = self.run_main(
+                    [
+                        "apply",
+                        "--plan",
+                        str(plan_path),
+                        "--namespace",
+                        artifacts.manifest.namespace,
+                        "--state-root",
+                        str(state_root),
+                        "--approve",
+                        "--batch-size",
+                        "1",
+                    ],
+                    env={"TURBOPUFFER_API_KEY": "test-key"},
+                    stderr=TtyStringIO(),
+                )
+
+        self.assertEqual(result, 0, stderr)
+        rendered = stderr.replace("\x1b[K", "")
+        self.assertIn("\rapply: verifying plan", rendered)
+        self.assertIn("\rapply: acquiring namespace lock", rendered)
+        self.assertIn("\rapply: preparing embedding/upsert; rows=2; batches=2", rendered)
+        self.assertIn("\rapply: embedding/upserting batches=1/2; rows=1/2", rendered)
+        self.assertIn("\rapply: embedding/upserting batches=2/2; rows=2/2", rendered)
+        self.assertIn("\rapply: committing local state", rendered)
+        self.assertIn("\rapply: cleaning up successful plan", rendered)
+        self.assertNotIn("\n", rendered)
+
+    def test_apply_preflight_tty_shows_verification_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            result, _stdout, stderr = self.run_main(
+                [
+                    "apply",
+                    "--plan",
+                    str(plan_path),
+                    "--namespace",
+                    artifacts.manifest.namespace,
+                    "--state-root",
+                    str(state_root),
+                ],
+                stderr=TtyStringIO(),
+            )
+
+        self.assertEqual(result, 0, stderr)
+        rendered = stderr.replace("\x1b[K", "")
+        self.assertIn("\rapply: verifying plan", rendered)
+        self.assertNotIn("embedding/upsert", rendered)
+        self.assertNotIn("committing local state", rendered)
+        self.assertNotIn("\n", rendered)
+
+    def test_apply_progress_is_suppressed_for_json_and_no_progress(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            with patch("turbo_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
+                "turbo_search.apply.TurbopufferWriter", FakeWriter
+            ):
+                json_result, json_stdout, json_stderr = self.run_main(
+                    [
+                        "apply",
+                        "--plan",
+                        str(plan_path),
+                        "--namespace",
+                        artifacts.manifest.namespace,
+                        "--state-root",
+                        str(state_root),
+                        "--approve",
+                        "--json",
+                    ],
+                    env={"TURBOPUFFER_API_KEY": "test-key"},
+                    stderr=TtyStringIO(),
+                )
+            artifacts, plan_path = build_saved_plan(root / "no-progress", state_root=root / "state-no-progress")
+            with patch("turbo_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
+                "turbo_search.apply.TurbopufferWriter", FakeWriter
+            ):
+                quiet_result, _quiet_stdout, quiet_stderr = self.run_main(
+                    [
+                        "apply",
+                        "--plan",
+                        str(plan_path),
+                        "--namespace",
+                        artifacts.manifest.namespace,
+                        "--state-root",
+                        str(root / "state-no-progress"),
+                        "--approve",
+                        "--no-progress",
+                    ],
+                    env={"TURBOPUFFER_API_KEY": "test-key"},
+                    stderr=TtyStringIO(),
+                )
+
+        self.assertEqual(json_result, 0, json_stderr)
+        self.assertTrue(json.loads(json_stdout)["approved"])
+        self.assertEqual(json_stderr, "")
+        self.assertEqual(quiet_result, 0, quiet_stderr)
+        self.assertEqual(quiet_stderr, "")
+
+    def test_progress_callback_failure_after_upsert_does_not_prevent_state_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            verified = load_verified_apply_plan(
+                plan_path=plan_path,
+                namespace=artifacts.manifest.namespace,
+                state_root=state_root,
+            )
+
+            def failing_progress(_message: str) -> None:
+                raise OSError("simulated progress failure")
+
+            with patch.dict("os.environ", {"TURBOPUFFER_API_KEY": "test-key"}, clear=True), patch(
+                "turbo_search.apply.SentenceTransformerEmbedder", FakeEmbedder
+            ), patch("turbo_search.apply.TurbopufferWriter", FakeWriter):
+                summary = run_approved_apply(
+                    verified,
+                    config=RuntimeConfig(namespace=artifacts.manifest.namespace),
+                    namespace=artifacts.manifest.namespace,
+                    batch_size=1,
+                    progress_callback=failing_progress,
+                )
+            loaded_state = load_applied_state(
+                site_id=artifacts.manifest.site_id,
+                namespace=artifacts.manifest.namespace,
+                base_url=artifacts.manifest.base_url,
+                state_root=state_root,
+            )
+
+        self.assertEqual(summary["rows_upserted"], 2)
+        self.assertEqual(len(FakeWriter.rows), 2)
+        self.assertFalse(loaded_state.first_apply)
+        self.assertEqual(
+            {row.row_id for row in loaded_state.rows if row.status == ROW_STATUS_ACTIVE},
+            {chunk.row_id for chunk in artifacts.manifest.chunks},
+        )
+
+    def test_progress_callback_failure_does_not_mask_apply_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            verified = load_verified_apply_plan(
+                plan_path=plan_path,
+                namespace=artifacts.manifest.namespace,
+                state_root=state_root,
+            )
+            FakeWriter.should_fail = True
+
+            def failing_progress(_message: str) -> None:
+                raise OSError("simulated progress failure")
+
+            with patch.dict("os.environ", {"TURBOPUFFER_API_KEY": "test-key"}, clear=True), patch(
+                "turbo_search.apply.SentenceTransformerEmbedder", FakeEmbedder
+            ), patch("turbo_search.apply.TurbopufferWriter", FakeWriter):
+                with self.assertRaisesRegex(RuntimeError, "fake upsert failure"):
+                    run_approved_apply(
+                        verified,
+                        config=RuntimeConfig(namespace=artifacts.manifest.namespace),
+                        namespace=artifacts.manifest.namespace,
+                        batch_size=1,
+                        progress_callback=failing_progress,
+                    )
+
+    def test_apply_tty_progress_stream_failure_does_not_prevent_state_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            with patch("turbo_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
+                "turbo_search.apply.TurbopufferWriter", FakeWriter
+            ):
+                result, _stdout, _stderr = self.run_main(
+                    [
+                        "apply",
+                        "--plan",
+                        str(plan_path),
+                        "--namespace",
+                        artifacts.manifest.namespace,
+                        "--state-root",
+                        str(state_root),
+                        "--approve",
+                    ],
+                    env={"TURBOPUFFER_API_KEY": "test-key"},
+                    stderr=FailingTtyStringIO(),
+                )
+            loaded_state = load_applied_state(
+                site_id=artifacts.manifest.site_id,
+                namespace=artifacts.manifest.namespace,
+                base_url=artifacts.manifest.base_url,
+                state_root=state_root,
+            )
+
+        self.assertEqual(result, 0)
+        self.assertFalse(loaded_state.first_apply)
+        self.assertEqual(len(FakeWriter.rows), 2)
+
+    def test_apply_tty_progress_stream_failure_does_not_mask_upsert_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            FakeWriter.should_fail = True
+            with patch("turbo_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
+                "turbo_search.apply.TurbopufferWriter", FakeWriter
+            ):
+                result, _stdout, _stderr = self.run_main(
+                    [
+                        "apply",
+                        "--plan",
+                        str(plan_path),
+                        "--namespace",
+                        artifacts.manifest.namespace,
+                        "--state-root",
+                        str(state_root),
+                        "--approve",
+                    ],
+                    env={"TURBOPUFFER_API_KEY": "test-key"},
+                    stderr=FailingTtyStringIO(),
+                )
+
+        self.assertEqual(result, 2)
+        self.assertEqual(FakeWriter.rows, [])
+
+    def test_apply_text_output_suppresses_progress_when_stderr_is_not_a_tty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            result, _stdout, stderr = self.run_main(
+                [
+                    "apply",
+                    "--plan",
+                    str(plan_path),
+                    "--namespace",
+                    artifacts.manifest.namespace,
+                    "--state-root",
+                    str(state_root),
+                ]
+            )
+
+        self.assertEqual(result, 0, stderr)
+        self.assertEqual(stderr, "")
 
 
 if __name__ == "__main__":
