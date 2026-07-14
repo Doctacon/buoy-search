@@ -1,4 +1,4 @@
-Status: active
+Status: done
 Created: 2026-07-14
 Updated: 2026-07-14
 Parent: .10x/tickets/2026-07-14-buoy-public-ci-release-plan.md
@@ -20,6 +20,7 @@ Replace the pending 0.2.1 changelog marker with the verified release date, add c
 ## Progress and notes
 
 - 2026-07-14: Finalized the verified v0.2.1 changelog, release review, terminal graph paths, and parent state; focused 9 and full 235 tests plus lock/diff checks pass. Evidence: `.10x/evidence/2026-07-14-finalize-v0-2-1-release-docs.md`.
+- 2026-07-14: Committed `f4ba77360912a6f72f514c31fd2c311145e65285`, pushed normally to canonical main, and observed hosted CI run `29363465444` succeed on the exact commit.
 
 ## Blockers
 

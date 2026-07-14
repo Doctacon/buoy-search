@@ -33,6 +33,8 @@ from buoy_search.crawler import (
     crawled_page_from_response,
     default_out_dir,
     detect_source,
+    elapsed_since,
+    observe_monotonic,
     url_allowed_by_path_filters,
     namespace_candidate,
     page_filename,
@@ -47,6 +49,11 @@ from buoy_search.chunker import process_corpus
 
 
 class CrawlerHelperTests(unittest.TestCase):
+    def test_diagnostic_clock_failures_are_best_effort(self) -> None:
+        with patch("buoy_search.crawler.time.monotonic", side_effect=RuntimeError("clock failed")):
+            self.assertIsNone(observe_monotonic())
+            self.assertEqual(elapsed_since(1.0), 0.0)
+
     def test_default_caps_are_useful_for_site_plans(self) -> None:
         self.assertEqual(DEFAULT_CRAWL_MAX_PAGES, 3000)
         self.assertEqual(DEFAULT_CRAWL_MAX_CHUNKS, 120000)

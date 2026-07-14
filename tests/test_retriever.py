@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import unittest
+from unittest.mock import patch
 
 from buoy_search.config import RuntimeConfig
 from buoy_search.evals import hit_summary
@@ -24,6 +26,14 @@ class FakeEmbedder:
     def encode(self, texts: list[str]) -> list[list[float]]:
         self.texts.append(texts)
         return [[0.1, 0.2, 0.3]]
+
+
+class PrecisionCapturingEmbedder(FakeEmbedder):
+    init_calls: list[tuple[str, str]] = []
+
+    def __init__(self, model_name: str, *, precision: str) -> None:
+        super().__init__()
+        self.init_calls.append((model_name, precision))
 
 
 class CapturingNamespace:
@@ -128,6 +138,22 @@ class PageAggregationNamespace:
 
 
 class RetrieverTests(unittest.TestCase):
+    def test_from_config_uses_float16_for_query_embedding(self) -> None:
+        PrecisionCapturingEmbedder.init_calls.clear()
+        namespace = CapturingNamespace()
+        config = RuntimeConfig(namespace="site-example-v1", embedding_precision="float16")
+        with patch.dict(os.environ, {"TURBOPUFFER_API_KEY": "test-key"}, clear=False), patch(
+            "buoy_search.retriever.SentenceTransformerEmbedder", PrecisionCapturingEmbedder
+        ), patch("buoy_search.retriever.build_namespace", return_value=namespace):
+            retriever = HybridRetriever.from_config(config)
+            retriever.retrieve("precision query", RetrievalOptions())
+
+        self.assertEqual(
+            PrecisionCapturingEmbedder.init_calls,
+            [(config.embedding_model, "float16")],
+        )
+        self.assertEqual(retriever._embedder.texts, [["precision query"]])
+
     def test_builds_ann_and_boosted_bm25_subqueries_without_vectors_in_attributes(self) -> None:
         queries = build_multi_query_subqueries(
             query="link extraction",

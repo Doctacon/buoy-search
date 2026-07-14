@@ -525,7 +525,7 @@ def process_corpus(
 class SentenceTransformerEmbedder:
     """Lazy local BGE embedder used only for approved live apply/retrieval paths."""
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, *, precision: str = "float32") -> None:
         try:
             from sentence_transformers import SentenceTransformer
         except ImportError as exc:  # pragma: no cover - depends on optional install.
@@ -533,6 +533,16 @@ class SentenceTransformerEmbedder:
                 "sentence-transformers is required for approved live embedding. Run `uv sync` first."
             ) from exc
         self._model = SentenceTransformer(model_name)
+        if precision == "float16":
+            device_type = str(self._model.device).split(":", 1)[0]
+            if device_type not in {"cuda", "mps"}:
+                raise RuntimeError(
+                    "float16 embedding requires a CUDA or Apple MPS accelerator; "
+                    f"the model selected {self._model.device}"
+                )
+            self._model.half()
+        elif precision != "float32":
+            raise RuntimeError(f"unsupported embedding precision: {precision}")
 
     def encode(self, texts: Sequence[str], *, batch_size: int = 32) -> list[list[float]]:
         embeddings = self._model.encode(

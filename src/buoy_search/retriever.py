@@ -146,6 +146,7 @@ class RetrievalResult:
     region: str
     namespace: str
     embedding_model: str
+    embedding_precision: str
     top_k: int
     candidates: int
     doc_kind: str | None
@@ -168,6 +169,7 @@ class RetrievalResult:
             "region": self.region,
             "namespace": self.namespace,
             "embedding_model": self.embedding_model,
+            "embedding_precision": self.embedding_precision,
             "top_k": self.top_k,
             "candidates": self.candidates,
             "doc_kind": self.doc_kind,
@@ -216,6 +218,7 @@ class RetrievalPlan:
             "region": self.config.region,
             "namespace": self.config.namespace,
             "embedding_model": self.config.embedding_model,
+            "embedding_precision": self.config.embedding_precision,
             "top_k": self.options.top_k,
             "candidates": self.options.candidates,
             "doc_kind": self.options.doc_kind,
@@ -257,7 +260,9 @@ class HybridRetriever:
                 "TURBOPUFFER_API_KEY must be set in the environment for live retrieval. "
                 "Use `retrieve --dry-run` or omit `--live` to inspect the plan without credentials."
             )
-        embedder = SentenceTransformerEmbedder(config.embedding_model)
+        embedder = SentenceTransformerEmbedder(
+            config.embedding_model, precision=config.embedding_precision
+        )
         namespace = build_namespace(config=config, api_key=api_key)
         return cls(namespace=namespace, embedder=embedder, config=config)
 
@@ -300,6 +305,7 @@ class HybridRetriever:
                 region=self._config.region,
                 namespace=self._config.namespace,
                 embedding_model=self._config.embedding_model,
+                embedding_precision=self._config.embedding_precision,
                 top_k=options.top_k,
                 candidates=options.candidates,
                 doc_kind=options.doc_kind,
@@ -325,6 +331,7 @@ class HybridRetriever:
             region=self._config.region,
             namespace=self._config.namespace,
             embedding_model=self._config.embedding_model,
+            embedding_precision=self._config.embedding_precision,
             top_k=options.top_k,
             candidates=options.candidates,
             doc_kind=options.doc_kind,

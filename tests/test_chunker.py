@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import sys
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 import unittest
 
 from buoy_search.chunker import (
@@ -10,6 +13,7 @@ from buoy_search.chunker import (
     derive_doc_kind_and_tags,
     parse_markdown_file,
     process_corpus,
+    SentenceTransformerEmbedder,
 )
 
 
@@ -84,6 +88,27 @@ class MarkdownChunkerTests(unittest.TestCase):
             self.assertEqual(plan.stats.files_error, 0)
             self.assertEqual(plan.stats.chunks_generated, 1)
             self.assertTrue(plan.limit_reached or plan.stats.chunks_generated == 1)
+
+
+class SentenceTransformerEmbedderTests(unittest.TestCase):
+    def test_float16_requires_accelerator_and_halves_accelerator_model(self) -> None:
+        class FakeModel:
+            def __init__(self, device: str) -> None:
+                self.device = device
+                self.half_called = False
+
+            def half(self):
+                self.half_called = True
+                return self
+
+        with patch.dict(sys.modules, {"sentence_transformers": SimpleNamespace(SentenceTransformer=lambda _name: FakeModel("cpu"))}):
+            with self.assertRaisesRegex(RuntimeError, "requires a CUDA or Apple MPS accelerator"):
+                SentenceTransformerEmbedder("model", precision="float16")
+
+        model = FakeModel("mps:0")
+        with patch.dict(sys.modules, {"sentence_transformers": SimpleNamespace(SentenceTransformer=lambda _name: model)}):
+            SentenceTransformerEmbedder("model", precision="float16")
+        self.assertTrue(model.half_called)
 
 
 if __name__ == "__main__":

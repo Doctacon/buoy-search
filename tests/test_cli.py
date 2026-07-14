@@ -11,8 +11,8 @@ import unittest
 from unittest.mock import patch
 
 from buoy_search.applied_state import AppliedStateRow, build_applied_state, save_applied_state
-from buoy_search.cli import OneLineProgress, build_parser, legacy_main, main
-from buoy_search.crawler import CrawlOptions
+from buoy_search.cli import OneLineProgress, build_parser, legacy_main, main, print_eval_text, print_retrieval_text
+from buoy_search.crawler import CrawlExecution, CrawlOptions
 from buoy_search.chunker import process_corpus
 from buoy_search.plan_artifacts import build_plan_artifacts, write_plan_artifacts
 
@@ -185,6 +185,22 @@ def fake_plan_crawl_summary(options: CrawlOptions) -> dict[str, object]:
 
 
 class CliTests(unittest.TestCase):
+    def test_live_retrieval_and_eval_text_expose_embedding_precision(self) -> None:
+        class Output:
+            def __init__(self, payload: dict[str, object]) -> None:
+                self.payload = payload
+
+            def to_dict(self) -> dict[str, object]:
+                return self.payload
+
+        stdout = StringIO()
+        with redirect_stdout(stdout):
+            print_retrieval_text(Output({"dry_run": False, "hits": [], "fusion": "server_rrf", "ranking_mode": "page", "ranking_profile": "none", "ranking_aggregation": "max", "embedding_precision": "float16"}))
+            for dry_run in (True, False):
+                print_eval_text({"dry_run": dry_run, "namespace": "site-example-v1", "region": "gcp-us-central1", "embedding_precision": "float16", "total": 0, "top_k": 5, "candidates": 50, "ranking_mode": "page", "ranking_profile": "none", "ranking_aggregation": "max", "passed": 0, "pass_rate": 0.0, "cases": []})
+
+        self.assertEqual(stdout.getvalue().count("embedding_precision: float16"), 3)
+
     def test_help_identifies_primary_buoy_cli(self) -> None:
         parser = build_parser()
 
@@ -601,10 +617,12 @@ class CliTests(unittest.TestCase):
 
         def fake_crawl(options: CrawlOptions) -> dict[str, object]:
             write_fake_crawl_page(options.out_dir / "pages")
-            return fake_plan_crawl_summary(options)
+            return CrawlExecution(summary=fake_plan_crawl_summary(options), indexing_plan=process_corpus(options.out_dir / "pages"))
 
         stdout = StringIO()
-        with patch("buoy_search.cli.crawl_site", side_effect=fake_crawl) as crawl_mock:
+        with patch(__name__ + ".process_corpus", wraps=process_corpus) as process_mock, patch(
+            "buoy_search.cli.crawl_site_with_plan", side_effect=fake_crawl
+        ) as crawl_mock, patch("buoy_search.cli.build_plan_artifacts", wraps=build_plan_artifacts) as artifacts_mock:
             with redirect_stdout(stdout):
                 result = main(
                     [
@@ -668,7 +686,22 @@ class CliTests(unittest.TestCase):
         self.assertEqual(plan["state_path"], str(state_root / "state/example-com/site-example-com-v1/state.duckdb"))
         self.assertEqual(len(manifest["pages"]), 1)
         self.assertEqual(len(chunks), 1)
+        self.assertEqual(
+            set(payload["timing"]),
+            {
+                "elapsed_seconds",
+                "sitemap_policy_seconds",
+                "crawl_seconds",
+                "corpus_write_seconds",
+                "chunking_seconds",
+                "diff_seconds",
+                "artifact_seconds",
+                "publication_seconds",
+            },
+        )
         crawl_mock.assert_called_once()
+        process_mock.assert_called_once()
+        artifacts_mock.assert_called_once()
 
     def test_plan_command_removes_verified_superseded_same_namespace_plan(self) -> None:
         tmp = tempfile.TemporaryDirectory()
@@ -689,10 +722,10 @@ class CliTests(unittest.TestCase):
 
         def fake_crawl(options: CrawlOptions) -> dict[str, object]:
             write_fake_crawl_page(options.out_dir / "pages")
-            return fake_plan_crawl_summary(options)
+            return CrawlExecution(summary=fake_plan_crawl_summary(options), indexing_plan=process_corpus(options.out_dir / "pages"))
 
         stdout = StringIO()
-        with patch("buoy_search.cli.crawl_site", side_effect=fake_crawl):
+        with patch("buoy_search.cli.crawl_site_with_plan", side_effect=fake_crawl):
             with redirect_stdout(stdout):
                 result = main(
                     [
@@ -757,11 +790,13 @@ class CliTests(unittest.TestCase):
             self.assertTrue(options.repo_file_cards)
             self.assertTrue(options.repo_oversize_file_cards)
             write_fake_github_page(options.out_dir / "pages")
-            return fake_github_crawl_summary(source, options)
+            return CrawlExecution(summary=fake_github_crawl_summary(source, options), indexing_plan=process_corpus(options.out_dir / "pages"))
 
         stdout = StringIO()
-        with patch("buoy_search.cli.crawl_github_repo", side_effect=fake_github_crawl) as github_mock:
-            with patch("buoy_search.cli.crawl_site") as site_mock:
+        with patch(__name__ + ".process_corpus", wraps=process_corpus) as process_mock, patch(
+            "buoy_search.cli.crawl_github_repo_with_plan", side_effect=fake_github_crawl
+        ) as github_mock, patch("buoy_search.cli.build_plan_artifacts", wraps=build_plan_artifacts) as artifacts_mock:
+            with patch("buoy_search.cli.crawl_site_with_plan") as site_mock:
                 with redirect_stdout(stdout):
                     result = main(
                         [
@@ -803,6 +838,8 @@ class CliTests(unittest.TestCase):
         self.assertTrue(plan["crawl_options"]["repo_oversize_file_cards"])
         github_mock.assert_called_once()
         site_mock.assert_not_called()
+        process_mock.assert_called_once()
+        artifacts_mock.assert_called_once()
 
     def test_plan_command_writes_pdf_artifacts_without_source_path(self) -> None:
         tmp = tempfile.TemporaryDirectory()
@@ -820,9 +857,11 @@ class CliTests(unittest.TestCase):
         with patch(
             "buoy_search.crawler.markitdown_pdf_to_markdown",
             return_value="# Research Notes\n\nUseful PDF text for retrieval and planning.",
-        ):
-            with patch("buoy_search.cli.crawl_site") as site_mock:
-                with patch("buoy_search.cli.crawl_github_repo") as github_mock:
+        ), patch("buoy_search.crawler.process_corpus", wraps=process_corpus) as process_mock, patch(
+            "buoy_search.cli.build_plan_artifacts", wraps=build_plan_artifacts
+        ) as artifacts_mock:
+            with patch("buoy_search.cli.crawl_site_with_plan") as site_mock:
+                with patch("buoy_search.cli.crawl_github_repo_with_plan") as github_mock:
                     with redirect_stdout(stdout):
                         result = main(
                             [
@@ -870,6 +909,8 @@ class CliTests(unittest.TestCase):
         self.assertNotIn(str(pdf_path), serialized_artifacts)
         site_mock.assert_not_called()
         github_mock.assert_not_called()
+        process_mock.assert_called_once()
+        artifacts_mock.assert_called_once()
 
     def test_plan_command_writes_local_file_artifacts_without_source_path(self) -> None:
         tmp = tempfile.TemporaryDirectory()
@@ -888,8 +929,8 @@ class CliTests(unittest.TestCase):
             "buoy_search.crawler.markitdown_file_to_markdown",
             return_value="| topic | value |\n| --- | --- |\n| onboarding | ready |",
         ):
-            with patch("buoy_search.cli.crawl_site") as site_mock:
-                with patch("buoy_search.cli.crawl_github_repo") as github_mock:
+            with patch("buoy_search.cli.crawl_site_with_plan") as site_mock:
+                with patch("buoy_search.cli.crawl_github_repo_with_plan") as github_mock:
                     with redirect_stdout(stdout):
                         result = main(
                             [
@@ -981,10 +1022,10 @@ class CliTests(unittest.TestCase):
 
         def fake_crawl(options: CrawlOptions) -> dict[str, object]:
             write_fake_crawl_page(options.out_dir / "pages")
-            return fake_plan_crawl_summary(options)
+            return CrawlExecution(summary=fake_plan_crawl_summary(options), indexing_plan=process_corpus(options.out_dir / "pages"))
 
         stdout = StringIO()
-        with patch("buoy_search.cli.crawl_site", side_effect=fake_crawl):
+        with patch("buoy_search.cli.crawl_site_with_plan", side_effect=fake_crawl):
             with redirect_stdout(stdout):
                 result = main(
                     [

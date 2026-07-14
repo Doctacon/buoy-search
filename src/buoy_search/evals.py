@@ -176,6 +176,7 @@ class EvalRunResult:
     top_k: int
     candidates: int
     embedding_model: str
+    embedding_precision: str
     ranking_mode: str
     ranking_profile: str
     ranking_pool: int
@@ -193,6 +194,7 @@ class EvalRunResult:
             "region": self.region,
             "namespace": self.namespace,
             "embedding_model": self.embedding_model,
+            "embedding_precision": self.embedding_precision,
             "top_k": self.top_k,
             "candidates": self.candidates,
             "ranking_mode": self.ranking_mode,
@@ -565,6 +567,7 @@ def build_dry_run_eval_report(
         top_k=options.top_k,
         candidates=options.candidates,
         embedding_model=config.embedding_model,
+        embedding_precision=config.embedding_precision,
         ranking_mode=options.ranking_mode,
         ranking_profile=options.ranking_profile,
         ranking_pool=options.ranking_pool,
@@ -612,6 +615,7 @@ def run_live_evals(
         top_k=options.top_k,
         candidates=options.candidates,
         embedding_model=config.embedding_model,
+        embedding_precision=config.embedding_precision,
         ranking_mode=options.ranking_mode,
         ranking_profile=options.ranking_profile,
         ranking_pool=options.ranking_pool,

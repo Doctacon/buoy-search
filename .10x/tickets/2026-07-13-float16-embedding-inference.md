@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-13
 Updated: 2026-07-14
 Parent: None
@@ -37,7 +37,10 @@ Focused tests, full-suite output, real-chunk no-write vector/ranking parity, hos
 - 2026-07-13: User authorized implementation and selected explicit precision configuration: plans govern apply; retrieval/evals use a CLI flag or environment setting.
 - 2026-07-14: Blocked behind the Buoy package rebrand to avoid implementing and then mechanically renaming the same cross-cutting plan/apply/retrieval surface. The governing spec now targets `buoy_search`, `buoy`, and `BUOY_EMBEDDING_PRECISION` with the 0.2 legacy environment contract.
 - 2026-07-14: Buoy release integration closed with pass review; this ticket is unblocked and remains separately executable after the rebrand plan.
+- 2026-07-14: User prioritized implementation; assigned to a single worker.
+- 2026-07-14: Initial review found missing live/eval text precision, true re-upsert/query propagation tests, and autoresearch supported-set validation. Repaired all four with focused 86 and full 246 tests passing; build and diff checks pass. Evidence updated; awaiting re-review.
+- 2026-07-14: Implemented opt-in precision across plan/apply/retrieve/evals/autoresearch/config/docs/skill, old-plan compatibility, stable-row precision re-upsert, accelerator guard, and precision summaries. Focused 146 and full 242 tests plus build pass. Real 1,024-chunk MPS parity passed (minimum cosine 0.999756; exact top-10), but repeated median throughput was neutral (64.66 float32 vs 64.58 float16 rows/s), so no speedup claim is made. Evidence: `.10x/evidence/2026-07-14-float16-embedding-inference.md`.
 
 ## Blockers
 
-- None.
+- Required independent review before closure.

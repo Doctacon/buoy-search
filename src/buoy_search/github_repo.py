@@ -25,8 +25,11 @@ from buoy_search.chunker import IndexingPlan, process_corpus, sha256_text
 from buoy_search.crawler import (
     DEFAULT_GITHUB_REPO_MAX_FILE_BYTES,
     GitHubRepoSource,
+    CrawlExecution,
     CrawlOptions,
+    elapsed_since,
     namespace_candidate,
+    observe_monotonic,
     page_filename,
     summarize_sample_chunks,
     yaml_scalar,
@@ -398,11 +401,15 @@ def acquire_github_repo(
     )
 
 
-def crawl_github_repo(source: GitHubRepoSource, options: CrawlOptions) -> dict[str, object]:
-    """Acquire a GitHub repository, write a local corpus, and return a dry-run summary."""
+def crawl_github_repo_with_plan(source: GitHubRepoSource, options: CrawlOptions) -> CrawlExecution:
+    """Acquire a repository and retain its already-built indexing plan."""
 
+    total_started_at = observe_monotonic()
+    crawl_started_at = observe_monotonic()
     acquisition = acquire_github_repo(source, options.out_dir)
+    crawl_seconds = elapsed_since(crawl_started_at)
     pages_dir = options.out_dir / "pages"
+    corpus_started_at = observe_monotonic()
     corpus = build_github_repo_corpus(
         acquisition,
         pages_dir,
@@ -414,12 +421,15 @@ def crawl_github_repo(source: GitHubRepoSource, options: CrawlOptions) -> dict[s
         include_file_cards=options.repo_file_cards,
         include_oversize_file_cards=options.repo_oversize_file_cards,
     )
+    corpus_write_seconds = elapsed_since(corpus_started_at)
+    chunk_started_at = observe_monotonic()
     plan = process_corpus(
         pages_dir,
         limit_chunks=options.max_chunks,
         target_tokens=options.target_tokens,
         overlap_sentences=options.overlap_sentences,
     )
+    chunking_seconds = elapsed_since(chunk_started_at)
     summary = build_github_repo_summary(
         source=source,
         options=options,
@@ -428,9 +438,22 @@ def crawl_github_repo(source: GitHubRepoSource, options: CrawlOptions) -> dict[s
         plan=plan,
         pages_dir=pages_dir,
     )
+    summary["timing"] = {
+        "elapsed_seconds": elapsed_since(total_started_at),
+        "sitemap_policy_seconds": 0.0,
+        "crawl_seconds": crawl_seconds,
+        "corpus_write_seconds": corpus_write_seconds,
+        "chunking_seconds": chunking_seconds,
+    }
     options.out_dir.mkdir(parents=True, exist_ok=True)
     (options.out_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
-    return summary
+    return CrawlExecution(summary=summary, indexing_plan=plan)
+
+
+def crawl_github_repo(source: GitHubRepoSource, options: CrawlOptions) -> dict[str, object]:
+    """Acquire a GitHub repository, write a local corpus, and return a dry-run summary."""
+
+    return crawl_github_repo_with_plan(source, options).summary
 
 
 def build_github_repo_summary(

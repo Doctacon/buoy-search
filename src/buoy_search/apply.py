@@ -28,8 +28,8 @@ from buoy_search.applied_state import (
     load_applied_state,
     save_applied_state,
 )
-from buoy_search.config import RuntimeConfig
-from buoy_search.chunker import SentenceTransformerEmbedder, TurbopufferWriter, batched, sha256_text
+from buoy_search.config import EMBEDDING_PRECISIONS, RuntimeConfig
+from buoy_search.chunker import SentenceTransformerEmbedder, TurbopufferWriter, batched
 from buoy_search.plan_artifacts import (
     GENERIC_SITE_TURBOPUFFER_SCHEMA,
     PLAN_SCHEMA_VERSION,
@@ -38,6 +38,7 @@ from buoy_search.plan_artifacts import (
     build_generic_site_row,
     chunk_jsonl_records,
     dataclass_to_json_object,
+    embedding_hash,
     stable_hash,
     state_path_for_site,
 )
@@ -134,7 +135,12 @@ def load_verified_apply_plan(*, plan_path: Path, namespace: str | None, state_ro
 
     chunks = list(chunk_jsonl_records(chunks_jsonl))
     verify_chunks_match_manifest(chunks, manifest)
-    verify_manifest_embedding_hashes(manifest)
+    embedding_precision = str(plan.get("embedding_precision", "float32"))
+    if embedding_precision not in EMBEDDING_PRECISIONS:
+        raise ApplyPlanError(
+            f"embedding precision must be one of: {', '.join(EMBEDDING_PRECISIONS)}"
+        )
+    verify_manifest_embedding_hashes(manifest, embedding_precision=embedding_precision)
     verify_artifact_hash(plan, manifest)
 
     state = load_applied_state(
@@ -251,7 +257,9 @@ def run_approved_apply(
             )
 
         if rows_to_upsert:
-            embedder = SentenceTransformerEmbedder(config.embedding_model)
+            embedder = SentenceTransformerEmbedder(
+                config.embedding_model, precision=config.embedding_precision
+            )
             assert writer is not None
             for batch_index, batch in enumerate(batched(rows_to_upsert, batch_size), start=1):
                 embedding_started_at = observe_monotonic()
@@ -320,6 +328,7 @@ def run_approved_apply(
             "write_seconds": write_seconds,
             "embedding_batch_size": embedding_batch_size,
             "write_batch_size": batch_size,
+            "embedding_precision": config.embedding_precision,
         },
     )
 
@@ -413,6 +422,7 @@ def build_apply_summary(
         "artifact_hash": verified.plan["artifact_hash"],
         "artifact_verified": True,
         "embedding_model": verified.plan["embedding_model"],
+        "embedding_precision": verified.plan.get("embedding_precision", "float32"),
         "rows_to_upsert": verified.diff.rows_to_upsert,
         "rows_upserted": rows_upserted,
         "embeddings_to_generate": verified.diff.chunks_to_embed,
@@ -460,6 +470,8 @@ def verify_artifact_hash(plan: JsonObject, manifest: ManifestDocument) -> None:
         "embedding_model": plan["embedding_model"],
         "manifest": dataclass_to_json_object(manifest),
     }
+    if "embedding_precision" in plan:
+        artifact_payload["embedding_precision"] = plan["embedding_precision"]
     expected = stable_hash(artifact_payload)
     if str(plan["artifact_hash"]) != expected:
         raise ApplyPlanError(
@@ -473,9 +485,11 @@ def verify_chunks_match_manifest(chunks_jsonl_records_payload: Sequence[JsonObje
         raise ApplyPlanError("chunks.jsonl does not match manifest.json chunks")
 
 
-def verify_manifest_embedding_hashes(manifest: ManifestDocument) -> None:
+def verify_manifest_embedding_hashes(
+    manifest: ManifestDocument, *, embedding_precision: str = "float32"
+) -> None:
     for chunk in manifest.chunks:
-        expected = sha256_text(embedding_text_for_chunk(chunk))
+        expected = embedding_hash(embedding_text_for_chunk(chunk), embedding_precision)
         if chunk.embedding_text_hash != expected:
             raise ApplyPlanError(
                 f"embedding_text_hash mismatch for row {chunk.row_id}: "

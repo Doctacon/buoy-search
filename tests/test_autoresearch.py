@@ -32,6 +32,25 @@ class AutoresearchRunnerTests(unittest.TestCase):
         self.assertEqual(experiment.retrieval_options.ranking_aggregation, "adaptive_sum_3")
         self.assertEqual(experiment.fixture_hits["case-a"][0]["path"], "README.md")
 
+    def test_load_experiment_rejects_unsupported_embedding_precision_in_fixture_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            experiment_path = write_experiment(
+                root,
+                extra={
+                    "config": {
+                        "namespace": "github-owner-buoy-search-v1",
+                        "region": "gcp-us-central1",
+                        "embedding_model": "BAAI/bge-small-en-v1.5",
+                        "embedding_precision": "int8",
+                    }
+                },
+                fixture_hits={"case-a": [{"path": "README.md"}]},
+            )
+
+            with self.assertRaisesRegex(AutoresearchExperimentError, "float32, float16"):
+                load_experiment(experiment_path)
+
     def test_load_experiment_uses_website_defaults_for_site_namespace(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -28,6 +28,10 @@ PASS
 
 A release-automation regression now asserts the verified changelog date and canonical links. No tag, release, asset, PyPI, branch-protection, or product behavior changed.
 
+## Commit, push, and hosted CI
+
+Commit `f4ba77360912a6f72f514c31fd2c311145e65285` (`docs: finalize v0.2.1 release`) was pushed normally to canonical `origin/main`. Hosted CI run `29363465444` completed successfully on that exact commit.
+
 ## Limits
 
-Commit/push and hosted CI observations are appended to the owning ticket after execution.
+The owning ticket remains active pending required independent review. The unrelated untracked Oscilar ticket was excluded from staging and commit.

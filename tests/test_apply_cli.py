@@ -41,9 +41,12 @@ class FailingTtyStringIO(TtyStringIO):
 class FakeEmbedder:
     texts: list[str] = []
     batch_sizes: list[int] = []
+    precisions: list[str] = []
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, *, precision: str = "float32") -> None:
         self.model_name = model_name
+        self.precision = precision
+        FakeEmbedder.precisions.append(precision)
 
     def encode(self, texts, *, batch_size: int = 32):
         FakeEmbedder.texts.extend(list(texts))
@@ -76,6 +79,7 @@ class FakeWriter:
 def reset_fakes() -> None:
     FakeEmbedder.texts = []
     FakeEmbedder.batch_sizes = []
+    FakeEmbedder.precisions = []
     FakeWriter.rows = []
     FakeWriter.deletes = []
     FakeWriter.should_fail = False
@@ -105,7 +109,13 @@ def write_page(corpus: Path, name: str, url: str, title: str, body: str) -> None
     )
 
 
-def build_saved_plan(root: Path, *, state_root: Path | None = None, page_b_body: str = "# Intro\n\nBeta useful docs."):
+def build_saved_plan(
+    root: Path,
+    *,
+    state_root: Path | None = None,
+    page_b_body: str = "# Intro\n\nBeta useful docs.",
+    embedding_precision: str = "float32",
+):
     corpus = root / "pages"
     write_page(corpus, "a.md", "https://example.com/docs/a", "Page A", "# Intro\n\nAlpha useful docs.")
     write_page(corpus, "b.md", "https://example.com/docs/b", "Page B", page_b_body)
@@ -115,6 +125,7 @@ def build_saved_plan(root: Path, *, state_root: Path | None = None, page_b_body:
         base_url="https://example.com/docs/",
         out_dir=out_dir,
         state_root=state_root or root / "state",
+        embedding_precision=embedding_precision,
     )
     write_plan_artifacts(artifacts, out_dir)
     return artifacts, out_dir / "plan.json"
@@ -175,12 +186,33 @@ class ApplyCliTests(unittest.TestCase):
 
     def test_apply_batch_size_defaults_and_embedding_batch_validation(self) -> None:
         parser = build_parser()
+        plan_defaults = parser.parse_args(["plan", "https://example.com"])
+        self.assertEqual(plan_defaults.embedding_precision, "float32")
+        float16_plan = parser.parse_args(["plan", "https://example.com", "--embedding-precision", "float16"])
+        self.assertEqual(float16_plan.embedding_precision, "float16")
         defaults = parser.parse_args(["apply"])
         self.assertEqual(defaults.batch_size, 64)
         self.assertEqual(defaults.embedding_batch_size, 32)
         self.assertIsNone(defaults.state_root)
         with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
             parser.parse_args(["apply", "--embedding-batch-size", "0"])
+
+    def test_approved_apply_uses_precision_recorded_in_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            artifacts, plan_path = build_saved_plan(
+                root, state_root=root / "state", embedding_precision="float16"
+            )
+            with patch("buoy_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
+                "buoy_search.apply.TurbopufferWriter", FakeWriter
+            ):
+                result, _stdout, _stderr = self.run_main(
+                    ["apply", "--approve", "--plan", str(plan_path), "--state-root", str(root / "state"), "--json"],
+                    env={"TURBOPUFFER_API_KEY": "test-key", "BUOY_EMBEDDING_PRECISION": "float32"},
+                )
+            self.assertEqual(result, 0)
+            self.assertEqual(FakeEmbedder.precisions, ["float16"])
+            self.assertEqual(artifacts.plan.embedding_precision, "float16")
 
     def run_main(
         self,
@@ -1005,6 +1037,7 @@ class ApplyCliTests(unittest.TestCase):
                 "write_seconds": 6.0,
                 "embedding_batch_size": 7,
                 "write_batch_size": 1,
+                "embedding_precision": "float32",
             },
         )
         self.assertIn(

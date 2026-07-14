@@ -14,7 +14,7 @@ from pathlib import Path
 import sys
 from typing import Mapping, Sequence
 
-from buoy_search.config import RuntimeConfig, load_config
+from buoy_search.config import EMBEDDING_PRECISIONS, RuntimeConfig, load_config
 from buoy_search.evals import (
     EvalCase,
     EvalRunResult,
@@ -140,6 +140,7 @@ class AutoresearchExperiment:
                 "region": self.config.region,
                 "namespace": self.config.namespace,
                 "embedding_model": self.config.embedding_model,
+                "embedding_precision": self.config.embedding_precision,
             },
             "retrieval_options": {
                 "top_k": self.retrieval_options.top_k,
@@ -190,7 +191,17 @@ def runtime_config_from_payload(payload: Mapping[str, object]) -> RuntimeConfig:
     region = string_or_default(payload, "region", base.region)
     namespace = string_or_default(payload, "namespace", base.namespace)
     embedding_model = string_or_default(payload, "embedding_model", base.embedding_model)
-    return RuntimeConfig(region=region, namespace=namespace, embedding_model=embedding_model)
+    embedding_precision = string_or_default(payload, "embedding_precision", base.embedding_precision)
+    if embedding_precision not in EMBEDDING_PRECISIONS:
+        raise AutoresearchExperimentError(
+            f"embedding_precision must be one of: {', '.join(EMBEDDING_PRECISIONS)}"
+        )
+    return RuntimeConfig(
+        region=region,
+        namespace=namespace,
+        embedding_model=embedding_model,
+        embedding_precision=embedding_precision,
+    )
 
 
 def retrieval_options_from_payload(payload: Mapping[str, object], *, namespace: str) -> RetrievalOptions:
@@ -323,6 +334,7 @@ def run_fixture_evals(cases: Sequence[EvalCase], *, experiment: AutoresearchExpe
         top_k=experiment.retrieval_options.top_k,
         candidates=experiment.retrieval_options.candidates,
         embedding_model=experiment.config.embedding_model,
+        embedding_precision=experiment.config.embedding_precision,
         ranking_mode=experiment.retrieval_options.ranking_mode,
         ranking_profile=experiment.retrieval_options.ranking_profile,
         ranking_pool=experiment.retrieval_options.ranking_pool,

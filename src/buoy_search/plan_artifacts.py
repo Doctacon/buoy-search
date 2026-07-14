@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
+from buoy_search.config import DEFAULT_EMBEDDING_PRECISION, EMBEDDING_PRECISIONS
 from buoy_search.crawler import namespace_candidate, safe_slug, source_id_for_url, validate_base_url
 from buoy_search.chunker import (
     TURBOPUFFER_SCHEMA,
@@ -137,6 +138,7 @@ class PlanDocument:
     crawl_options: JsonObject
     chunk_options: JsonObject
     embedding_model: str
+    embedding_precision: str
     artifact_hash: str
     manifest_path: str
     chunks_path: str
@@ -230,6 +232,7 @@ def build_plan_artifacts(
     crawl_options: JsonObject | None = None,
     chunk_options: JsonObject | None = None,
     embedding_model: str = DEFAULT_PLAN_EMBEDDING_MODEL,
+    embedding_precision: str = DEFAULT_EMBEDDING_PRECISION,
     diff: JsonObject | None = None,
     state_root: Path = Path(".buoy"),
 ) -> PlanArtifacts:
@@ -240,6 +243,8 @@ def build_plan_artifacts(
     records instead of raw Markdown file bytes.
     """
 
+    if embedding_precision not in EMBEDDING_PRECISIONS:
+        raise ValueError(f"embedding precision must be one of: {', '.join(EMBEDDING_PRECISIONS)}")
     normalized_base_url = validate_base_url(base_url)
     namespace_value = namespace or namespace_candidate(normalized_base_url)
     namespace_hint = namespace_candidate(normalized_base_url)
@@ -254,6 +259,7 @@ def build_plan_artifacts(
                 site_id=site_id,
                 page_hash=page_hashes.get(chunk.path, chunk.source_hash),
                 source_metadata=page_metadata.get(chunk.path, {}),
+                embedding_precision=embedding_precision,
             )
             for chunk in indexing_plan.chunks
         ]
@@ -279,6 +285,7 @@ def build_plan_artifacts(
         "crawl_options": crawl_options_value,
         "chunk_options": chunk_options_value,
         "embedding_model": embedding_model,
+        "embedding_precision": embedding_precision,
         "manifest": dataclass_to_json_object(manifest),
     }
     artifact_hash = stable_hash(artifact_payload)
@@ -297,6 +304,7 @@ def build_plan_artifacts(
         crawl_options=crawl_options_value,
         chunk_options=chunk_options_value,
         embedding_model=embedding_model,
+        embedding_precision=embedding_precision,
         artifact_hash=artifact_hash,
         manifest_path=str(out_dir / "manifest.json"),
         chunks_path=str(out_dir / "chunks.jsonl"),
@@ -342,9 +350,10 @@ def build_chunk_record(
     site_id: str,
     page_hash: str,
     source_metadata: dict[str, str] | None = None,
+    embedding_precision: str = DEFAULT_EMBEDDING_PRECISION,
 ) -> ChunkManifestRecord:
     chunk_hash = sha256_text(chunk.content)
-    embedding_text_hash = sha256_text(chunk.embedding_text)
+    embedding_text_hash = embedding_hash(chunk.embedding_text, embedding_precision)
     row_id = generic_site_row_id(
         site_id=site_id,
         canonical_url=chunk.url,
@@ -370,6 +379,14 @@ def build_chunk_record(
         tags=list(chunk.tags),
         source_metadata=dict(source_metadata or {}),
     )
+
+
+def embedding_hash(text: str, precision: str) -> str:
+    """Bind non-default inference precision into incremental embedding identity."""
+
+    if precision == "float32":
+        return sha256_text(text)
+    return sha256_text(f"embedding_precision={precision}\n{text}")
 
 
 def disambiguate_duplicate_chunk_row_ids(chunks: list[ChunkManifestRecord]) -> list[ChunkManifestRecord]:

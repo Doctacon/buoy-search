@@ -41,4 +41,10 @@ After inspecting the plan, preflight with:
 uv run buoy apply
 ```
 
-Only use `uv run buoy apply --approve` after explicit approval for live turbopuffer writes.
+Before preflight, inspect `first_apply`, `state_first_apply`, the local state path, prior apply provenance, upsert counts, and stale-row counts. A request to create a new namespace is not authority to refresh an existing deterministic namespace. If the reviewed plan reports prior applied state, pause before any preflight or live write and ask the user to choose among:
+
+- use the existing namespace without writes;
+- refresh the existing namespace under explicitly renewed write authority, with stale-row handling stated separately;
+- create a genuinely new versioned namespace from a new plan targeting that namespace.
+
+Do not infer the choice from the absence of an active ticket or record: local applied state can reveal prior work that project records do not index. Only use `uv run buoy apply --approve` after the selected namespace and exact live-write action are explicit and the plan for that target has been reviewed.

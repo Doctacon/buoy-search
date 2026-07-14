@@ -1,19 +1,26 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 import tempfile
 from pathlib import Path
 import unittest
 
+from buoy_search.applied_state import AppliedStateRow, build_applied_state
+from buoy_search.apply import verify_artifact_hash, verify_manifest_embedding_hashes
 from buoy_search.chunker import IndexingPlan, IndexingStats, MarkdownChunk, process_corpus
 from buoy_search.plan_artifacts import (
     GENERIC_SITE_TURBOPUFFER_SCHEMA,
     PLAN_SCHEMA_VERSION,
+    PlanArtifacts,
     build_generic_site_row,
     build_plan_artifacts,
     chunk_jsonl_records,
+    dataclass_to_json_object,
+    stable_hash,
     write_plan_artifacts,
 )
+from buoy_search.plan_diff import diff_manifest_against_state
 
 
 def write_page(corpus: Path, *, crawl_timestamp: str, body: str, name: str = "page.md") -> None:
@@ -46,6 +53,8 @@ class PlanArtifactTests(unittest.TestCase):
         body: str = "# Intro\n\nUseful documentation text for retrieval.",
         crawl_options: dict[str, object] | None = None,
         chunk_options: dict[str, object] | None = None,
+        embedding_precision: str = "float32",
+        diff: dict[str, object] | None = None,
     ):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -60,6 +69,8 @@ class PlanArtifactTests(unittest.TestCase):
             out_dir=root / "plan",
             crawl_options=crawl_options or {"css_selector": "main", "max_pages": 10},
             chunk_options=chunk_options or {"target_tokens": 300, "overlap_sentences": 2},
+            embedding_precision=embedding_precision,
+            diff=diff,
         )
 
     def test_plan_manifest_and_chunks_have_required_fields(self) -> None:
@@ -84,6 +95,7 @@ class PlanArtifactTests(unittest.TestCase):
         self.assertEqual(plan["diff"]["rows_to_upsert"], 1)
         self.assertEqual(plan["diff"]["chunks_to_embed"], 1)
         self.assertRegex(plan["artifact_hash"], r"^[0-9a-f]{64}$")
+        self.assertEqual(plan["embedding_precision"], "float32")
 
         self.assertEqual(manifest["schema_version"], PLAN_SCHEMA_VERSION)
         self.assertEqual(len(manifest["pages"]), 1)
@@ -113,14 +125,69 @@ class PlanArtifactTests(unittest.TestCase):
         plan = artifacts.plan_dict()
         chunks = list(chunk_jsonl_records(artifacts.chunks_jsonl))
 
-        # These values were captured from the standard fixture before the Buoy
-        # rebrand. Branding must not force remote row or namespace replacement.
+        # Precision-aware plans retain deterministic row and namespace identity.
         self.assertEqual(
             plan["artifact_hash"],
-            "aa7faed6db9f353d87a959cc575a408e3278963610eacec1ef7f2aca0f71f7c8",
+            "b8ef78337fcb3f1a8f68c877ae6751889170de67dd19eb443453dd7f188914ef",
         )
         self.assertEqual(plan["namespace"], "site-example-com-v1")
         self.assertEqual(chunks[0]["row_id"], "ts_2fd4695f91b79df01d0f8b1d47587127")
+
+    def test_precision_changes_embedding_identity_but_not_row_or_namespace(self) -> None:
+        float32 = self.build_artifacts(embedding_precision="float32")
+        float16 = self.build_artifacts(embedding_precision="float16")
+        row32 = float32.manifest.chunks[0]
+        row16 = float16.manifest.chunks[0]
+
+        self.assertEqual(row32.row_id, row16.row_id)
+        self.assertEqual(float32.manifest.namespace, float16.manifest.namespace)
+        self.assertNotEqual(row32.embedding_text_hash, row16.embedding_text_hash)
+        self.assertNotEqual(float32.plan.artifact_hash, float16.plan.artifact_hash)
+
+    def test_float16_plan_reupserts_float32_state_with_stable_row_id(self) -> None:
+        float32 = self.build_artifacts(embedding_precision="float32")
+        float16 = self.build_artifacts(embedding_precision="float16")
+        previous = float32.manifest.chunks[0]
+        state = build_applied_state(
+            site_id=float32.manifest.site_id,
+            namespace=float32.manifest.namespace,
+            base_url=float32.manifest.base_url,
+            last_plan_id=float32.plan.plan_id,
+            last_apply_id="apply_previous",
+            rows=[AppliedStateRow(
+                row_id=previous.row_id,
+                canonical_url=previous.canonical_url,
+                page_hash=previous.page_hash,
+                chunk_hash=previous.chunk_hash,
+                embedding_text_hash=previous.embedding_text_hash,
+                plan_id=float32.plan.plan_id,
+                applied_at="2026-07-14T00:00:00+00:00",
+            )],
+        )
+
+        diff = diff_manifest_against_state(float16.manifest, state)
+
+        self.assertEqual(diff.rows_to_upsert, 1)
+        self.assertEqual(diff.rows_to_upsert_records[0].row_id, previous.row_id)
+        self.assertEqual(diff.chunks_unchanged, 0)
+
+    def test_legacy_plan_without_precision_keeps_float32_hash_contract(self) -> None:
+        artifacts = self.build_artifacts()
+        plan = artifacts.plan_dict()
+        plan.pop("embedding_precision")
+        plan["artifact_hash"] = stable_hash({
+            "schema_version": PLAN_SCHEMA_VERSION,
+            "base_url": artifacts.manifest.base_url,
+            "site_id": artifacts.manifest.site_id,
+            "namespace": artifacts.manifest.namespace,
+            "namespace_candidate": artifacts.manifest.namespace_candidate,
+            "crawl_options": plan["crawl_options"],
+            "chunk_options": plan["chunk_options"],
+            "embedding_model": plan["embedding_model"],
+            "manifest": dataclass_to_json_object(artifacts.manifest),
+        })
+        verify_artifact_hash(plan, artifacts.manifest)
+        verify_manifest_embedding_hashes(artifacts.manifest)
 
     def test_pdf_source_metadata_is_preserved_in_manifest_chunks_and_rows(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -242,6 +309,57 @@ class PlanArtifactTests(unittest.TestCase):
         self.assertEqual(first.plan.plan_id, second.plan.plan_id)
         self.assertEqual(first.manifest_dict(), second.manifest_dict())
         self.assertEqual(first.chunks_jsonl, second.chunks_jsonl)
+
+    def test_optimized_diff_finalization_matches_full_rebuild(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        corpus = root / "pages"
+        corpus.mkdir()
+        write_page(
+            corpus,
+            crawl_timestamp="2026-06-20T00:00:00+00:00",
+            body="# Intro\n\nUseful documentation text for retrieval.",
+        )
+        indexing_plan = process_corpus(corpus)
+        kwargs = {
+            "indexing_plan": indexing_plan,
+            "base_url": "https://example.com/docs/#ignored",
+            "out_dir": root / "plan",
+            "crawl_options": {"css_selector": "main", "max_pages": 10},
+            "chunk_options": {"target_tokens": 300, "overlap_sentences": 2},
+        }
+        initial = build_plan_artifacts(**kwargs)
+        final_diff = {
+            "first_apply": True,
+            "pages_added": 1,
+            "pages_changed": 0,
+            "pages_removed": 0,
+            "pages_unchanged": 0,
+            "rows_to_upsert": 1,
+            "chunks_to_embed": 1,
+            "chunks_unchanged": 0,
+            "stale_rows": 0,
+            "retained_stale_rows": 0,
+        }
+        optimized = PlanArtifacts(
+            plan=replace(initial.plan, diff=final_diff),
+            manifest=initial.manifest,
+            chunks_jsonl=initial.chunks_jsonl,
+        )
+        rebuilt = build_plan_artifacts(**kwargs, diff=final_diff)
+
+        optimized_plan = optimized.plan_dict()
+        rebuilt_plan = rebuilt.plan_dict()
+        # created_at is observational and may differ between constructions.
+        optimized_plan.pop("created_at")
+        rebuilt_plan.pop("created_at")
+        self.assertEqual(optimized_plan, rebuilt_plan)
+        self.assertEqual(optimized.plan.artifact_hash, rebuilt.plan.artifact_hash)
+        self.assertEqual(optimized.plan.plan_id, rebuilt.plan.plan_id)
+        self.assertEqual(optimized.plan.diff, rebuilt.plan.diff)
+        self.assertEqual(optimized.manifest_dict(), rebuilt.manifest_dict())
+        self.assertEqual(optimized.chunks_jsonl, rebuilt.chunks_jsonl)
 
     def test_artifact_hash_ignores_volatile_crawl_timestamp(self) -> None:
         first = self.build_artifacts(crawl_timestamp="2026-06-20T00:00:00+00:00")

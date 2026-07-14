@@ -17,6 +17,7 @@ import json
 import mimetypes
 from pathlib import Path
 import re
+import time
 from typing import Any, Callable, Literal, Sequence
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, unquote, urlparse, urlunparse
@@ -45,6 +46,32 @@ DEFAULT_DOCS_VERSION_POLICY = "warn"
 DOCS_VERSION_POLICIES = ("warn", "all", "latest", "stable-latest", "latest-nightly")
 DEFAULT_LANGUAGE_POLICY = "english"
 LANGUAGE_POLICIES = ("english", "all")
+
+
+@dataclass(frozen=True)
+class CrawlExecution:
+    """Internal crawl result retaining the already-built indexing plan."""
+
+    summary: dict[str, object]
+    indexing_plan: IndexingPlan
+
+
+def observe_monotonic() -> float | None:
+    """Return a diagnostic timestamp without allowing the clock to fail work."""
+
+    try:
+        return time.monotonic()
+    except Exception:
+        return None
+
+
+def elapsed_since(started_at: float | None) -> float:
+    if started_at is None:
+        return 0.0
+    try:
+        return max(0.0, time.monotonic() - started_at)
+    except Exception:
+        return 0.0
 DOCS_VERSION_CURRENT_ALIASES = {"latest", "current", "stable"}
 DOCS_VERSION_PREVIEW_ALIASES = {"nightly", "main", "master", "dev", "snapshot"}
 DOCS_VERSION_MIN_VERSION_COUNT = 3
@@ -1862,17 +1889,20 @@ def empty_local_document_message(source: LocalDocumentSource) -> str:
     )
 
 
-def crawl_local_document(
+def crawl_local_document_with_plan(
     source: LocalDocumentSource, options: CrawlOptions
-) -> dict[str, object]:
-    """Convert one local document with MarkItDown and return a local-only dry-run summary."""
+) -> CrawlExecution:
+    """Convert one local document and retain its already-built indexing plan."""
 
+    total_started_at = observe_monotonic()
+    conversion_started_at = observe_monotonic()
     label = "pdf" if isinstance(source, PdfSource) else "local file"
     emit_progress(
         options.progress_callback,
         f"crawl {label}: converting {source.filename} with MarkItDown",
     )
     markdown = convert_local_document_to_markdown(source).strip()
+    crawl_seconds = elapsed_since(conversion_started_at)
     if not markdown:
         raise RuntimeError(empty_local_document_message(source))
 
@@ -1880,20 +1910,31 @@ def crawl_local_document(
     emit_progress(
         options.progress_callback, f"crawl {label}: writing markdown document"
     )
+    corpus_started_at = observe_monotonic()
     write_local_document_corpus(source, markdown, pages_dir)
+    corpus_write_seconds = elapsed_since(corpus_started_at)
     emit_progress(options.progress_callback, f"crawl {label}: chunking document")
+    chunk_started_at = observe_monotonic()
     plan = process_corpus(
         pages_dir,
         limit_chunks=options.max_chunks,
         target_tokens=options.target_tokens,
         overlap_sentences=options.overlap_sentences,
     )
+    chunking_seconds = elapsed_since(chunk_started_at)
     summary = build_local_document_summary(
         source=source,
         options=options,
         plan=plan,
         pages_dir=pages_dir,
     )
+    summary["timing"] = {
+        "elapsed_seconds": elapsed_since(total_started_at),
+        "sitemap_policy_seconds": 0.0,
+        "crawl_seconds": crawl_seconds,
+        "corpus_write_seconds": corpus_write_seconds,
+        "chunking_seconds": chunking_seconds,
+    }
     options.out_dir.mkdir(parents=True, exist_ok=True)
     (options.out_dir / "summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
@@ -1902,7 +1943,13 @@ def crawl_local_document(
         options.progress_callback,
         f"crawl {label}: done documents=1; chunks={summary['chunks_generated']}",
     )
-    return summary
+    return CrawlExecution(summary=summary, indexing_plan=plan)
+
+
+def crawl_local_document(
+    source: LocalDocumentSource, options: CrawlOptions
+) -> dict[str, object]:
+    return crawl_local_document_with_plan(source, options).summary
 
 
 def crawl_pdf(source: PdfSource, options: CrawlOptions) -> dict[str, object]:
@@ -1911,9 +1958,10 @@ def crawl_pdf(source: PdfSource, options: CrawlOptions) -> dict[str, object]:
     return crawl_local_document(source, options)
 
 
-def crawl_site(options: CrawlOptions) -> dict[str, object]:
-    """Run the local-only Scrapling crawl and return a dry-run summary."""
+def crawl_site_with_plan(options: CrawlOptions) -> CrawlExecution:
+    """Run the Scrapling crawl and retain its already-built indexing plan."""
 
+    total_started_at = observe_monotonic()
     options = CrawlOptions(
         base_url=validate_base_url(options.base_url),
         out_dir=options.out_dir,
@@ -1933,6 +1981,7 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
         overlap_sentences=options.overlap_sentences,
         progress_callback=options.progress_callback,
     )
+    sitemap_policy_started_at = observe_monotonic()
     sitemap_page_urls = None
     if options.crawl_strategy != "link" and (
         options.docs_version_policy != "all" or options.language_policy != "all"
@@ -1963,6 +2012,7 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
     options, language_report = apply_language_policy(
         options, sitemap_page_urls=sitemap_page_urls
     )
+    sitemap_policy_seconds = elapsed_since(sitemap_policy_started_at)
     if language_report.get("applied"):
         emit_progress(
             options.progress_callback,
@@ -1970,19 +2020,25 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
             f"policy={language_report.get('policy')}; "
             f"excluded={len(language_report.get('excluded_languages', []))}",
         )
+    crawl_started_at = observe_monotonic()
     pages, stats, crawl_strategy = crawl_pages(options)
+    crawl_seconds = elapsed_since(crawl_started_at)
     pages_dir = options.out_dir / "pages"
     emit_progress(
         options.progress_callback, f"crawl: writing {len(pages)} markdown pages"
     )
+    corpus_started_at = observe_monotonic()
     write_markdown_corpus(pages, pages_dir)
+    corpus_write_seconds = elapsed_since(corpus_started_at)
     emit_progress(options.progress_callback, "crawl: chunking pages")
+    chunk_started_at = observe_monotonic()
     plan = process_corpus(
         pages_dir,
         limit_chunks=options.max_chunks,
         target_tokens=options.target_tokens,
         overlap_sentences=options.overlap_sentences,
     )
+    chunking_seconds = elapsed_since(chunk_started_at)
     summary = build_summary(
         options=options,
         pages=pages,
@@ -1993,6 +2049,13 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
         docs_version_report=docs_version_report,
         language_report=language_report,
     )
+    summary["timing"] = {
+        "elapsed_seconds": elapsed_since(total_started_at),
+        "sitemap_policy_seconds": sitemap_policy_seconds,
+        "crawl_seconds": crawl_seconds,
+        "corpus_write_seconds": corpus_write_seconds,
+        "chunking_seconds": chunking_seconds,
+    }
     options.out_dir.mkdir(parents=True, exist_ok=True)
     (options.out_dir / "summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
@@ -2001,4 +2064,10 @@ def crawl_site(options: CrawlOptions) -> dict[str, object]:
         options.progress_callback,
         f"crawl: done pages={summary['pages_scraped']}; chunks={summary['chunks_generated']}",
     )
-    return summary
+    return CrawlExecution(summary=summary, indexing_plan=plan)
+
+
+def crawl_site(options: CrawlOptions) -> dict[str, object]:
+    """Run the local-only Scrapling crawl and return a dry-run summary."""
+
+    return crawl_site_with_plan(options).summary

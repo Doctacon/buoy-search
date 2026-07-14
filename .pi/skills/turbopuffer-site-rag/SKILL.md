@@ -26,7 +26,7 @@ If this skill is installed globally by symlink, resolve the symlink target to fi
 )
 ```
 
-Do not print, persist, or copy the key. `TURBOPUFFER_REGION`, `TURBOPUFFER_NAMESPACE`, and `BUOY_EMBEDDING_MODEL` remain optional non-secret environment overrides; CLI flags can override the first two per command.
+Do not print, persist, or copy the key. `TURBOPUFFER_REGION`, `TURBOPUFFER_NAMESPACE`, `BUOY_EMBEDDING_MODEL`, and `BUOY_EMBEDDING_PRECISION` remain optional non-secret environment overrides; CLI flags can override them for retrieval/evals. Apply always uses the precision recorded in its reviewed plan.
 
 ## Compact applied state
 
@@ -63,7 +63,7 @@ The polished workflow is Terraform-like:
 
 1. `buoy plan`: turbopuffer-local preview. It may fetch the public source, then extracts Markdown, chunks, compares with local applied state, and writes review artifacts. It does not read turbopuffer credentials, load embeddings, create namespaces, or call turbopuffer. Interactive text-mode runs show default one-line stderr progress; use `--no-progress` to disable it. Versioned docs sites stop before page crawling by default with `--docs-version-policy warn`; use `latest`, `stable-latest`, `latest-nightly`, or `all` to make the policy explicit.
 2. `buoy apply` without `--approve`: local-only preflight. Re-read the saved plan, verify artifacts, recompute the local diff, and report what would happen. No credentials, embeddings, or turbopuffer calls.
-3. `buoy apply --approve`: explicit live path. Require `TURBOPUFFER_API_KEY` in the environment, embed/upsert only new or changed chunks, and update local applied state after success.
+3. `buoy apply --approve`: explicit live path. Require `TURBOPUFFER_API_KEY` in the environment, embed/upsert only new or changed chunks using the plan-recorded precision, and update local applied state after success. Float16 is opt-in at plan time and requires CUDA or Apple MPS.
 4. `--delete-stale`: extra delete guardrail. Stale rows are retained by default; live stale deletion requires both `--approve` and `--delete-stale`.
 
 Plan artifacts are Markdown/JSON-first: `plan.json`, `summary.json`, `manifest.json`, `chunks.jsonl`, and `pages/*.md`. Pending, failed, and preflight plans remain for review/retry; successful approved apply removes its exact plan directory, and a new verified plan removes older same-namespace sibling plans. Copy artifacts elsewhere before approved apply when long-term audit/source retention is needed. Local applied state lives under `.buoy/state/.../state.duckdb` and is gitignored.

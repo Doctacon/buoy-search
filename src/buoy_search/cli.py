@@ -20,7 +20,12 @@ from buoy_search.apply import (
     load_verified_apply_plan,
     run_approved_apply,
 )
-from buoy_search.config import RuntimeConfigError, load_config
+from buoy_search.config import (
+    DEFAULT_EMBEDDING_PRECISION,
+    EMBEDDING_PRECISIONS,
+    RuntimeConfigError,
+    load_config,
+)
 from buoy_search.crawler import (
     CRAWL_STRATEGIES,
     DEFAULT_CRAWL_CONCURRENT_REQUESTS,
@@ -39,13 +44,18 @@ from buoy_search.crawler import (
     GitHubRepoSource,
     LocalFileSource,
     PdfSource,
+    CrawlExecution,
     CrawlOptions,
     crawl_local_document,
+    crawl_local_document_with_plan,
     crawl_site,
+    crawl_site_with_plan,
+    elapsed_since,
+    observe_monotonic,
     default_out_dir,
     detect_source,
 )
-from buoy_search.github_repo import GitHubRepoError, crawl_github_repo
+from buoy_search.github_repo import GitHubRepoError, crawl_github_repo, crawl_github_repo_with_plan
 from buoy_search.evals import (
     build_dry_run_eval_report,
     load_eval_cases,
@@ -54,7 +64,6 @@ from buoy_search.evals import (
 from buoy_search.chunker import (
     DEFAULT_OVERLAP_SENTENCES,
     DEFAULT_TARGET_TOKENS,
-    process_corpus,
 )
 from buoy_search.plan_artifacts import (
     DEFAULT_PLAN_EMBEDDING_MODEL,
@@ -347,6 +356,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Local applied-state root. Defaults to .buoy, with in-place .turbo-search fallback for existing projects.",
+    )
+    plan_parser.add_argument(
+        "--embedding-precision",
+        choices=EMBEDDING_PRECISIONS,
+        default=DEFAULT_EMBEDDING_PRECISION,
+        help="Local embedding inference precision recorded in the plan. Default: float32.",
     )
     plan_parser.add_argument(
         "--max-pages",
@@ -712,6 +727,12 @@ def add_runtime_config_arguments(command_parser: argparse.ArgumentParser) -> Non
         default=None,
         help="Override BUOY_EMBEDDING_MODEL for this command.",
     )
+    command_parser.add_argument(
+        "--embedding-precision",
+        choices=EMBEDDING_PRECISIONS,
+        default=None,
+        help="Override BUOY_EMBEDDING_PRECISION for this command.",
+    )
 
 
 def config_from_args(args: argparse.Namespace):
@@ -723,6 +744,7 @@ def config_from_args(args: argparse.Namespace):
         region=args.region or config.region,
         namespace=args.namespace or config.namespace,
         embedding_model=args.embedding_model or config.embedding_model,
+        embedding_precision=args.embedding_precision or config.embedding_precision,
     )
 
 
@@ -812,6 +834,14 @@ def crawl_source(source: object, options: CrawlOptions) -> dict[str, object]:
     if isinstance(source, (PdfSource, LocalFileSource)):
         return crawl_local_document(source, options)
     return crawl_site(options)
+
+
+def crawl_source_with_plan(source: object, options: CrawlOptions) -> CrawlExecution:
+    if isinstance(source, GitHubRepoSource):
+        return crawl_github_repo_with_plan(source, options)
+    if isinstance(source, (PdfSource, LocalFileSource)):
+        return crawl_local_document_with_plan(source, options)
+    return crawl_site_with_plan(options)
 
 
 def _run_crawl(args: argparse.Namespace) -> int:
@@ -910,18 +940,14 @@ def _run_plan(args: argparse.Namespace) -> int:
         overlap_sentences=args.overlap_sentences,
         progress_callback=progress.update if progress.enabled else None,
     )
+    plan_started_at = observe_monotonic()
     try:
-        crawl_summary = crawl_source(source, options)
-        pages_dir = out_dir / "pages"
-        progress.update("plan: chunking generated pages", force=True)
-        indexing_plan = process_corpus(
-            pages_dir,
-            limit_chunks=args.max_chunks,
-            target_tokens=args.target_tokens,
-            overlap_sentences=args.overlap_sentences,
-        )
+        crawl_execution = crawl_source_with_plan(source, options)
+        crawl_summary = crawl_execution.summary
+        indexing_plan = crawl_execution.indexing_plan
         namespace = args.namespace or str(crawl_summary["namespace_candidate"])
-        progress.update("plan: building initial artifacts", force=True)
+        progress.update("plan: building artifacts", force=True)
+        artifact_started_at = observe_monotonic()
         initial_artifacts = build_plan_artifacts(
             indexing_plan=indexing_plan,
             base_url=base_url,
@@ -930,8 +956,10 @@ def _run_plan(args: argparse.Namespace) -> int:
             crawl_options=plan_crawl_options(args, crawl_summary),
             chunk_options=plan_chunk_options(args),
             embedding_model=DEFAULT_PLAN_EMBEDDING_MODEL,
+            embedding_precision=args.embedding_precision,
             state_root=args.state_root,
         )
+        artifact_seconds = elapsed_since(artifact_started_at)
         state = load_applied_state(
             site_id=initial_artifacts.manifest.site_id,
             namespace=initial_artifacts.manifest.namespace,
@@ -939,26 +967,37 @@ def _run_plan(args: argparse.Namespace) -> int:
             state_root=args.state_root,
         )
         progress.update("plan: diffing against local state", force=True)
+        diff_started_at = observe_monotonic()
         diff = diff_manifest_against_state(initial_artifacts.manifest, state)
-        progress.update("plan: writing review artifacts", force=True)
-        artifacts = build_plan_artifacts(
-            indexing_plan=indexing_plan,
-            base_url=base_url,
-            out_dir=out_dir,
-            namespace=namespace,
-            crawl_options=plan_crawl_options(args, crawl_summary),
-            chunk_options=plan_chunk_options(args),
-            embedding_model=DEFAULT_PLAN_EMBEDDING_MODEL,
-            diff=diff.to_dict(),
-            state_root=args.state_root,
+        diff_seconds = elapsed_since(diff_started_at)
+        artifacts = PlanArtifacts(
+            plan=replace(initial_artifacts.plan, diff=diff.to_dict()),
+            manifest=initial_artifacts.manifest,
+            chunks_jsonl=initial_artifacts.chunks_jsonl,
         )
+        progress.update("plan: writing review artifacts", force=True)
+        publication_started_at = observe_monotonic()
         write_plan_artifacts(artifacts, out_dir)
+        publication_seconds = elapsed_since(publication_started_at)
     except (RuntimeError, GitHubRepoError, OSError, ValueError, AppliedStateError, PlanDiffError, json.JSONDecodeError) as exc:
         progress.finish()
         print(str(exc), file=sys.stderr)
         return 2
 
     progress.finish()
+    source_timing = crawl_summary.get("timing")
+    timing = dict(source_timing) if isinstance(source_timing, dict) else {}
+    for stage in ("sitemap_policy_seconds", "crawl_seconds", "corpus_write_seconds", "chunking_seconds"):
+        timing.setdefault(stage, 0.0)
+    timing.update(
+        {
+            "elapsed_seconds": elapsed_since(plan_started_at),
+            "diff_seconds": diff_seconds,
+            "artifact_seconds": artifact_seconds,
+            "publication_seconds": publication_seconds,
+        }
+    )
+    crawl_summary["timing"] = timing
     summary = plan_summary(
         crawl_summary=crawl_summary,
         artifacts=artifacts,
@@ -1036,6 +1075,7 @@ def plan_summary(
             "state_path": plan_dict["state_path"],
             "state_first_apply": state_first_apply,
             "embedding_model": plan_dict["embedding_model"],
+            "embedding_precision": plan_dict["embedding_precision"],
             "artifact_hash": plan_dict["artifact_hash"],
             "diff": diff_summary,
             **diff_summary,
@@ -1076,7 +1116,12 @@ def _run_apply(args: argparse.Namespace) -> int:
             print_apply_text(summary)
         return 0
 
-    config = replace(load_config(), namespace=namespace, embedding_model=str(verified.plan["embedding_model"]))
+    config = replace(
+        load_config(),
+        namespace=namespace,
+        embedding_model=str(verified.plan["embedding_model"]),
+        embedding_precision=str(verified.plan.get("embedding_precision", "float32")),
+    )
     try:
         summary = run_approved_apply(
             verified,
@@ -1221,6 +1266,7 @@ def print_plan_text(payload: dict[str, object]) -> None:
         )
     print(f"  namespace: {payload['namespace']}")
     print(f"  plan_id: {payload['plan_id']}")
+    print(f"  embedding_precision: {payload['embedding_precision']}")
     if source_kind in {"pdf", "local_file"}:
         print(f"  documents_converted: {payload.get('documents_converted', payload.get('pages_scraped'))}; chunks_generated: {payload['chunks_generated']}")
     else:
@@ -1238,6 +1284,19 @@ def print_plan_text(payload: dict[str, object]) -> None:
         f"stale={diff.get('stale_rows')}, "
         f"retained_stale={diff.get('retained_stale_rows')}"
     )
+    timing = payload.get("timing")
+    if isinstance(timing, dict):
+        print(
+            "  timing: "
+            f"elapsed={float(timing.get('elapsed_seconds', 0.0)):.1f}s; "
+            f"policy={float(timing.get('sitemap_policy_seconds', 0.0)):.1f}s; "
+            f"crawl={float(timing.get('crawl_seconds', 0.0)):.1f}s; "
+            f"write={float(timing.get('corpus_write_seconds', 0.0)):.1f}s; "
+            f"chunk={float(timing.get('chunking_seconds', 0.0)):.1f}s; "
+            f"diff={float(timing.get('diff_seconds', 0.0)):.1f}s; "
+            f"artifact={float(timing.get('artifact_seconds', 0.0)):.1f}s; "
+            f"publish={float(timing.get('publication_seconds', 0.0)):.1f}s"
+        )
     print(f"  plan_path: {payload['plan_path']}")
     print(f"  state_path: {payload['state_path']}")
     print("  live writes: not supported by this command; future apply must be explicit")
@@ -1332,6 +1391,7 @@ def print_apply_text(payload: dict[str, object]) -> None:
         print("Website RAG apply preflight (no credentials, embeddings, or turbopuffer API calls):")
     print(f"  namespace: {payload['namespace']}")
     print(f"  plan_id: {payload['plan_id']}")
+    print(f"  embedding_precision: {payload['embedding_precision']}")
     print(f"  rows_to_upsert: {payload['rows_to_upsert']}; rows_upserted: {payload['rows_upserted']}")
     print(
         f"  stale_rows: {payload['stale_rows']}; "
@@ -1348,7 +1408,8 @@ def print_apply_text(payload: dict[str, object]) -> None:
             f"embedding={timing['embedding_seconds']:.1f}s; "
             f"write={timing['write_seconds']:.1f}s; "
             f"embedding_batch_size={timing['embedding_batch_size']}; "
-            f"write_batch_size={timing['write_batch_size']}"
+            f"write_batch_size={timing['write_batch_size']}; "
+            f"precision={timing['embedding_precision']}"
         )
     if not payload.get("approved"):
         print("  live: pass --approve to embed and upsert selected rows")
@@ -1361,6 +1422,7 @@ def print_retrieval_text(output: RetrievalPlan | RetrievalResult) -> None:
         print(f"  query: {payload['query']}")
         print(f"  namespace: {payload['namespace']} ({payload['region']})")
         print(f"  embedding_model: {payload['embedding_model']}")
+        print(f"  embedding_precision: {payload['embedding_precision']}")
         print(f"  top_k: {payload['top_k']}; candidates per subquery: {payload['candidates']}")
         print(
             "  ranking: "
@@ -1379,6 +1441,7 @@ def print_retrieval_text(output: RetrievalPlan | RetrievalResult) -> None:
         f"with ranking mode={payload.get('ranking_mode')} profile={payload.get('ranking_profile')} "
         f"aggregation={payload.get('ranking_aggregation')}:"
     )
+    print(f"  embedding_precision: {payload['embedding_precision']}")
     for index, hit in enumerate(hits, start=1):
         if not isinstance(hit, dict):
             continue
@@ -1415,6 +1478,7 @@ def print_eval_text(payload: dict[str, object]) -> None:
             f"({float(payload['pass_rate']) * 100:.1f}%)"
         )
         print(f"  namespace: {payload['namespace']} ({payload['region']})")
+    print(f"  embedding_precision: {payload['embedding_precision']}")
     cases = payload.get("cases", [])
     if not isinstance(cases, list):
         return

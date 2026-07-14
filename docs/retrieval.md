@@ -29,9 +29,10 @@ Runtime defaults can come from the environment:
 TURBOPUFFER_REGION
 TURBOPUFFER_NAMESPACE
 BUOY_EMBEDDING_MODEL
+BUOY_EMBEDDING_PRECISION
 ```
 
-Use `--region`, `--namespace`, or `--embedding-model` for one command. Query embedding must use the same model as indexing.
+Use `--region`, `--namespace`, `--embedding-model`, or `--embedding-precision` for one command. Precision defaults to `float32`; set `float16` only on CUDA or Apple MPS. Query embedding should use the model and precision recorded by the namespace's indexing plan because Buoy cannot infer that remote configuration.
 
 Live results include the source title, URL, section, content, score information, document kind, tags, and repository path when available. Use those source URLs and titles as citations rather than presenting retrieved text without provenance.
 

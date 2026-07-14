@@ -153,6 +153,14 @@ uv run buoy apply --approve \
 
 `--batch-size` controls Turbopuffer write batches; `--embedding-batch-size` controls local Sentence Transformers computation. Defaults are 64 and 32 respectively.
 
+Embedding inference defaults to `float32`. Opt into accelerator-only half precision when creating a plan:
+
+```bash
+uv run buoy plan https://example.com/ --embedding-precision float16
+```
+
+The reviewed plan governs apply precision; ambient retrieval settings cannot override it. Float16 requires CUDA or Apple MPS and fails rather than silently falling back. Changing precision re-embeds affected rows while preserving their row IDs.
+
 ## Incremental state and artifact lifetime
 
 Each `(source, namespace)` has an embedded DuckDB ledger:
