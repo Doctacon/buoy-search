@@ -1,8 +1,8 @@
-Status: blocked
+Status: active
 Created: 2026-07-14
 Updated: 2026-07-14
-Parent: None
-Depends-On: .10x/tickets/done/2026-07-14-buoy-rebrand-plan.md
+Parent: .10x/tickets/2026-07-14-buoy-public-ci-release-plan.md
+Depends-On: .10x/tickets/done/2026-07-14-buoy-rebrand-plan.md, .10x/tickets/done/2026-07-14-validate-buoy-ci-release-automation.md
 
 # Commit and Push the Buoy Rebrand
 
@@ -26,11 +26,17 @@ Force push, history rewrite, tag/release creation, PyPI publication, unrelated c
 
 - `.10x/tickets/done/2026-07-14-buoy-rebrand-plan.md`
 - `.10x/reviews/2026-07-14-buoy-rebrand-parent-closure-review.md`
+- `.10x/specs/buoy-ci-and-github-releases.md`
+- `.10x/tickets/done/2026-07-14-validate-buoy-ci-release-automation.md`
 
 ## Evidence expectations
 
 Pre/post index inventories, complete staged-diff review, tests/build as needed, commit ID, push result, and remote branch observation.
 
+## Progress and notes
+
+- 2026-07-14: Reconciled the complete public CI/release plan tree, excluded ignored local/generated/secret paths, passed 235 tests plus package build/lock/diff validation, and prepared one normal commit. Evidence: `.10x/evidence/2026-07-14-publish-buoy-rebrand-commit.md`.
+
 ## Blockers
 
-- Requires explicit user authorization to reconcile the inherited staged index, commit, and push to `main`; these mutations were excluded from the rebrand execution plan.
+- None. User authorized full public CI/release plan execution; validation dependency is done.

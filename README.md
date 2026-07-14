@@ -1,5 +1,8 @@
 # Buoy
 
+[![CI](https://github.com/Doctacon/buoy-search/actions/workflows/ci.yml/badge.svg)](https://github.com/Doctacon/buoy-search/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/github/license/Doctacon/buoy-search)](LICENSE)
+
 <img src="images/buoy.svg" height="120" alt="Buoy navigation marker logo" />
 
 Turn a public website, GitHub repository, or local document into a reviewed, incremental [turbopuffer](https://turbopuffer.com/) search index.
@@ -68,6 +71,7 @@ Plans live under `artifacts/`; new applied state lives under `.buoy/`. Both are 
 - [Retrieve and rank results](docs/retrieval.md) — dry runs, live search, citations, and namespace-aware ranking.
 - [Evaluate search quality](docs/evaluation.md) — smoke datasets, repository metrics, and one-shot autoresearch.
 - [Migrate to Buoy 0.2](docs/migrating-to-buoy.md) — command, import, environment, state, and plan compatibility.
+- [Contribute](CONTRIBUTING.md) or [prepare a GitHub release](docs/releasing.md).
 
 The CLI is the exhaustive option reference:
 

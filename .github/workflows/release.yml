@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-and-build:
+    name: Validate and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: "0.11.7"
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Verify annotated tag and package versions
+        run: |
+          uv run --no-project python scripts/release_checks.py tag --tag "${GITHUB_REF_NAME}"
+          uv run --no-project python scripts/release_checks.py tag-object --tag "${GITHUB_REF_NAME}"
+      - name: Sync locked dependencies
+        run: uv sync --locked --python 3.13
+      - name: Run complete release validation
+        run: PYTHONDONTWRITEBYTECODE=1 uv run python -m unittest discover -s tests -p 'test_*.py' -q
+      - name: Build wheel and source distribution
+        run: uv build --out-dir dist
+      - name: Verify release assets
+        run: uv run --no-project python scripts/release_checks.py assets --dist dist
+      - name: Retain release distributions
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: buoy-search-${{ github.ref_name }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish GitHub release
+    needs: validate-and-build
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: "0.11.7"
+          python-version: "3.13"
+      - name: Download validated distributions
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: buoy-search-${{ github.ref_name }}
+          path: dist
+      - name: Refuse conflicting release state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "GitHub release ${GITHUB_REF_NAME} already exists; refusing to overwrite it." >&2
+            exit 1
+          fi
+          uv run --no-project python scripts/release_checks.py tag --tag "${GITHUB_REF_NAME}"
+          uv run --no-project python scripts/release_checks.py tag-object --tag "${GITHUB_REF_NAME}"
+          uv run --no-project python scripts/release_checks.py assets --dist dist
+      - name: Attest distribution provenance
+        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
+        with:
+          subject-path: dist/*
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${GITHUB_REF_NAME}" dist/*
+          --repo "${GITHUB_REPOSITORY}"
+          --verify-tag
+          --generate-notes
+          --title "Buoy ${GITHUB_REF_NAME}"
