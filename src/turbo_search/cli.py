@@ -517,6 +517,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Turbopuffer upsert batch size for approved apply mode.",
     )
     apply_parser.add_argument(
+        "--embedding-batch-size",
+        type=positive_int,
+        default=32,
+        help="Local Sentence Transformers computation batch size for approved apply mode.",
+    )
+    apply_parser.add_argument(
         "--approve",
         action="store_true",
         help="Explicitly embed and upsert rows selected by the recomputed diff.",
@@ -1053,6 +1059,7 @@ def _run_apply(args: argparse.Namespace) -> int:
             config=config,
             namespace=namespace,
             batch_size=args.batch_size,
+            embedding_batch_size=args.embedding_batch_size,
             delete_stale=args.delete_stale,
             progress_callback=lambda message: progress.update(message, force=True) if progress.enabled else None,
         )
@@ -1309,6 +1316,16 @@ def print_apply_text(payload: dict[str, object]) -> None:
         f"rows_deleted: {payload['rows_deleted']}"
     )
     print(f"  state_path: {payload['state_path']}")
+    timing = payload.get("timing")
+    if isinstance(timing, dict):
+        print(
+            "  timing: "
+            f"elapsed={timing['elapsed_seconds']:.1f}s; "
+            f"embedding={timing['embedding_seconds']:.1f}s; "
+            f"write={timing['write_seconds']:.1f}s; "
+            f"embedding_batch_size={timing['embedding_batch_size']}; "
+            f"write_batch_size={timing['write_batch_size']}"
+        )
     if not payload.get("approved"):
         print("  live: pass --approve to embed and upsert selected rows")
 

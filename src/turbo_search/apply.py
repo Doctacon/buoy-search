@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import time
 from typing import Any, Callable, Sequence
 
 from turbo_search.applied_state import (
@@ -183,8 +184,10 @@ def run_approved_apply(
     config: RuntimeConfig,
     namespace: str,
     batch_size: int,
+    embedding_batch_size: int = 32,
     delete_stale: bool = False,
     progress_callback: Callable[[str], None] | None = None,
+    monotonic: Callable[[], float] = time.monotonic,
 ) -> JsonObject:
     """Embed/upsert only diff rows, optionally delete stale rows, then update state."""
 
@@ -197,6 +200,22 @@ def run_approved_apply(
             # Progress is advisory; it must not interrupt a live apply.
             return
 
+    def observe_monotonic() -> float | None:
+        try:
+            return monotonic()
+        except Exception:
+            # Timing is diagnostic; it must not interrupt a live apply.
+            return None
+
+    def elapsed_since(started_at: float | None) -> float:
+        finished_at = observe_monotonic()
+        if started_at is None or finished_at is None:
+            return 0.0
+        return finished_at - started_at
+
+    apply_started_at = observe_monotonic()
+    embedding_seconds = 0.0
+    write_seconds = 0.0
     stale_row_ids = stale_row_ids_for_delete(verified)
     if delete_stale and not stale_row_ids:
         raise ApplyPlanError("Cannot run --delete-stale because the recomputed diff has no stale rows.")
@@ -219,7 +238,11 @@ def run_approved_apply(
         writer: TurbopufferWriter | None = None
         total_rows = len(rows_to_upsert)
         total_batches = (total_rows + batch_size - 1) // batch_size
-        emit_progress(f"apply: preparing embedding/upsert; rows={total_rows}; batches={total_batches}")
+        emit_progress(
+            "apply: preparing; "
+            f"rows={total_rows}; batches={total_batches}; "
+            f"embedding_batch={embedding_batch_size}; write_batch={batch_size}"
+        )
         if rows_to_upsert or (delete_stale and stale_row_ids):
             writer = TurbopufferWriter(
                 config=config,
@@ -231,23 +254,41 @@ def run_approved_apply(
             embedder = SentenceTransformerEmbedder(config.embedding_model)
             assert writer is not None
             for batch_index, batch in enumerate(batched(rows_to_upsert, batch_size), start=1):
-                vectors = embedder.encode([embedding_text_for_chunk(chunk) for chunk in batch])
+                embedding_started_at = observe_monotonic()
+                vectors = embedder.encode(
+                    [embedding_text_for_chunk(chunk) for chunk in batch],
+                    batch_size=embedding_batch_size,
+                )
+                embedding_seconds += elapsed_since(embedding_started_at)
                 embeddings_generated += len(vectors)
                 rows = [
                     build_generic_site_row(chunk, vector, plan_id=str(verified.plan["plan_id"]), applied_at=applied_at)
                     for chunk, vector in zip(batch, vectors, strict=True)
                 ]
+                write_started_at = observe_monotonic()
                 writer.upsert_rows(rows)
+                write_seconds += elapsed_since(write_started_at)
                 rows_written += len(rows)
+                elapsed_seconds = elapsed_since(apply_started_at)
                 emit_progress(
-                    f"apply: embedding/upserting batches={batch_index}/{total_batches}; rows={rows_written}/{total_rows}"
+                    "apply: embedding/upserting "
+                    f"batches={batch_index}/{total_batches}; rows={rows_written}/{total_rows}; "
+                    f"elapsed={elapsed_seconds:.1f}s; embedding={embedding_seconds:.1f}s; write={write_seconds:.1f}s"
                 )
 
         if delete_stale and stale_row_ids:
             emit_progress(f"apply: deleting stale rows={len(stale_row_ids)}")
             assert writer is not None
+            delete_started_at = observe_monotonic()
             writer.delete_rows(stale_row_ids)
+            write_seconds += elapsed_since(delete_started_at)
             rows_deleted = len(stale_row_ids)
+            elapsed_seconds = elapsed_since(apply_started_at)
+            emit_progress(
+                "apply: deleted stale rows="
+                f"{rows_deleted}; elapsed={elapsed_seconds:.1f}s; "
+                f"embedding={embedding_seconds:.1f}s; write={write_seconds:.1f}s"
+            )
 
         emit_progress("apply: committing local state")
         next_state = build_state_after_apply(verified, applied_at=applied_at, delete_stale=delete_stale)
@@ -273,6 +314,13 @@ def run_approved_apply(
         rows_deleted=rows_deleted,
         state_updated=True,
         api_calls_occurred=rows_written > 0 or rows_deleted > 0,
+        timing={
+            "elapsed_seconds": elapsed_since(apply_started_at),
+            "embedding_seconds": embedding_seconds,
+            "write_seconds": write_seconds,
+            "embedding_batch_size": embedding_batch_size,
+            "write_batch_size": batch_size,
+        },
     )
 
 
@@ -339,11 +387,12 @@ def build_apply_summary(
     rows_deleted: int,
     state_updated: bool,
     api_calls_occurred: bool,
+    timing: JsonObject | None = None,
 ) -> JsonObject:
     diff_summary = verified.diff.summary_dict()
     row_ids_to_delete = stale_row_ids_for_delete(verified) if delete_stale else []
     stale_rows_retained = 0 if delete_stale else verified.diff.stale_rows + verified.diff.retained_stale_rows
-    return {
+    summary: JsonObject = {
         "command": "apply",
         "approved": approved,
         "delete_stale": delete_stale,
@@ -377,6 +426,9 @@ def build_apply_summary(
         "delete_would_run": bool(delete_stale and row_ids_to_delete),
         "diff": diff_summary,
     }
+    if timing is not None:
+        summary["timing"] = timing
+    return summary
 
 
 def stale_row_ids_for_delete(verified: VerifiedApplyPlan) -> list[str]:

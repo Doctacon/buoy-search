@@ -22,7 +22,7 @@ from turbo_search.applied_state import (
     load_apply_run_summaries,
     save_applied_state,
 )
-from turbo_search.cli import main
+from turbo_search.cli import build_parser, main
 from turbo_search.chunker import process_corpus
 from turbo_search.config import RuntimeConfig
 from turbo_search.plan_artifacts import build_plan_artifacts, write_plan_artifacts
@@ -40,12 +40,14 @@ class FailingTtyStringIO(TtyStringIO):
 
 class FakeEmbedder:
     texts: list[str] = []
+    batch_sizes: list[int] = []
 
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
 
-    def encode(self, texts):
+    def encode(self, texts, *, batch_size: int = 32):
         FakeEmbedder.texts.extend(list(texts))
+        FakeEmbedder.batch_sizes.append(batch_size)
         return [[float(index), 0.0, 1.0] for index, _ in enumerate(texts, start=1)]
 
 
@@ -73,6 +75,7 @@ class FakeWriter:
 
 def reset_fakes() -> None:
     FakeEmbedder.texts = []
+    FakeEmbedder.batch_sizes = []
     FakeWriter.rows = []
     FakeWriter.deletes = []
     FakeWriter.should_fail = False
@@ -170,6 +173,14 @@ class ApplyCliTests(unittest.TestCase):
     def setUp(self) -> None:
         reset_fakes()
 
+    def test_apply_batch_size_defaults_and_embedding_batch_validation(self) -> None:
+        parser = build_parser()
+        defaults = parser.parse_args(["apply"])
+        self.assertEqual(defaults.batch_size, 64)
+        self.assertEqual(defaults.embedding_batch_size, 32)
+        with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
+            parser.parse_args(["apply", "--embedding-batch-size", "0"])
+
     def run_main(
         self,
         args: list[str],
@@ -215,6 +226,7 @@ class ApplyCliTests(unittest.TestCase):
         self.assertFalse(payload["credentials_required"])
         self.assertFalse(payload["turbopuffer_api_calls"])
         self.assertFalse(payload["api_calls_occurred"])
+        self.assertNotIn("timing", payload)
         self.assertTrue(payload["artifact_verified"])
         self.assertEqual(payload["rows_to_upsert"], 2)
         self.assertEqual(payload["rows_upserted"], 0)
@@ -353,6 +365,8 @@ class ApplyCliTests(unittest.TestCase):
 
         self.assertEqual(result, 0, stderr)
         self.assertTrue(payload["approved"])
+        self.assertEqual(payload["timing"]["embedding_batch_size"], 32)
+        self.assertEqual(payload["timing"]["write_batch_size"], 64)
         self.assertEqual(payload["rows_to_upsert"], 1)
         self.assertEqual(payload["rows_upserted"], 1)
         self.assertEqual(payload["embeddings_generated"], 1)
@@ -920,6 +934,122 @@ class ApplyCliTests(unittest.TestCase):
                 with acquire_namespace_apply_lock(site_id="example-com", namespace="site-two-v1", state_root=state_root):
                     pass
 
+    def test_approved_apply_reports_controlled_stage_timings_and_batch_sizes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            verified = load_verified_apply_plan(
+                plan_path=plan_path,
+                namespace=artifacts.manifest.namespace,
+                state_root=state_root,
+            )
+            clock = iter([0.0, 1.0, 2.0, 3.0, 5.0, 6.0, 7.0, 10.0, 11.0, 15.0, 16.0, 17.0])
+            progress: list[str] = []
+            with patch.dict("os.environ", {"TURBOPUFFER_API_KEY": "test-key"}, clear=True), patch(
+                "turbo_search.apply.SentenceTransformerEmbedder", FakeEmbedder
+            ), patch("turbo_search.apply.TurbopufferWriter", FakeWriter):
+                summary = run_approved_apply(
+                    verified,
+                    config=RuntimeConfig(namespace=artifacts.manifest.namespace),
+                    namespace=artifacts.manifest.namespace,
+                    batch_size=1,
+                    embedding_batch_size=7,
+                    progress_callback=progress.append,
+                    monotonic=lambda: next(clock),
+                )
+
+        self.assertEqual(FakeEmbedder.batch_sizes, [7, 7])
+        self.assertEqual(
+            summary["timing"],
+            {
+                "elapsed_seconds": 17.0,
+                "embedding_seconds": 4.0,
+                "write_seconds": 6.0,
+                "embedding_batch_size": 7,
+                "write_batch_size": 1,
+            },
+        )
+        self.assertIn(
+            "apply: embedding/upserting batches=2/2; rows=2/2; elapsed=16.0s; embedding=4.0s; write=6.0s",
+            progress,
+        )
+
+    def test_timing_failure_after_successful_upsert_does_not_prevent_state_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            verified = load_verified_apply_plan(
+                plan_path=plan_path,
+                namespace=artifacts.manifest.namespace,
+                state_root=state_root,
+            )
+            clock = iter([0.0, 1.0, 2.0, 3.0])
+
+            def failing_after_upsert_clock() -> float:
+                if FakeWriter.rows:
+                    raise OSError("simulated timing failure")
+                return next(clock)
+
+            with patch.dict("os.environ", {"TURBOPUFFER_API_KEY": "test-key"}, clear=True), patch(
+                "turbo_search.apply.SentenceTransformerEmbedder", FakeEmbedder
+            ), patch("turbo_search.apply.TurbopufferWriter", FakeWriter):
+                summary = run_approved_apply(
+                    verified,
+                    config=RuntimeConfig(namespace=artifacts.manifest.namespace),
+                    namespace=artifacts.manifest.namespace,
+                    batch_size=2,
+                    monotonic=failing_after_upsert_clock,
+                )
+            loaded_state = load_applied_state(
+                site_id=artifacts.manifest.site_id,
+                namespace=artifacts.manifest.namespace,
+                base_url=artifacts.manifest.base_url,
+                state_root=state_root,
+            )
+
+        self.assertEqual(len(FakeWriter.rows), 2)
+        self.assertEqual(len(loaded_state.rows), 2)
+        self.assertTrue(summary["state_updated"])
+        self.assertEqual(summary["timing"]["write_seconds"], 0.0)
+
+    def test_delete_only_apply_times_delete_and_reports_post_success_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            _previous, artifacts, plan_path, stale = build_one_page_plan_with_stale_state(root, state_root)
+            verified = load_verified_apply_plan(
+                plan_path=plan_path,
+                namespace=artifacts.manifest.namespace,
+                state_root=state_root,
+            )
+            clock = iter([0.0, 1.0, 4.0, 5.0, 6.0])
+            progress: list[str] = []
+            with patch.dict("os.environ", {"TURBOPUFFER_API_KEY": "test-key"}, clear=True), patch(
+                "turbo_search.apply.TurbopufferWriter", FakeWriter
+            ):
+                summary = run_approved_apply(
+                    verified,
+                    config=RuntimeConfig(namespace=artifacts.manifest.namespace),
+                    namespace=artifacts.manifest.namespace,
+                    batch_size=64,
+                    delete_stale=True,
+                    progress_callback=progress.append,
+                    monotonic=lambda: next(clock),
+                )
+
+        self.assertEqual(FakeWriter.rows, [])
+        self.assertEqual(FakeWriter.deletes, [stale.row_id])
+        self.assertEqual(summary["rows_deleted"], 1)
+        self.assertEqual(summary["timing"]["embedding_seconds"], 0.0)
+        self.assertEqual(summary["timing"]["write_seconds"], 3.0)
+        self.assertEqual(summary["timing"]["elapsed_seconds"], 6.0)
+        self.assertIn(
+            "apply: deleted stale rows=1; elapsed=5.0s; embedding=0.0s; write=3.0s",
+            progress,
+        )
+
     def test_approved_apply_tty_progress_reports_phases_and_each_batch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -928,7 +1058,7 @@ class ApplyCliTests(unittest.TestCase):
             with patch("turbo_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
                 "turbo_search.apply.TurbopufferWriter", FakeWriter
             ):
-                result, _stdout, stderr = self.run_main(
+                result, stdout, stderr = self.run_main(
                     [
                         "apply",
                         "--plan",
@@ -946,11 +1076,16 @@ class ApplyCliTests(unittest.TestCase):
                 )
 
         self.assertEqual(result, 0, stderr)
+        self.assertIn("timing: elapsed=", stdout)
+        self.assertIn("embedding_batch_size=32; write_batch_size=1", stdout)
         rendered = stderr.replace("\x1b[K", "")
         self.assertIn("\rapply: verifying plan", rendered)
         self.assertIn("\rapply: acquiring namespace lock", rendered)
-        self.assertIn("\rapply: preparing embedding/upsert; rows=2; batches=2", rendered)
-        self.assertIn("\rapply: embedding/upserting batches=1/2; rows=1/2", rendered)
+        self.assertIn(
+            "\rapply: preparing; rows=2; batches=2; embedding_batch=32; write_batch=1",
+            rendered,
+        )
+        self.assertIn("\rapply: embedding/upserting batches=1/2; rows=1/2; elapsed=", rendered)
         self.assertIn("\rapply: embedding/upserting batches=2/2; rows=2/2", rendered)
         self.assertIn("\rapply: committing local state", rendered)
         self.assertIn("\rapply: cleaning up successful plan", rendered)

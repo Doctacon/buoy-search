@@ -534,9 +534,10 @@ class SentenceTransformerEmbedder:
             ) from exc
         self._model = SentenceTransformer(model_name)
 
-    def encode(self, texts: Sequence[str]) -> list[list[float]]:
+    def encode(self, texts: Sequence[str], *, batch_size: int = 32) -> list[list[float]]:
         embeddings = self._model.encode(
             list(texts),
+            batch_size=batch_size,
             normalize_embeddings=True,
             show_progress_bar=False,
         )
