@@ -1,4 +1,4 @@
-Status: open
+Status: done
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-data-vault-semantic-retrieval-research-plan.md
@@ -48,3 +48,15 @@ None for research. Tag semantics and implementation remain blocked on findings, 
 ## Progress and notes
 
 - 2026-07-15: Ticket opened from the ratified four-track research plan. Execution intentionally deferred from the ticket-authoring turn.
+- 2026-07-15: Inspected the parent plan, preliminary research, blocked tag-output drift ticket, referenced active records, and Buoy tagging/schema/retrieval/applied-state source. Reviewed official Chief, RAGFlow, Cognee, and Turbopuffer documentation plus Data Vault and open taxonomy/catalog comparisons. Drafted `.10x/research/2026-07-15-data-vault-governed-tagging-filtering.md`; ticket remains active pending independent review.
+- 2026-07-15: Addressed only the independent review's evidence-depth concerns. Added fixed RAGFlow/Cognee source spot-check permalinks and bounded what they corroborate; classified evidence and confidence explicitly; narrowed Data Vault claims to non-primary vocabulary pending enterprise methodology validation; and replaced the broad DataHub link with specific official tag/term documentation. Record-only repair; ticket remains active for reviewer verification.
+- 2026-07-15: Closure criterion mapping after the pass re-review in `.10x/reviews/2026-07-15-data-vault-governed-tagging-filtering-rereview.md`:
+  - Current deterministic tags, Turbopuffer schema, retrieval/output drift, plan artifacts, and the blocked public tag-output owner were inspected and documented in the research's local findings.
+  - The research classifies structural, human-governed, source-authoritative, rule-derived, similarity-derived, open-set LLM, concept, and ACL modes and states which may serve as authority.
+  - Architectures A, B, and C cover update, deletion, correction, and reprocessing behavior.
+  - Candidate term/assignment/projection provenance and a minimal Turbopuffer attribute projection are documented with evidence limits.
+  - Candidate ANY/ALL/exclusion, filter/boost, single-namespace, multi-namespace, missing-value, and ACL-conjunction semantics are recommendations only; public compatibility remains blocked.
+  - Evals cover assignment precision/recall, retrieval/routing quality, false exclusion, ACL safety, taxonomy/lifecycle drift, and operating cost.
+  - The recommended experiment remains a bounded offline 10–30-term, one-namespace comparison with no live writes or public behavior change.
+  - The pass re-review confirms all ticket criteria and evidence expectations are satisfied; its residual risks are disclosed research limits or intentionally unresolved implementation decisions, not closure blockers.
+- 2026-07-15: Retrospective — The durable lesson is to classify evidence strength explicitly and bind open-source implementation claims to fixed source snapshots; that learning is incorporated directly into the completed research record. No implementation semantics were ratified by closure. The blocked public tag-output/filtering ticket remains the owner for that behavior, while taxonomy ownership, ACL policy, stale-row handling, thresholds, and Data Vault operational semantics remain unresolved prerequisites for any future implementation. No additional skill, knowledge record, or follow-up ticket is warranted beyond those existing owners and blockers.
