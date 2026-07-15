@@ -212,7 +212,9 @@ class CliTests(unittest.TestCase):
         stderr = StringIO()
 
         with redirect_stdout(stdout), redirect_stderr(stderr):
-            result = legacy_main(["retrieve", "How does this work?", "--dry-run", "--json"])
+            result = legacy_main(
+                ["retrieve", "How does this work?", "--dry-run", "--namespace", "site-example-v1", "--json"]
+            )
 
         self.assertEqual(result, 0)
         self.assertEqual(json.loads(stdout.getvalue())["command"], "retrieve")
@@ -227,7 +229,9 @@ class CliTests(unittest.TestCase):
         with patch.dict(os.environ, {"TURBO_SEARCH_EMBEDDING_MODEL": "legacy/model"}, clear=True), redirect_stdout(
             stdout
         ), redirect_stderr(stderr):
-            result = main(["retrieve", "How does this work?", "--dry-run", "--json"])
+            result = main(
+                ["retrieve", "How does this work?", "--dry-run", "--namespace", "site-example-v1", "--json"]
+            )
 
         self.assertEqual(result, 0)
         self.assertEqual(json.loads(stdout.getvalue())["embedding_model"], "legacy/model")
@@ -242,7 +246,9 @@ class CliTests(unittest.TestCase):
             {"BUOY_EMBEDDING_MODEL": "current/model", "TURBO_SEARCH_EMBEDDING_MODEL": "legacy/model"},
             clear=True,
         ), redirect_stdout(stdout), redirect_stderr(stderr):
-            result = main(["retrieve", "How does this work?", "--dry-run", "--json"])
+            result = main(
+                ["retrieve", "How does this work?", "--dry-run", "--namespace", "site-example-v1", "--json"]
+            )
 
         self.assertEqual(result, 2)
         self.assertEqual(stdout.getvalue(), "")
@@ -1088,6 +1094,8 @@ class CliTests(unittest.TestCase):
                     "retrieve",
                     "What are DORA metrics?",
                     "--dry-run",
+                    "--namespace",
+                    "site-example-v1",
                     "--top-k",
                     "3",
                     "--candidates",
@@ -1185,6 +1193,8 @@ class CliTests(unittest.TestCase):
                     "retrieve",
                     "Where is the query API documented?",
                     "--dry-run",
+                    "--namespace",
+                    "site-example-v1",
                     "--ranking-mode",
                     "page",
                     "--ranking-profile",

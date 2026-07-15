@@ -1,6 +1,23 @@
 # Retrieve and rank results
 
-Retrieval is a safe dry run by default. Live search requires both `--live` and `TURBOPUFFER_API_KEY`.
+Retrieval is a safe dry run by default. Every preview/live query requires an explicit `--namespace` or `TURBOPUFFER_NAMESPACE`; Buoy never falls back to a demo namespace. Live search additionally requires `--live` and `TURBOPUFFER_API_KEY`.
+
+## Discover namespace IDs
+
+List every namespace ID visible to the configured account and region:
+
+```bash
+export TURBOPUFFER_API_KEY="..."
+uv run buoy namespaces
+```
+
+Filter IDs case-insensitively before choosing a retrieval target:
+
+```bash
+uv run buoy namespaces dagster
+```
+
+Use `--region` to override `TURBOPUFFER_REGION`, and `--json` for structured output. Discovery is read-only and searches namespace identifiers only; it does not embed text or inspect namespace contents.
 
 ## Preview a query
 
@@ -35,6 +52,24 @@ BUOY_EMBEDDING_PRECISION
 Use `--region`, `--namespace`, `--embedding-model`, or `--embedding-precision` for one command. Precision defaults to `float32`; set `float16` only on CUDA or Apple MPS. Query embedding should use the model and precision recorded by the namespace's indexing plan because Buoy cannot infer that remote configuration.
 
 Live results include the source title, URL, section, content, score information, document kind, tags, and repository path when available. Use those source URLs and titles as citations rather than presenting retrieved text without provenance.
+
+## Search multiple namespaces
+
+Discover IDs, then repeat `--namespace` to select an explicit set:
+
+```bash
+uv run buoy namespaces docs
+uv run buoy retrieve \
+  "How does this feature work?" \
+  --namespace site-product-docs-v1 \
+  --namespace github-owner-product-v1 \
+  --live \
+  --top-k 5
+```
+
+CLI namespace selections replace `TURBOPUFFER_NAMESPACE` and retain their supplied order. Buoy normalizes and embeds the query once, queries each namespace sequentially with the same region/model/precision, then merges the namespace-local rankings using equal-weight reciprocal-rank fusion. `--top-k` limits the final merged list, and every result identifies its source namespace.
+
+If any selected namespace fails, the command fails without printing a partial result set. This first version does not automatically search every visible namespace, infer per-namespace model settings, or mix different model/precision settings in one command.
 
 ## Hybrid retrieval
 

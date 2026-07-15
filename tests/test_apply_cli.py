@@ -4,13 +4,14 @@ from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from io import StringIO
 import json
 import os
+import shlex
 import tempfile
 from pathlib import Path
 import threading
 import unittest
 from unittest.mock import patch
 
-from buoy_search.apply import load_verified_apply_plan, run_approved_apply
+from buoy_search.apply import build_retrieval_commands, load_verified_apply_plan, run_approved_apply
 from buoy_search.applied_state import (
     ROW_STATUS_ACTIVE,
     ROW_STATUS_RETAINED_STALE,
@@ -116,6 +117,8 @@ def build_saved_plan(
     state_root: Path | None = None,
     page_b_body: str = "# Intro\n\nBeta useful docs.",
     embedding_precision: str = "float32",
+    namespace: str | None = None,
+    embedding_model: str = "BAAI/bge-small-en-v1.5",
 ):
     corpus = root / "pages"
     write_page(corpus, "a.md", "https://example.com/docs/a", "Page A", "# Intro\n\nAlpha useful docs.")
@@ -127,6 +130,8 @@ def build_saved_plan(
         out_dir=out_dir,
         state_root=state_root or root / "state",
         embedding_precision=embedding_precision,
+        namespace=namespace,
+        embedding_model=embedding_model,
     )
     write_plan_artifacts(artifacts, out_dir)
     return artifacts, out_dir / "plan.json"
@@ -236,6 +241,52 @@ class ApplyCliTests(unittest.TestCase):
             self.assertEqual(FakeEmbedder.precisions, ["float16"])
             self.assertEqual(artifacts.plan.embedding_precision, "float16")
 
+    def test_approved_apply_handoff_preserves_pre_rebrand_namespace_and_verified_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            namespace = "github-doctacon-turbo-search-v1"
+            model = "legacy model; untouched"
+            _, plan_path = build_saved_plan(
+                root,
+                state_root=state_root,
+                namespace=namespace,
+                embedding_model=model,
+                embedding_precision="float16",
+            )
+            with patch("buoy_search.apply.SentenceTransformerEmbedder", FakeEmbedder), patch(
+                "buoy_search.apply.TurbopufferWriter", FakeWriter
+            ):
+                result, stdout, stderr = self.run_main(
+                    ["apply", "--approve", "--plan", str(plan_path), "--state-root", str(state_root), "--json"],
+                    env={"TURBOPUFFER_API_KEY": "test-key", "TURBOPUFFER_REGION": "gcp-us-east4"},
+                )
+
+        payload = json.loads(stdout)
+        self.assertEqual(result, 0, stderr)
+        self.assertEqual(payload["namespace"], namespace)
+        self.assertEqual(payload["region"], "gcp-us-east4")
+        self.assertEqual(payload["embedding_model"], model)
+        self.assertEqual(payload["embedding_precision"], "float16")
+        preview = shlex.split(payload["retrieval_commands"]["preview"])
+        self.assertEqual(
+            preview,
+            [
+                "buoy",
+                "retrieve",
+                "<query>",
+                "--namespace",
+                namespace,
+                "--region",
+                "gcp-us-east4",
+                "--embedding-model",
+                model,
+                "--embedding-precision",
+                "float16",
+            ],
+        )
+        self.assertEqual(shlex.split(payload["retrieval_commands"]["live"]), [*preview, "--live"])
+
     def run_main(
         self,
         args: list[str],
@@ -285,7 +336,75 @@ class ApplyCliTests(unittest.TestCase):
         self.assertTrue(payload["artifact_verified"])
         self.assertEqual(payload["rows_to_upsert"], 2)
         self.assertEqual(payload["rows_upserted"], 0)
+        self.assertEqual(payload["region"], "gcp-us-central1")
+        self.assertEqual(
+            shlex.split(payload["retrieval_commands"]["live"]),
+            [
+                "buoy",
+                "retrieve",
+                "<query>",
+                "--namespace",
+                "site-example-com-v1",
+                "--region",
+                "gcp-us-central1",
+                "--embedding-model",
+                "BAAI/bge-small-en-v1.5",
+                "--embedding-precision",
+                "float32",
+                "--live",
+            ],
+        )
         self.assertEqual(stderr, "")
+
+    def test_retrieval_handoff_commands_quote_every_dynamic_value(self) -> None:
+        commands = build_retrieval_commands(
+            namespace="legacy namespace; echo unsafe",
+            region="region with spaces",
+            embedding_model="model/$(touch nope)",
+            embedding_precision="precision; false",
+        )
+        preview = [
+            "buoy",
+            "retrieve",
+            "<query>",
+            "--namespace",
+            "legacy namespace; echo unsafe",
+            "--region",
+            "region with spaces",
+            "--embedding-model",
+            "model/$(touch nope)",
+            "--embedding-precision",
+            "precision; false",
+        ]
+        self.assertEqual(shlex.split(commands["preview"]), preview)
+        self.assertEqual(shlex.split(commands["live"]), [*preview, "--live"])
+
+    def test_automatic_plan_preflight_text_is_decision_complete(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_root = root / "state"
+            artifacts, plan_path = build_saved_plan(root, state_root=state_root)
+            with patch("buoy_search.cli.discover_latest_plan_path", return_value=plan_path) as discover:
+                result, stdout, stderr = self.run_main(
+                    ["apply", "--state-root", str(state_root)],
+                    env={"TURBOPUFFER_REGION": "aws-us-west-2"},
+                )
+
+        self.assertEqual(result, 0, stderr)
+        discover.assert_called_once_with()
+        self.assertIn(f"source: {artifacts.manifest.base_url}", stdout)
+        self.assertIn(f"plan_path: {plan_path}", stdout)
+        self.assertIn(f"artifact_hash: {artifacts.plan.artifact_hash}", stdout)
+        self.assertIn("namespace: site-example-com-v1 (aws-us-west-2)", stdout)
+        self.assertIn("embedding_model: BAAI/bge-small-en-v1.5", stdout)
+        self.assertIn("embedding_precision: float32", stdout)
+        self.assertIn("first_apply: True", stdout)
+        self.assertIn("rows: to_upsert=2; upserted=0; unchanged=0", stdout)
+        self.assertIn("embeddings: to_generate=2; generated=0", stdout)
+        self.assertIn("stale_intent: retain 0 stale rows", stdout)
+        self.assertIn("retrieval after successful apply (preview):", stdout)
+        self.assertIn("retrieval after successful apply (live):", stdout)
+        self.assertIn("no credentials, embeddings, or turbopuffer API calls", stdout)
 
     def test_apply_defaults_to_latest_old_plan_and_uses_legacy_state_in_place(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -843,9 +962,22 @@ class ApplyCliTests(unittest.TestCase):
                         "--json",
                     ]
                 )
+                text_result, text_stdout, text_stderr = self.run_main(
+                    [
+                        "apply",
+                        "--plan",
+                        str(plan_path),
+                        "--namespace",
+                        artifacts.manifest.namespace,
+                        "--state-root",
+                        str(state_root),
+                    ]
+                )
 
         payload = json.loads(stdout)
         self.assertEqual(result, 0, stderr)
+        self.assertEqual(text_result, 0, text_stderr)
+        self.assertIn("stale_intent: retain 1 stale rows", text_stdout)
         self.assertFalse(payload["approved"])
         self.assertFalse(payload["delete_stale"])
         self.assertFalse(payload["delete_would_run"])
@@ -878,6 +1010,18 @@ class ApplyCliTests(unittest.TestCase):
                         "--json",
                     ]
                 )
+                text_result, text_stdout, text_stderr = self.run_main(
+                    [
+                        "apply",
+                        "--plan",
+                        str(plan_path),
+                        "--namespace",
+                        artifacts.manifest.namespace,
+                        "--state-root",
+                        str(state_root),
+                        "--delete-stale",
+                    ]
+                )
             loaded_state = load_applied_state(
                 site_id=artifacts.manifest.site_id,
                 namespace=artifacts.manifest.namespace,
@@ -887,6 +1031,8 @@ class ApplyCliTests(unittest.TestCase):
 
         payload = json.loads(stdout)
         self.assertEqual(result, 0, stderr)
+        self.assertEqual(text_result, 0, text_stderr)
+        self.assertIn("stale_intent: delete 1 stale rows", text_stdout)
         self.assertFalse(payload["approved"])
         self.assertTrue(payload["delete_stale"])
         self.assertTrue(payload["delete_would_run"])

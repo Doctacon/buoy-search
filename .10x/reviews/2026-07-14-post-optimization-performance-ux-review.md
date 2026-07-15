@@ -12,7 +12,7 @@ Verdict: concerns
 
 2. **Pipeline one embedding batch ahead of one ordered write.** Current apply serializes 521.829 seconds embedding and 165.997 seconds writes. Keep exactly one remote write in flight and one prepared batch, preserving order, lock, failure cancellation, stale deletion, and final state commit. The theoretical workload ceiling is about 166 seconds; actual gain requires benchmark. Owner: `.10x/tickets/done/2026-07-14-depth-one-apply-pipeline.md`.
 
-3. **Complete the explicit plan-to-retrieval handoff.** Live retrieval can silently use the demo namespace; preflight text omits selected plan/source and documented review fields. After float16, copy-ready commands must carry region, namespace, model, and precision. Owner: `.10x/tickets/2026-07-14-explicit-plan-to-retrieval-handoff.md`.
+3. **Complete the explicit plan-to-retrieval handoff.** Live retrieval can silently use the demo namespace; preflight text omits selected plan/source and documented review fields. After float16, copy-ready commands must carry region, namespace, model, and precision. Owner: `.10x/tickets/done/2026-07-14-explicit-plan-to-retrieval-handoff.md`.
 
 ## Not promoted
 

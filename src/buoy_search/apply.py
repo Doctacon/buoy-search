@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import shlex
 import time
 from typing import Any, Callable, Sequence
 
@@ -29,7 +30,7 @@ from buoy_search.applied_state import (
     load_applied_state,
     save_applied_state,
 )
-from buoy_search.config import EMBEDDING_PRECISIONS, RuntimeConfig
+from buoy_search.config import DEFAULT_REGION, EMBEDDING_PRECISIONS, RuntimeConfig
 from buoy_search.chunker import SentenceTransformerEmbedder, TurbopufferWriter, batched
 from buoy_search.plan_artifacts import (
     GENERIC_SITE_TURBOPUFFER_SCHEMA,
@@ -167,6 +168,7 @@ def apply_preflight_summary(
     verified: VerifiedApplyPlan,
     *,
     namespace: str,
+    region: str = DEFAULT_REGION,
     approved: bool = False,
     delete_stale: bool = False,
 ) -> JsonObject:
@@ -175,6 +177,7 @@ def apply_preflight_summary(
     return build_apply_summary(
         verified=verified,
         namespace=namespace,
+        region=region,
         approved=approved,
         delete_stale=delete_stale,
         rows_upserted=0,
@@ -351,6 +354,7 @@ def run_approved_apply(
     return build_apply_summary(
         verified=verified,
         namespace=namespace,
+        region=config.region,
         approved=True,
         delete_stale=delete_stale,
         rows_upserted=rows_written,
@@ -426,6 +430,7 @@ def build_apply_summary(
     *,
     verified: VerifiedApplyPlan,
     namespace: str,
+    region: str,
     approved: bool,
     delete_stale: bool,
     rows_upserted: int,
@@ -438,6 +443,12 @@ def build_apply_summary(
     diff_summary = verified.diff.summary_dict()
     row_ids_to_delete = stale_row_ids_for_delete(verified) if delete_stale else []
     stale_rows_retained = 0 if delete_stale else verified.diff.stale_rows + verified.diff.retained_stale_rows
+    retrieval_commands = build_retrieval_commands(
+        namespace=namespace,
+        region=region,
+        embedding_model=str(verified.plan["embedding_model"]),
+        embedding_precision=str(verified.plan.get("embedding_precision", "float32")),
+    )
     summary: JsonObject = {
         "command": "apply",
         "approved": approved,
@@ -448,6 +459,7 @@ def build_apply_summary(
         "turbopuffer_api_calls": api_calls_occurred,
         "api_calls_occurred": api_calls_occurred,
         "namespace": namespace,
+        "region": region,
         "base_url": verified.manifest.base_url,
         "site_id": verified.manifest.site_id,
         "plan_id": verified.plan["plan_id"],
@@ -471,11 +483,40 @@ def build_apply_summary(
         "rows_deleted": rows_deleted,
         "stale_rows_retained": stale_rows_retained,
         "delete_would_run": bool(delete_stale and row_ids_to_delete),
+        "retrieval_commands": retrieval_commands,
         "diff": diff_summary,
     }
     if timing is not None:
         summary["timing"] = timing
     return summary
+
+
+def build_retrieval_commands(
+    *,
+    namespace: str,
+    region: str,
+    embedding_model: str,
+    embedding_precision: str,
+) -> JsonObject:
+    """Return shell-safe preview/live commands for the applied retrieval contract."""
+
+    preview_args = [
+        "buoy",
+        "retrieve",
+        "<query>",
+        "--namespace",
+        namespace,
+        "--region",
+        region,
+        "--embedding-model",
+        embedding_model,
+        "--embedding-precision",
+        embedding_precision,
+    ]
+    return {
+        "preview": shlex.join(preview_args),
+        "live": shlex.join([*preview_args, "--live"]),
+    }
 
 
 def stale_row_ids_for_delete(verified: VerifiedApplyPlan) -> list[str]:

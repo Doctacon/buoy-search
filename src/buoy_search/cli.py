@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import replace
 import json
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -22,6 +23,7 @@ from buoy_search.apply import (
 )
 from buoy_search.config import (
     DEFAULT_EMBEDDING_PRECISION,
+    DEFAULT_REGION,
     EMBEDDING_PRECISIONS,
     RuntimeConfigError,
     load_config,
@@ -73,13 +75,18 @@ from buoy_search.plan_artifacts import (
 )
 from buoy_search.plan_cleanup import cleanup_applied_plan_directory, cleanup_superseded_plan_directories
 from buoy_search.plan_diff import IncrementalPlanDiff, PlanDiffError, diff_manifest_against_state
+from buoy_search.namespaces import list_namespace_ids
 from buoy_search.retriever import (
     DEFAULT_CANDIDATES,
     DEFAULT_TOP_K,
     HybridRetriever,
+    MultiNamespaceRetriever,
+    MultiNamespaceRetrievalPlan,
+    MultiNamespaceRetrievalResult,
     RetrievalOptions,
     RetrievalPlan,
     RetrievalResult,
+    multi_namespace_retrieval_plan,
     ranking_defaults_for_namespace,
     retrieval_plan,
 )
@@ -559,14 +566,40 @@ def build_parser() -> argparse.ArgumentParser:
     )
     apply_parser.set_defaults(func=_run_apply)
 
+    namespaces_parser = subparsers.add_parser(
+        "namespaces",
+        help="list and filter visible Turbopuffer namespace IDs",
+        description=(
+            "List namespace IDs visible to the configured Turbopuffer account and region. "
+            "An optional search term filters IDs case-insensitively; namespace contents are not queried."
+        ),
+    )
+    namespaces_parser.add_argument(
+        "search",
+        nargs="?",
+        default=None,
+        help="Optional case-insensitive substring to match against namespace IDs.",
+    )
+    namespaces_parser.add_argument(
+        "--region",
+        default=None,
+        help="Override TURBOPUFFER_REGION for this command.",
+    )
+    namespaces_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print JSON output. Text output lists one namespace ID per line.",
+    )
+    namespaces_parser.set_defaults(func=_run_namespaces)
+
     retrieve_parser = subparsers.add_parser(
         "retrieve",
         help="retrieve relevant chunks; dry-run plan by default unless --live is passed",
         description=(
-            "Plan or execute hybrid retrieval against the configured turbopuffer namespace. "
+            "Plan or execute hybrid retrieval against one or more explicitly selected turbopuffer namespaces. "
             "Default mode is safe: it prints the multi-query plan without loading embeddings, "
-            "reading credentials, or contacting turbopuffer. Pass --live to embed the query "
-            "and query turbopuffer."
+            "reading credentials, or contacting turbopuffer. Pass --live to embed the query once "
+            "and query each selected namespace."
         ),
     )
     retrieve_parser.add_argument(
@@ -626,7 +659,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional doc_kind filter, e.g. blog, library, platform, integrations.",
     )
-    add_runtime_config_arguments(retrieve_parser)
+    add_runtime_config_arguments(retrieve_parser, repeatable_namespace=True)
     retrieve_parser.add_argument(
         "--json",
         action="store_true",
@@ -709,7 +742,11 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def add_runtime_config_arguments(command_parser: argparse.ArgumentParser) -> None:
+def add_runtime_config_arguments(
+    command_parser: argparse.ArgumentParser,
+    *,
+    repeatable_namespace: bool = False,
+) -> None:
     """Add non-secret turbopuffer runtime overrides to a command."""
 
     command_parser.add_argument(
@@ -719,8 +756,14 @@ def add_runtime_config_arguments(command_parser: argparse.ArgumentParser) -> Non
     )
     command_parser.add_argument(
         "--namespace",
+        action="append" if repeatable_namespace else "store",
         default=None,
-        help="Override TURBOPUFFER_NAMESPACE for this command without changing the environment.",
+        help=(
+            "Select a namespace; repeat to retrieve across multiple namespaces. CLI selections replace "
+            "TURBOPUFFER_NAMESPACE."
+            if repeatable_namespace
+            else "Override TURBOPUFFER_NAMESPACE for this command without changing the environment."
+        ),
     )
     command_parser.add_argument(
         "--embedding-model",
@@ -739,12 +782,39 @@ def config_from_args(args: argparse.Namespace):
     """Load non-secret runtime config, applying CLI overrides when supplied."""
 
     config = load_config()
+    namespace_override = args.namespace
+    if isinstance(namespace_override, list):
+        namespace_override = namespace_override[0] if namespace_override else None
     return replace(
         config,
         region=args.region or config.region,
-        namespace=args.namespace or config.namespace,
+        namespace=namespace_override or config.namespace,
         embedding_model=args.embedding_model or config.embedding_model,
         embedding_precision=args.embedding_precision or config.embedding_precision,
+    )
+
+
+def resolve_retrieval_namespaces(args: argparse.Namespace) -> list[str]:
+    """Resolve explicit CLI namespaces or one environment namespace without demo fallback."""
+
+    cli_namespaces = args.namespace if isinstance(args.namespace, list) else []
+    if cli_namespaces:
+        namespaces = [namespace.strip() for namespace in cli_namespaces]
+        if any(not namespace for namespace in namespaces):
+            raise ValueError("--namespace must contain a non-empty namespace ID.")
+        duplicate = next(
+            (namespace for index, namespace in enumerate(namespaces) if namespace in namespaces[:index]),
+            None,
+        )
+        if duplicate is not None:
+            raise ValueError(f"--namespace must not repeat namespace ID {duplicate!r}.")
+        return namespaces
+    environment_namespace = os.environ.get("TURBOPUFFER_NAMESPACE", "").strip()
+    if environment_namespace:
+        return [environment_namespace]
+    raise ValueError(
+        "Retrieval requires --namespace or TURBOPUFFER_NAMESPACE; "
+        "run `buoy namespaces [search]` to discover available namespace IDs."
     )
 
 
@@ -1102,10 +1172,12 @@ def _run_apply(args: argparse.Namespace) -> int:
         return 2
 
     namespace = args.namespace or verified.manifest.namespace
+    region = os.environ.get("TURBOPUFFER_REGION", DEFAULT_REGION)
     if not args.approve:
         summary = apply_preflight_summary(
             verified,
             namespace=namespace,
+            region=region,
             approved=False,
             delete_stale=args.delete_stale,
         )
@@ -1152,14 +1224,62 @@ def _run_apply(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_namespaces(args: argparse.Namespace) -> int:
+    region = args.region or os.environ.get("TURBOPUFFER_REGION", DEFAULT_REGION)
+    api_key = os.environ.get("TURBOPUFFER_API_KEY")
+    if not api_key:
+        print("TURBOPUFFER_API_KEY must be set in the environment for namespace discovery.", file=sys.stderr)
+        return 2
+    try:
+        namespace_ids = list_namespace_ids(region=region, api_key=api_key, search=args.search)
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    if args.json:
+        _print_json(
+            {
+                "command": "namespaces",
+                "region": region,
+                "search": args.search,
+                "count": len(namespace_ids),
+                "namespaces": namespace_ids,
+            }
+        )
+    elif namespace_ids:
+        for namespace_id in namespace_ids:
+            print(namespace_id)
+    else:
+        print("No namespaces matched.")
+    return 0
+
+
 def _run_retrieve(args: argparse.Namespace) -> int:
-    config = config_from_args(args)
-    options = retrieval_options_from_args(args, config=config, doc_kind=args.doc_kind)
     if args.dry_run and args.live:
         print("Choose either --live or --dry-run/--plan, not both.", file=sys.stderr)
         return 2
+    try:
+        namespaces = resolve_retrieval_namespaces(args)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    query = args.query.strip()
+    if not query:
+        print("A non-empty query is required for retrieval.", file=sys.stderr)
+        return 2
+
+    base_config = config_from_args(args)
+    configs = [replace(base_config, namespace=namespace) for namespace in namespaces]
+    options = [
+        retrieval_options_from_args(args, config=config, doc_kind=args.doc_kind)
+        for config in configs
+    ]
     if not args.live:
-        plan = retrieval_plan(args.query, config=config, options=options)
+        plan: RetrievalPlan | MultiNamespaceRetrievalPlan
+        if len(configs) == 1:
+            plan = retrieval_plan(query, config=configs[0], options=options[0])
+        else:
+            plan = multi_namespace_retrieval_plan(query, configs=configs, options=options)
         if args.json:
             _print_json(plan.to_dict())
         else:
@@ -1167,7 +1287,16 @@ def _run_retrieve(args: argparse.Namespace) -> int:
         return 0
 
     try:
-        result = HybridRetriever.from_config(config).retrieve(args.query, options)
+        result: RetrievalResult | MultiNamespaceRetrievalResult
+        if len(configs) == 1:
+            try:
+                result = HybridRetriever.from_config(configs[0]).retrieve(query, options[0])
+            except RuntimeError as exc:
+                raise RuntimeError(
+                    f"Retrieval failed for namespace {configs[0].namespace!r}: {exc}"
+                ) from exc
+        else:
+            result = MultiNamespaceRetriever.from_configs(configs).retrieve(query, options)
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -1385,20 +1514,38 @@ def print_language_summary(payload: dict[str, object]) -> None:
 
 
 def print_apply_text(payload: dict[str, object]) -> None:
-    if payload.get("approved"):
+    approved = bool(payload.get("approved"))
+    if approved:
         print("Website RAG apply completed (explicitly approved live upsert path):")
     else:
         print("Website RAG apply preflight (no credentials, embeddings, or turbopuffer API calls):")
-    print(f"  namespace: {payload['namespace']}")
+    print(f"  source: {payload['base_url']}")
+    print(f"  plan_path: {payload['plan_path']}")
     print(f"  plan_id: {payload['plan_id']}")
+    print(f"  artifact_hash: {payload['artifact_hash']}")
+    print(f"  namespace: {payload['namespace']} ({payload['region']})")
+    print(f"  embedding_model: {payload['embedding_model']}")
     print(f"  embedding_precision: {payload['embedding_precision']}")
-    print(f"  rows_to_upsert: {payload['rows_to_upsert']}; rows_upserted: {payload['rows_upserted']}")
+    print(f"  first_apply: {payload['state_first_apply']}")
+    diff = payload.get("diff") if isinstance(payload.get("diff"), dict) else {}
     print(
-        f"  stale_rows: {payload['stale_rows']}; "
-        f"retained_stale_rows: {payload['retained_stale_rows']}; "
-        f"stale_rows_to_delete: {payload['stale_rows_to_delete']}; "
-        f"rows_deleted: {payload['rows_deleted']}"
+        f"  rows: to_upsert={payload['rows_to_upsert']}; "
+        f"upserted={payload['rows_upserted']}; "
+        f"unchanged={diff.get('chunks_unchanged', 0)}"
     )
+    print(
+        f"  embeddings: to_generate={payload['embeddings_to_generate']}; "
+        f"generated={payload['embeddings_generated']}"
+    )
+    print(
+        f"  stale_rows: current={payload['stale_rows']}; "
+        f"already_retained={payload['retained_stale_rows']}; "
+        f"deleted={payload['rows_deleted']}"
+    )
+    if payload.get("delete_stale"):
+        print(f"  stale_intent: delete {payload['stale_rows_to_delete']} stale rows")
+    else:
+        print(f"  stale_intent: retain {payload['stale_rows_retained']} stale rows")
     print(f"  state_path: {payload['state_path']}")
     timing = payload.get("timing")
     if isinstance(timing, dict):
@@ -1412,36 +1559,63 @@ def print_apply_text(payload: dict[str, object]) -> None:
             f"precision={timing['embedding_precision']}; "
             f"pipeline={timing['pipeline_mode']}"
         )
-    if not payload.get("approved"):
+    commands = payload.get("retrieval_commands")
+    if isinstance(commands, dict):
+        label = "next retrieval step" if approved else "retrieval after successful apply"
+        print(f"  {label} (preview): {commands['preview']}")
+        print(f"  {label} (live): {commands['live']}")
+    if not approved:
         print("  live: pass --approve to embed and upsert selected rows")
 
 
-def print_retrieval_text(output: RetrievalPlan | RetrievalResult) -> None:
+def print_retrieval_text(
+    output: RetrievalPlan | MultiNamespaceRetrievalPlan | RetrievalResult | MultiNamespaceRetrievalResult,
+) -> None:
     payload = output.to_dict()
     if payload.get("dry_run"):
         print("Retrieval plan (dry-run; no credentials, embeddings, or turbopuffer API calls):")
         print(f"  query: {payload['query']}")
-        print(f"  namespace: {payload['namespace']} ({payload['region']})")
+        if "namespaces" in payload:
+            print(f"  namespaces: {', '.join(payload['namespaces'])} ({payload['region']})")
+        else:
+            print(f"  namespace: {payload['namespace']} ({payload['region']})")
         print(f"  embedding_model: {payload['embedding_model']}")
         print(f"  embedding_precision: {payload['embedding_precision']}")
         print(f"  top_k: {payload['top_k']}; candidates per subquery: {payload['candidates']}")
-        print(
-            "  ranking: "
-            f"mode={payload.get('ranking_mode')}; "
-            f"profile={payload.get('ranking_profile')}; "
-            f"pool={payload.get('ranking_pool')}; "
-            f"aggregation={payload.get('ranking_aggregation')}"
-        )
+        if "namespace_plans" in payload:
+            for namespace_plan in payload["namespace_plans"]:
+                print(
+                    f"  ranking {namespace_plan['namespace']}: "
+                    f"mode={namespace_plan.get('ranking_mode')}; "
+                    f"profile={namespace_plan.get('ranking_profile')}; "
+                    f"pool={namespace_plan.get('ranking_pool')}; "
+                    f"aggregation={namespace_plan.get('ranking_aggregation')}"
+                )
+        else:
+            print(
+                "  ranking: "
+                f"mode={payload.get('ranking_mode')}; "
+                f"profile={payload.get('ranking_profile')}; "
+                f"pool={payload.get('ranking_pool')}; "
+                f"aggregation={payload.get('ranking_aggregation')}"
+            )
         print("  hybrid: ANN over vector + boosted BM25 over title/section_path/content + RRF")
         print("  live: pass --live to execute; TURBOPUFFER_API_KEY is read from the environment only")
         return
 
     hits = payload.get("hits", [])
-    print(
-        f"Retrieved {len(hits)} chunks using {payload.get('fusion')} "
-        f"with ranking mode={payload.get('ranking_mode')} profile={payload.get('ranking_profile')} "
-        f"aggregation={payload.get('ranking_aggregation')}:"
-    )
+    if "namespaces" in payload:
+        print(
+            f"Retrieved {len(hits)} chunks across {len(payload['namespaces'])} namespaces "
+            f"using {payload.get('fusion')}:"
+        )
+        print(f"  namespaces: {', '.join(payload['namespaces'])}")
+    else:
+        print(
+            f"Retrieved {len(hits)} chunks using {payload.get('fusion')} "
+            f"with ranking mode={payload.get('ranking_mode')} profile={payload.get('ranking_profile')} "
+            f"aggregation={payload.get('ranking_aggregation')}:"
+        )
     print(f"  embedding_precision: {payload['embedding_precision']}")
     for index, hit in enumerate(hits, start=1):
         if not isinstance(hit, dict):
@@ -1451,6 +1625,8 @@ def print_retrieval_text(output: RetrievalPlan | RetrievalResult) -> None:
         section_path = hit.get("section_path") or ""
         print(f"\n{index}. {title}")
         print(f"   URL: {url}")
+        if hit.get("namespace"):
+            print(f"   Namespace: {hit['namespace']}")
         if section_path:
             print(f"   Section: {section_path}")
         if hit.get("path"):

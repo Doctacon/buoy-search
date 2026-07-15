@@ -113,15 +113,9 @@ uv run buoy apply
 
 By default, apply selects the newest plan under `artifacts/site-crawls/`. Use `--plan <path>` when multiple plans exist.
 
-Preflight verifies schema, namespace, manifest/chunk agreement, embedding-text hashes, artifact integrity, and compatibility with local state. Review at least:
+Preflight verifies schema, namespace, manifest/chunk agreement, embedding-text hashes, artifact integrity, and compatibility with local state. Its text identifies the automatically selected plan path and source, artifact hash, namespace and region, verified embedding model and precision, first-apply state, upsert/embedding/unchanged/stale counts, and an explicit `retain N` or `delete N` stale-row intent.
 
-- target namespace;
-- rows and embeddings to upsert;
-- unchanged and stale rows;
-- state path;
-- whether deletion is requested.
-
-It does not read `TURBOPUFFER_API_KEY` or contact turbopuffer.
+It does not read `TURBOPUFFER_API_KEY` or contact turbopuffer. It also prints shell-safe preview and live retrieval commands labeled for use after a successful apply; the approved apply repeats them as the next step. Replace the quoted `<query>` placeholder with the question to search while preserving the recorded namespace, region, model, and precision.
 
 ## Approved apply
 

@@ -22,7 +22,7 @@ Each source path already runs `process_corpus`, then `_run_plan` runs it again. 
 
 ### 3. Make plan → approval → live retrieval handoff explicit
 
-Live retrieval silently falls back to the built-in Scrapling demo namespace when neither CLI nor environment supplies one. Default text preflight also omits the automatically selected plan/source and several fields the indexing guide says users should review. Require an operator-sourced namespace for live retrieval, emit a copy-ready retrieval command, and make preflight text decision-complete while retaining JSON as the automation contract. Owner: `.10x/tickets/2026-07-14-explicit-plan-to-retrieval-handoff.md`.
+Live retrieval silently falls back to the built-in Scrapling demo namespace when neither CLI nor environment supplies one. Default text preflight also omits the automatically selected plan/source and several fields the indexing guide says users should review. Require an operator-sourced namespace for live retrieval, emit a copy-ready retrieval command, and make preflight text decision-complete while retaining JSON as the automation contract. Owner: `.10x/tickets/done/2026-07-14-explicit-plan-to-retrieval-handoff.md`.
 
 ## Verdict
 
