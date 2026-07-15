@@ -227,17 +227,29 @@ Candidate mapping:
 | Raw document/chunk | `EvidenceRevision` | Supports candidate mentions/assertions and remains citeable. |
 | LLM entity/concept | `EntityCandidate` / `ConceptCard` | Derived, versioned, retractable, and explicitly non-authoritative. |
 | LLM relationship | `RelationshipAssertion` | Derived claim with evidence and temporal fields, never a vault Link. |
-| Candidate hub match | `ResolutionAssertion(kind=maps_to_hub)` | Remains pending/rejected/approved under a separately ratified human/rule workflow; only approved references may be used as a projection. |
+| Candidate hub match | `VaultResolutionAssertion(kind=maps_to_hub)` | Remains pending/rejected/approved under a separately ratified human/rule workflow; only approved mapping assertions may be used as a derived projection. |
 
-Even an approved mapping should preserve separate identities: the derived entity points to the Hub; it is not rewritten into or merged with the Hub. The full Data Vault 2.0 standard was not inspected, so loading patterns, hash-key conventions, effectivity satellites, record-source rules, and business-vault policy require Data Vault specialist review before implementation.
+Even an approved mapping preserves separate identities: approval governs only the derived assertion that one candidate maps to one imported reference. It neither ratifies, creates, merges, nor modifies the Hub, Link, Observation, business key, or warehouse relationship; the derived entity is never rewritten into the Hub. Retraction or deletion of a mapping changes only the derived assertion and its projections. The full Data Vault 2.0 standard was not inspected, so loading patterns, hash-key conventions, effectivity satellites, record-source rules, and business-vault policy require Data Vault specialist review before implementation.
 
 ### 5. Candidate storage-neutral node and edge model
 
-The model intentionally reifies assertions instead of placing all provenance on an entity-to-entity edge. Reification permits contradictory facts, multiple sources, independent ACLs, temporal validity, confidence, review, and retraction.
+The model intentionally reifies assertions instead of placing provenance on a bare entity-to-entity edge. Reification permits contradictory facts, multiple sources, independent ACLs, temporal validity, confidence, review, and retraction.
+
+#### General assertion contract
+
+`DerivedAssertion` is the logical supertype for `MentionAssertion`, `TaxonomyAssignmentAssertion`, `VaultResolutionAssertion`, `RelationshipAssertion`, and `AliasAssertion`. It need not be a separate physical table or graph label, but every subtype has the same identity, provenance, policy, time, and lifecycle contract:
+
+- `assertion_id` is a generated opaque, immutable ID. Endpoint values, names, confidence, or content hashes are not assertion identity and cannot cause two assertions to merge. A correction creates a new assertion ID and links the old assertion with `SUPERSEDED_BY`; it never edits history in place.
+- Each assertion has exactly one typed `ASSERTS_SUBJECT` and one typed `ASSERTS_OBJECT`. Subtype endpoint constraints are given below. Every machine-produced assertion has exactly one `DERIVED_FROM_RUN`; governed review records actor/rule, decision time, and `pending`/`approved`/`rejected` state separately.
+- `SUPPORTED_BY` links to every exact `EvidenceRevision` used to make or retain the assertion. Machine assertions require at least one support. A separately governed manual assertion would still require a recorded actor/action provenance contract before implementation; this research does not define one.
+- Common fields are `assertion_type`, predicate/kind, confidence plus calibration contract where applicable, assertion text or source span, `policy_ref`, `security_partition`, `valid_from`/`valid_to`, `observed_at`, `retracted_at`, review/decision state, lifecycle state (`active`, `retracted`, or `superseded`), retraction reason, and supersession pointer. Nullable event-valid fields mean “not stated by the source,” not “valid forever.” Run timestamps provide index-revision time.
+- Assertion authority is always **derived and non-warehouse-authoritative**. Approval may activate a governed projection of that assertion; it does not elevate the assertion, its endpoints, or its evidence into taxonomy or Data Vault authority.
+
+Source correction or deletion retracts the affected `SUPPORTED_BY` links and creates an explicit lifecycle event. An assertion with no remaining permitted support is retracted; one whose text, span, confidence, endpoints, or policy changes is superseded by a new assertion. Retraction propagates to retrieval, summaries, embeddings, adjacency projections, and caches, while the minimum permitted audit tombstone retains assertion identity and lineage.
 
 #### Nodes
 
-| Node | Authority class | Minimum candidate fields |
+| Node | Authority class | Minimum candidate fields and endpoint contract |
 | --- | --- | --- |
 | `NamespaceRef` | current indexed-structure reference | `namespace_id`, source/catalog reference, embedding contract reference, policy reference, indexed revision/status |
 | `SourceRef` | source/provenance reference | `site_id`/source ID, source kind, canonical base identity, policy reference |
@@ -245,10 +257,14 @@ The model intentionally reifies assertions instead of placing all provenance on 
 | `EvidenceRevision` | source-derived evidence coordinate | `(namespace_id,row_id,chunk_hash)`, page hash, section/chunk metadata, plan ID, content locator, extraction eligibility, policy reference |
 | `EntityCandidate` | derived | generated opaque ID, normalized display name, candidate type, security partition, resolution cluster version, created/updated/retracted state |
 | `ConceptCard` | derived | opaque ID, definition/description, automatic vs defined, security partition, summarizer contract, created/updated/retracted state |
-| `RelationshipAssertion` | derived | subject candidate, predicate ID, object candidate/value, assertion text, confidence/calibration, extractor contract, valid/system intervals, review/retraction state |
-| `AliasAssertion` | derived | candidate pair/name, alias kind, score, resolver contract, evidence, decision state, supersession pointer |
-| `TaxonomyTermRef` | governed only if imported from approved taxonomy | taxonomy/version/term ID, label, status; inferred assignment remains separate |
-| `VaultHubRef` / `VaultLinkRef` / `VaultObservationRef` | warehouse-authoritative reference | opaque approved warehouse identifiers, model/version, no generated business key |
+| `DerivedAssertion` | derived logical supertype | Common immutable identity, provenance, temporal, ACL/policy, review, and lifecycle fields defined above. |
+| `MentionAssertion` | derived assertion | Subject: exact `EvidenceRevision`; object: one `EntityCandidate`. Type-specific fields: original span offsets/text, mention type, normalization version. Its subject evidence is also mandatory `SUPPORTED_BY`; deletion of that revision retracts the mention. |
+| `TaxonomyAssignmentAssertion` | derived assertion | Subject: one `EvidenceRevision`, `EntityCandidate`, or `ConceptCard`; object: one imported `TaxonomyTermRef`. Type-specific fields: taxonomy/version, assignment method, score/calibration. Approval governs only the assignment, never the term; taxonomy migration creates new assertions and supersedes old assignments. |
+| `VaultResolutionAssertion` | derived assertion | Subject/object pairs are constrained by `kind`: `maps_to_hub` is `EntityCandidate` → imported `VaultHubRef`; `maps_to_link` is `RelationshipAssertion` → imported `VaultLinkRef`; `maps_to_observation` is `EvidenceRevision` or `RelationshipAssertion` → imported `VaultObservationRef`. Type-specific fields: resolver contract, candidate score, decision state. Approval activates only the mapping projection and never creates, ratifies, merges, or mutates a warehouse Hub, Link, Observation, key, or relationship. |
+| `RelationshipAssertion` | derived assertion | Subject: one `EntityCandidate`; object: one `EntityCandidate` or typed literal value; type-specific fields: predicate ID, assertion text, direction, confidence/calibration. |
+| `AliasAssertion` | derived assertion | Subject/object: candidate pair or candidate/name value; type-specific fields: alias kind, score, resolver contract, decision state. It supports reversible resolution and never destructively coalesces candidates. |
+| `TaxonomyTermRef` | governed only if imported from approved taxonomy | taxonomy/version/term ID, label, status; inferred assignment remains a separate `TaxonomyAssignmentAssertion` |
+| `VaultHubRef` / `VaultLinkRef` / `VaultObservationRef` | warehouse-authoritative reference | opaque identifiers imported from an approved warehouse/catalog plus model/version; no generated business key and no derived write path |
 | `CommunitySummary` | derived aggregate | member-set hash, summarizer contract, source policy domain, evidence closure, generated/retracted time |
 | `ExtractionRun` | derivation metadata | extractor/model/prompt/schema/taxonomy versions, code revision, start/end, parameters, cost/token counters |
 
@@ -258,18 +274,18 @@ The model intentionally reifies assertions instead of placing all provenance on 
 | --- | --- |
 | `NAMESPACE_CONTAINS` | Namespace to document/evidence revision; deterministic structural relation. |
 | `REVISION_OF` / `SUPERSEDES` | Revision chain; never overwrite prior evidence silently. |
-| `MENTION_ASSERTION` | Prefer a reified mention/assignment carrying span, confidence, extractor run, review, ACL, and retraction instead of a bare edge. |
-| `SUPPORTED_BY` | Assertion/concept/summary to exact evidence revision; many-to-many and mandatory for retrieved derived facts. |
+| `ASSERTS_SUBJECT` / `ASSERTS_OBJECT` | Mandatory typed endpoints for every `DerivedAssertion`; subtype constraints above are normative and keep contradictory assertions independent. |
+| `SUPPORTED_BY` | Assertion/concept/summary to exact evidence revision; many-to-many and mandatory for machine-produced or retrieved derived facts. Visibility is the intersection of the assertion policy and its currently valid support. |
+| `DERIVED_FROM_RUN` | Candidate/assertion/summary to the exact extraction/resolution/assignment run; mandatory for every machine-produced assertion. |
+| `MENTION_ASSERTION` | Optional physical convenience from evidence to its `MentionAssertion`; it must mirror that assertion's `ASSERTS_SUBJECT` and conveys no authority without the reified node. |
+| `ASSIGNED_TERM` | Optional physical convenience from `TaxonomyAssignmentAssertion` to its term; it must mirror `ASSERTS_OBJECT` and cannot change term authority. |
+| `MAPS_TO_VAULT_REF` | Optional physical convenience from `VaultResolutionAssertion` to its imported Vault object; it must mirror `ASSERTS_OBJECT`. Its state belongs to the assertion, and even `approved` cannot ratify or mutate the referenced warehouse object. |
 | `ABOUT_ENTITY` | Concept to candidate entity; derived and versioned. |
-| `ASSERTS_SUBJECT` / `ASSERTS_OBJECT` | Relationship assertion endpoints; makes contradictory assertions independent. |
-| `ALIAS_CANDIDATE` | Reversible resolution evidence, not a destructive merge. |
-| `ASSIGNED_TERM` | Assignment object to governed taxonomy term and evidence; assignment provenance is separate from term authority. |
-| `MAPS_TO_VAULT_REF` | Resolution assertion to imported vault reference, with pending/rejected/approved state; LLM-only mapping cannot become approved implicitly. |
+| `ALIAS_CANDIDATE` | Optional projection of an `AliasAssertion`, not a destructive merge or authority edge. |
 | `MEMBER_OF_COMMUNITY` | Derived clustering output scoped to an extraction/community version. |
-| `DERIVED_FROM_RUN` | Any candidate/assertion/summary to exact extraction run. |
-| `RETRACTED_BY` / `SUPERSEDED_BY` | Explicit lifecycle lineage for correction, source deletion, model change, or review. |
+| `RETRACTED_BY` / `SUPERSEDED_BY` | Explicit lifecycle lineage for correction, source deletion, model/taxonomy change, or review. These operations invalidate convenience edges and downstream projections, not authoritative endpoint objects. |
 
-A physical property graph may encode some assertion fields on edges, while a relational model uses assertion/evidence tables. The logical contract should remain the same so storage is replaceable.
+A property graph may represent each assertion as a node with role edges, while a relational model uses a common assertion table plus subtype constraints and evidence joins. A bare convenience edge is never the logical assertion. The identity, endpoint, support, run, policy, temporal, authority, review, and lifecycle contract remains the same so storage is replaceable.
 
 ### 6. Identity resolution, aliases, and contradictions
 
@@ -308,9 +324,9 @@ Model, prompt, schema, resolver, or taxonomy changes must produce a new `Extract
 Source deletion/correction requires a deterministic dependency walk:
 
 1. mark the exact evidence revision retracted (or hard-delete content where policy requires);
-2. retract its mention/support assignments;
-3. recompute each assertion's remaining support and visibility;
-4. retract an assertion when no valid support remains, or regenerate it if its text/summary depended on removed evidence;
+2. retract affected `MentionAssertion`, `TaxonomyAssignmentAssertion`, and assertion-support links; supersede rather than overwrite corrected assertions;
+3. recompute each assertion's remaining support and visibility, including `VaultResolutionAssertion` projections;
+4. retract an assertion when no valid support remains, or regenerate it if its endpoints, text, span, confidence, policy, or summary depended on removed evidence; retraction of Vault resolution changes only the derived mapping and never the referenced Hub/Link/Observation;
 5. recompute entity summaries, concept cards, communities, embeddings, counts, and retrieval materializations;
 6. delete orphan candidate entities only when policy permits and no retained evidence/history/reference requires them;
 7. verify graph, vector, caches, exports, and eval artifacts contain no forbidden payload;
