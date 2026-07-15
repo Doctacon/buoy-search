@@ -1,47 +1,48 @@
-Status: open
+Status: blocked
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-semantic-routing-offline-pilot-plan.md
-Depends-On: None
+Depends-On: .10x/tickets/2026-07-15-build-controlled-taxonomy-fixture.md
 
 # Build Offline Namespace Catalog Fixture
 
 ## Scope
 
-Implement the pilot-only catalog model, JSON loader/validation, eligibility gates, deterministic namespace-card generation, and focused tests governed by `.10x/specs/semantic-namespace-catalog-pilot.md`.
+Implement the catalog model/loader, integrated taxonomy references, synthetic eligibility/ACL/compatibility gates, deterministic cards, leakage protections, and focused tests governed by `.10x/specs/semantic-namespace-catalog-pilot.md`.
 
-Execute on branch `work/build-offline-namespace-catalog-fixture` in its own worktree based on current `develop`.
+Execute on `work/build-offline-namespace-catalog-fixture` in its own worktree after taxonomy integration.
 
 ## Acceptance criteria
 
-- Add the minimum typed Python model and loader needed for the active catalog specification.
-- Validate every required field, identity/reference constraint, synthetic ACL rule, compatibility tuple, and enabled state.
-- Generate deterministic cards with catalog/revision provenance.
-- Ensure unauthorized metadata never enters returned candidate/result diagnostics.
-- Use temporary/in-memory storage only; add no dependency.
-- Add colocated focused tests for every acceptance scenario in the specification.
-- Run focused tests, full test suite, and `git diff --check`.
+- Reuse the integrated taxonomy model for revision/reference/card labels.
+- Validate every catalog field/domain, group rule, compatibility tuple, and enabled state.
+- Generate deterministic revision-bound cards.
+- Add adversarial no-leak canaries and no-network/external-construction sentinels.
+- Add focused tests for every catalog acceptance scenario.
+- Run focused tests, full suite, and `git diff --check`.
+
+## Assumption provenance
+
+Broad catalog-card/compatibility/access direction is user-ratified. Current precision/profile/source-kind domains and RRF compatibility are source-backed. Fixture schema and synthetic ACL mechanics are pilot-only. Production authority/ACL/freshness remain unresolved and excluded.
 
 ## Explicit exclusions
 
-- Taxonomy matching beyond validating supplied tag IDs.
-- Routing/scoring/evaluation strategy.
-- CLI/API changes, live Turbopuffer, model loading, production persistence, Data Vault, concepts, or graph behavior.
+Routing/scoring/metrics, production persistence, real ACLs, CLI/API, live Turbopuffer, model loading, Data Vault, ontology, concepts, or graphs.
 
 ## References
 
 - `.10x/specs/semantic-namespace-catalog-pilot.md`
-- `.10x/decisions/data-vault-is-analogy-not-architecture.md`
+- `.10x/specs/controlled-taxonomy-pilot.md`
 - `.10x/tickets/2026-07-15-semantic-routing-offline-pilot-plan.md`
 
 ## Evidence expectations
 
-Record changed files, exact fixture/model contract, focused/full test commands and results, network/credential absence, diff hygiene, and limits.
+Changed files, field/validation contract, scenario and sentinel tests, full-suite result, diff hygiene, and limits.
 
 ## Blockers
 
-None.
+Blocked pending shaping pass and integrated taxonomy child.
 
 ## Progress and notes
 
-- 2026-07-15: Ticket opened from the user-ratified offline pilot specification set. Execution deferred from the specification-authoring turn.
+- 2026-07-15: Initially declared independent; shaping review found a real taxonomy dependency. Ticket now depends on integrated taxonomy and remains unimplemented.

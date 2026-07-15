@@ -6,107 +6,140 @@ Updated: 2026-07-15
 
 ## Purpose and scope
 
-Define the local, synthetic namespace catalog used to evaluate routing across many Buoy/Turbopuffer namespaces without contacting Turbopuffer or selecting production infrastructure.
+Define the local synthetic namespace catalog used to evaluate routing without contacting Turbopuffer or selecting production infrastructure.
 
-The catalog is pilot authority only. It models stable namespace/source/revision identity, retrieval compatibility, controlled taxonomy assignments, lifecycle eligibility, and synthetic access boundaries. It MUST NOT be presented as a production catalog, Data Vault, ontology, graph, or remote namespace registry.
+The catalog is pilot authority only. It MUST NOT be presented as a production catalog, Data Vault, ontology, graph, or remote namespace registry.
+
+## Assumption provenance
+
+### User-ratified direction
+
+The user approved namespace cards carrying source, tags, compatibility, freshness/eligibility, and access metadata; local fixtures; and evaluation before production or graph work.
+
+### Record/source-backed invariants
+
+- Namespace listing alone does not provide semantic catalog authority.
+- Authorization, eligibility, and compatibility gate candidates before relevance scoring.
+- Current multi-namespace execution requires one shared region/model/precision contract and namespace-aware ranking behavior.
+- Unauthorized metadata must not leak.
+
+### Synthetic pilot-only mechanics
+
+The JSON schema, fixed source-kind/profile domains, lowercase synthetic groups, `enabled` field, and access rule below are deterministic test mechanics only. They do not ratify production policy.
+
+### Explicitly unresolved outside the pilot
+
+Production authority/store, freshness states, source ownership, real ACLs, synchronization, revision retention, public diagnostics, and operational ownership remain blocked.
 
 ## Canonical fixture
 
-The pilot MUST use a version-controlled JSON fixture as its canonical input. The fixture MUST include a non-empty `catalog_revision` and a non-empty list of namespace records.
+The pilot MUST use version-controlled JSON containing:
+
+- non-empty `catalog_revision`;
+- non-empty `taxonomy_revision` matching the loaded taxonomy exactly;
+- non-empty `namespaces` list.
 
 Each namespace record MUST contain:
 
-- `namespace_id`: unique Turbopuffer-style identifier;
-- `revision_id`: immutable fixture revision identity for this indexed representation;
-- `source_id`: stable source identity independent of namespace naming;
-- `source_kind`: explicit source class such as site, repository, PDF, or local file;
-- `title`: human-readable source title;
-- `description`: concise card description used for semantic routing;
-- `tag_ids`: unique controlled taxonomy term IDs;
-- `embedding_model`, `embedding_dimensions`, and `embedding_precision`;
-- `schema_version` and `ranking_profile`;
-- `enabled`: whether the revision is eligible for routing;
-- `is_public` and `allowed_groups`: synthetic pilot authorization fields.
+- `namespace_id`: unique identifier matching Turbopuffer namespace syntax `[A-Za-z0-9-_.]{1,128}`;
+- `revision_id`: unique immutable fixture revision ID;
+- `source_id`: stable source ID independent of namespace name;
+- `source_kind`: exactly one of `website`, `github_repo`, `pdf`, `local_file`;
+- `title` and `description`: non-empty human-readable fixture text;
+- `tag_ids`: unique IDs existing in the matching taxonomy revision;
+- compatibility fields: `region`, `embedding_model`, `embedding_dimensions`, `embedding_precision`, `schema_version`, `ranking_profile`;
+- `enabled`: eligibility flag;
+- synthetic authorization fields: `is_public`, `allowed_groups`.
 
-IDs and descriptions MUST be explicit fixture data. The loader MUST NOT infer business meaning, compatibility, authorization, or source identity from namespace prefixes.
+Domains:
 
-The fixture MUST reject duplicate namespace IDs, duplicate revision IDs, unknown taxonomy terms, empty required strings, non-positive vector dimensions, unsupported embedding precision, duplicate group IDs, and a private namespace with no allowed group.
+- `region` and `embedding_model` are non-empty strings compared exactly;
+- `embedding_dimensions` is a positive integer;
+- `embedding_precision` is exactly `float32` or `float16`, matching current `EMBEDDING_PRECISIONS`;
+- `schema_version` is a positive integer;
+- `ranking_profile` is exactly `none` or `repo_code`, matching current `RANKING_PROFILES`;
+- `tag_ids` are stored and rendered in lexicographic term-ID order.
 
-## Synthetic access contract
+The loader MUST reject duplicate namespace/revision IDs, unknown tags, taxonomy revision mismatch, empty required strings, invalid domains, duplicate tags/groups, and authorization contradictions.
 
-The pilot uses synthetic groups only; it does not define production authorization.
+It MUST NOT infer source identity, compatibility, authorization, ranking profile, or meaning from namespace prefixes.
 
-A namespace is authorized when either:
+## Synthetic group validation and access
 
-- `is_public` is true; or
-- the query principal has at least one group in `allowed_groups`.
+A group ID MUST match `[a-z0-9][a-z0-9_-]{0,63}` and is case-sensitive canonical lowercase.
 
-A private namespace with no matching group MUST be excluded before any exact or semantic scoring. Unauthorized namespace IDs, titles, descriptions, tags, scores, and exclusion reasons MUST NOT appear in route results or user-facing diagnostics.
+Catalog and principal group lists use set semantics but duplicate input is invalid. An empty principal group list is valid.
 
-## Compatibility and lifecycle gates
+Catalog authorization invariants:
 
-A namespace MUST be excluded before scoring when:
+- if `is_public` is true, `allowed_groups` MUST be empty;
+- if `is_public` is false, `allowed_groups` MUST be non-empty.
 
-- `enabled` is false; or
-- its embedding model, dimensions, or precision differ from the query contract.
+A namespace is authorized when it is public or the principal's validated group set overlaps `allowed_groups` exactly.
 
-The pilot MUST treat those fields as an exact compatibility tuple. It MUST NOT infer compatibility from model-name similarity or namespace naming.
+A private namespace without overlap MUST be excluded before scoring. Its ID, revision, title, description, tags, vectors, scores, and exclusion reason MUST NOT appear in route output or ordinary diagnostics.
 
-## Namespace cards
+Internal evaluator safety accounting MAY report only the case ID and violation category/count, never unauthorized namespace metadata.
 
-The pilot MUST derive one deterministic semantic card per eligible namespace revision from:
+## Complete compatibility tuple
+
+The query and namespace compatibility tuple is:
+
+```text
+(region, embedding_model, embedding_dimensions, embedding_precision, schema_version, ranking_profile)
+```
+
+Every field is compared exactly before scoring. A mismatch excludes the namespace. The pilot MUST NOT infer compatibility from related names or prefixes.
+
+`enabled: false` also excludes the namespace before scoring.
+
+## Deterministic namespace cards
+
+The pilot MUST derive one card per eligible namespace revision:
 
 ```text
 Title: <title>
 Description: <description>
-Tags: <taxonomy labels in tag-id order>
+Tags: <taxonomy labels ordered by tag_id ascending>
 Source kind: <source_kind>
 ```
 
-Card generation MUST be deterministic for identical catalog and taxonomy revisions. Cards are disposable projections and MUST retain `catalog_revision`, `revision_id`, and `namespace_id` references.
+The card identity MUST retain:
+
+- `catalog_revision`;
+- `taxonomy_revision`;
+- `namespace_id`;
+- `revision_id`.
+
+Identical catalog and taxonomy revisions MUST produce byte-identical card text and identity. A taxonomy descriptor change requires a new taxonomy revision and therefore a different card identity context.
+
+Cards are disposable projections.
 
 ## Local representation
 
-Implementation MAY load the JSON fixture into Python structures or an in-memory DuckDB database. It MUST NOT persist a database outside test/pilot temporary directories and MUST NOT add a new runtime dependency.
+Implementation MAY use Python structures or in-memory DuckDB. It MUST NOT persist a database outside a test/pilot temporary directory or add a dependency.
 
 ## Acceptance scenarios
 
-### Authorized compatible namespace
-
-Given an enabled namespace with a matching embedding contract and either public access or an overlapping group, when candidates are prepared, then the namespace is eligible for routing.
-
-### Unauthorized namespace
-
-Given a private namespace without a matching group, when routing runs, then it is absent from candidates, results, scores, and diagnostics.
-
-### Incompatible namespace
-
-Given a namespace with a different embedding model, dimensions, or precision, when routing runs, then it is excluded before exact and semantic scoring.
-
-### Disabled namespace
-
-Given `enabled: false`, when routing runs, then the namespace is excluded before scoring.
-
-### Invalid reference
-
-Given a namespace referencing an unknown taxonomy term, when the fixture loads, then validation fails before evaluation.
-
-### Deterministic card
-
-Given the same catalog and taxonomy revisions, when cards are generated repeatedly, then their text and identity references are byte-for-byte stable.
+- Authorized, enabled, fully compatible namespace becomes eligible.
+- Unauthorized namespace is absent from candidates/results/ordinary diagnostics.
+- Any compatibility-field mismatch excludes before scoring.
+- Disabled namespace excludes before scoring.
+- Unknown tag or taxonomy-revision mismatch fails fixture loading.
+- Invalid/duplicate group input and public-with-groups fail validation.
+- Same revisions generate byte-identical cards; changed taxonomy revision changes card identity context.
+- An adversarial unauthorized canary with unique ID/title/tag and highest relevance leaves none of those values in serialized route output.
 
 ## Acceptance criteria
 
-- The canonical fixture and loader satisfy every field and validation rule above.
-- Eligibility gates are deterministic and test-covered.
-- Unauthorized namespace metadata cannot leak through results or diagnostics.
-- No network, credential lookup, embedding-model download, Turbopuffer SDK construction, or persistent database occurs.
+- Fixture/loader/card behavior satisfies every field, validation, and leakage rule.
+- Cross-taxonomy validation uses the integrated taxonomy model rather than a duplicate interface.
+- Tests install fail-fast sentinels for socket/network access, credential loading, sentence-transformer/model construction, Turbopuffer SDK construction, live retrieval, and persistent writes outside temporary paths.
+- No external mutation occurs.
 
 ## Explicit exclusions
 
-- Production catalog persistence or synchronization.
-- Namespace creation, mutation, deletion, or discovery.
-- Real user/group policy.
-- Data Vault schemas or loading.
-- Ontology, concept extraction, graph nodes, or graph traversal.
-- Freshness/staleness policy beyond the explicit `enabled` fixture field.
+- Production persistence/synchronization.
+- Real namespace discovery or mutation.
+- Real ACL policy or public diagnostics.
+- Data Vault, ontology, concepts, graph behavior, or freshness policy beyond `enabled`.

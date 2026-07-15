@@ -1,48 +1,49 @@
-Status: open
+Status: blocked
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-semantic-routing-offline-pilot-plan.md
-Depends-On: .10x/tickets/2026-07-15-build-offline-namespace-catalog-fixture.md, .10x/tickets/2026-07-15-build-controlled-taxonomy-fixture.md
+Depends-On: .10x/tickets/2026-07-15-build-offline-namespace-catalog-fixture.md
 
 # Build Offline Semantic Router Evaluator
 
 ## Scope
 
-Implement deterministic exact-taxonomy, semantic-card, and equal-weight RRF hybrid routing; eligibility-first candidate handling; cached namespace-local evidence fusion; metric calculation; and focused tests governed by `.10x/specs/offline-semantic-routing-evaluation.md`.
+Implement deterministic validation, eligibility-first oracle/exact/semantic/hybrid routing, route-level RRF, exact downstream namespace-qualified RRF, metric formulas, canonical serialization, and tests governed by `.10x/specs/offline-semantic-routing-evaluation.md`.
 
-Execute on branch `work/build-offline-semantic-router-evaluator` in its own worktree based on current `develop` after both dependencies are integrated.
+Execute on `work/build-offline-semantic-router-evaluator` after catalog integration.
 
 ## Acceptance criteria
 
-- Reuse the integrated catalog and taxonomy models rather than duplicating them.
-- Apply authorization, enabled state, and exact embedding compatibility before every strategy.
-- Implement exact, semantic cosine, and hybrid `RRF_K = 60` strategies with deterministic tie-breaking.
-- Accept injected/precomputed vectors; never initialize/download a model in tests.
-- Preserve namespace-qualified evidence identity and fuse cached rankings without comparing raw scores.
-- Produce per-case/split/aggregate routing, fan-out, safety, and downstream evidence metrics.
-- Keep unauthorized namespace metadata out of route output/diagnostics.
-- Add focused tests for every acceptance scenario, including repeatability.
-- Run focused tests, full suite, and `git diff --check`.
+- Reuse integrated catalog/taxonomy models.
+- Validate complete cases/config/vectors before evaluation.
+- Implement oracle, exact, semantic, and route-hybrid algorithms exactly.
+- Directly reuse or exactly reproduce `cross_namespace_rrf` ordering.
+- Implement every metric/formula/edge case and canonical JSON contract.
+- Keep unauthorized metadata out of route output and internal safety details redacted.
+- Install no-network/credential/model/Turbopuffer/persistence sentinels.
+- Add focused tests for every evaluator acceptance scenario; run full suite and diff check.
+
+## Assumption provenance
+
+Strategy comparison is user-ratified. Eligibility-before-score, RRF constant/formula, namespace-qualified identity, and oracle control are record/source-backed. Fixture vectors, formulas, labels, limits, and serialization are pilot-only. Real quality/thresholds remain unresolved and excluded.
 
 ## Explicit exclusions
 
-- Pilot dataset conclusions, architecture promotion, CLI/API changes, live Turbopuffer, answer generation, learned routing, decomposition, concepts, ontology, or graphs.
+Fixture conclusions, CLI/API, live services, answer generation, learned routing, decomposition, evidence tag filters/boosts, concepts, ontology, or graphs.
 
 ## References
 
 - `.10x/specs/offline-semantic-routing-evaluation.md`
-- `.10x/specs/semantic-namespace-catalog-pilot.md`
-- `.10x/specs/controlled-taxonomy-pilot.md`
 - `.10x/tickets/2026-07-15-semantic-routing-offline-pilot-plan.md`
 
 ## Evidence expectations
 
-Record changed files, deterministic strategy behavior, metric examples, focused/full tests, safety assertions, no-network proof, diff hygiene, and limits.
+Changed files, formula examples, safety and repeatability tests, full-suite result, no-network proof, and limits.
 
 ## Blockers
 
-Depends on both fixture/model children being integrated into current `develop`.
+Blocked pending shaping pass and integrated catalog dependency.
 
 ## Progress and notes
 
-- 2026-07-15: Ticket opened from the user-ratified offline pilot specification set. Execution deferred until dependencies close and integrate.
+- 2026-07-15: Initial evaluator semantics were incomplete; repaired spec now defines validation, formulas, metrics, oracle, serialization, and exact RRF compatibility. No implementation started.

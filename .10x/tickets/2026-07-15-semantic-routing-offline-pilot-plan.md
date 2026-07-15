@@ -8,64 +8,64 @@ Depends-On: None
 
 ## Plan outcome
 
-Build and run the smallest local pilot that can test whether a semantic namespace catalog and controlled taxonomy improve namespace selection and downstream cached evidence retrieval over exact-only routing, without Turbopuffer calls, hosted APIs, production infrastructure, or a knowledge graph.
+Build and run the smallest deterministic local plumbing pilot for a semantic namespace catalog, controlled taxonomy, and exact/semantic/hybrid routing without Turbopuffer calls, hosted APIs, production infrastructure, or a graph.
 
 This is a parent plan, not an executable ticket.
 
 ## Governing records
 
 - `.10x/decisions/data-vault-is-analogy-not-architecture.md`
-- `.10x/specs/semantic-namespace-catalog-pilot.md`
 - `.10x/specs/controlled-taxonomy-pilot.md`
+- `.10x/specs/semantic-namespace-catalog-pilot.md`
 - `.10x/specs/offline-semantic-routing-evaluation.md`
-- `.10x/research/2026-07-15-data-vault-namespace-catalog-routing.md`
-- `.10x/research/2026-07-15-data-vault-governed-tagging-filtering.md`
-- `.10x/research/2026-07-15-data-vault-multi-hop-global-retrieval.md`
-- `.10x/research/2026-07-15-data-vault-concept-graph.md`
+- `.10x/reviews/2026-07-15-semantic-routing-offline-pilot-shaping-review.md`
+- focused 2026-07-15 namespace, tagging, multi-hop, and concept-graph research records
 
-## Ratified direction
+## Assumption provenance
 
-The user approved the recommended next phase:
+### User-ratified direction
 
-1. namespace cards with source, tags, compatibility, eligibility, and synthetic access metadata;
-2. a small controlled taxonomy;
-3. offline comparison of exact, semantic-card, and hybrid routing;
-4. evaluation of namespace recall/precision, false exclusion, fan-out, downstream evidence, and ACL safety;
-5. no graph work unless cheaper approaches leave a measured gap.
+Namespace cards, controlled taxonomy, exact/semantic/hybrid offline comparison, current RRF downstream control, ACL/false-exclusion measurement, and evidence before graph work.
 
-Data Vault remains analogy only. No Data Vault component is introduced.
+### Record/source-backed invariants
+
+No Data Vault or graph; eligibility before score; governed/derived/ACL separation; `RRF_K = 60`; namespace-qualified evidence identity; offline/no-live boundary.
+
+### Synthetic pilot-only mechanics
+
+All fixture schemas, normalization, ACL groups, compatibility fields, vectors, labels, limits, and metric formulas are deterministic plumbing mechanics only.
+
+### Unresolved outside the pilot
+
+Production semantics, real quality, ACLs, taxonomy, public behavior, storage, models, thresholds, and architecture promotion.
 
 ## Child sequence
 
-1. `.10x/tickets/2026-07-15-build-offline-namespace-catalog-fixture.md`
-2. `.10x/tickets/2026-07-15-build-controlled-taxonomy-fixture.md`
+1. `.10x/tickets/2026-07-15-build-controlled-taxonomy-fixture.md`
+2. `.10x/tickets/2026-07-15-build-offline-namespace-catalog-fixture.md`
 3. `.10x/tickets/2026-07-15-build-offline-semantic-router-evaluator.md`
-4. `.10x/tickets/2026-07-15-run-offline-semantic-routing-pilot.md`
+4. `.10x/tickets/2026-07-15-freeze-offline-semantic-routing-fixture.md`
+5. `.10x/tickets/2026-07-15-run-offline-semantic-routing-pilot.md`
 
-Children 1 and 2 are independent and may run in parallel in separate worktrees. Child 3 depends on both. Child 4 depends on child 3 and owns the fixed pilot cases, execution, evidence, and results checkpoint.
+Each child executes in its own `work/*` branch/worktree based on current `develop`.
+
+The catalog child depends on the integrated taxonomy model. The evaluator depends on catalog. The freeze child depends on the evaluator and owns fixed fixtures/preregistration. The run child may not edit frozen inputs.
 
 ## Aggregate acceptance criteria
 
-- The catalog, taxonomy, and evaluator satisfy their focused active specifications.
-- Every implementation child is independently reviewed and validated before integration.
-- The pilot runs from deterministic committed fixtures with no network or credentials.
-- Exact, semantic-card, and hybrid strategies run against identical eligible candidates and held-out cases.
-- The report includes per-case and aggregate routing/evidence metrics plus exact safety-failure counts.
-- No Turbopuffer SDK construction, live retrieval/write, hosted API, model download, Data Vault, graph database, concept extraction, or production persistence occurs.
-- The result is an evidence checkpoint, not an automatic architecture promotion.
-
-## Integration points
-
-- Existing `RRF_K = 60` and namespace-qualified cross-namespace identity.
-- Existing Python 3.11+ package and colocated test conventions.
-- Existing DuckDB dependency MAY support temporary local relational checks but is not required as production authority.
-- Current explicit multi-namespace retrieval remains unchanged.
+- All active specs pass independent shaping review before children become executable.
+- Each child passes focused/full tests, independent review, and protected integration.
+- Freeze manifest/review precedes held-out execution.
+- Oracle, exact, semantic, and hybrid use identical eligibility, limits, cached evidence, and metric definitions.
+- Results are deterministic plumbing evidence only.
+- No network, credentials, model download, Turbopuffer construction/call, persistent production store, Data Vault, concept extraction, ontology, or graph occurs.
 
 ## Blockers
 
-None for the bounded offline pilot. Production catalog semantics, real ACLs, public tag behavior, live namespace routing, concept/ontology design, graphs, and promotion thresholds remain explicitly out of scope and blocked on pilot evidence plus later user ratification.
+All children are blocked pending pass re-review of the repaired shaping records. Production and architecture work remain blocked on pilot evidence and later user ratification.
 
 ## Progress and notes
 
-- 2026-07-15: User approved synthesis into focused specifications and an executable offline-pilot plan using local fixtures, exact/semantic/hybrid routing, current RRF baseline, and no graph or production infrastructure.
-- 2026-07-15: Focused specification set and four bounded child tickets created. Implementation intentionally deferred under the specification-first execution gate.
+- 2026-07-15: User approved the offline pilot direction.
+- 2026-07-15: Initial shaping review failed due to underdefined taxonomy, compatibility, vector, routing, RRF, metric, freeze, dependency, and synthetic ACL mechanics. Child execution blocked.
+- 2026-07-15: Repaired the specifications and ticket graph; added provenance classifications and a separate fixture-freeze child. Awaiting independent re-review before opening execution.

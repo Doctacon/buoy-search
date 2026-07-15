@@ -6,133 +6,197 @@ Updated: 2026-07-15
 
 ## Purpose and scope
 
-Define an offline pilot that compares exact taxonomy routing, semantic namespace-card routing, and a hybrid strategy before any production catalog, live Turbopuffer integration, or knowledge graph is considered.
+Define a deterministic offline plumbing pilot comparing exact taxonomy routing, semantic namespace-card routing, and hybrid routing before any production catalog, live Turbopuffer integration, or knowledge graph.
 
-The current explicit multi-namespace retrieval and cross-namespace reciprocal-rank fusion behavior remains the downstream control. This pilot evaluates selection before retrieval and uses cached synthetic result lists to measure downstream effects.
+The pilot can establish implementation correctness, safety-gate plumbing, and behavior on its synthetic fixture. It MUST NOT be described as evidence of real semantic-routing quality.
 
-## Inputs
+## Assumption provenance
 
-The evaluator MUST consume:
+### User-ratified direction
 
-- a valid semantic catalog fixture governed by `.10x/specs/semantic-namespace-catalog-pilot.md`;
-- a valid taxonomy fixture governed by `.10x/specs/controlled-taxonomy-pilot.md`;
-- deterministic card vectors and query vectors supplied by the fixture or an injected local scorer;
-- evaluation cases with query text, synthetic principal groups, embedding contract, expected namespace IDs, forbidden namespace IDs, cached namespace-local ranked evidence, and a `development` or `held_out` split.
+The user approved exact, semantic-card, and hybrid comparison; current multi-namespace RRF as downstream control; local-only execution; ACL/false-exclusion measurement; and no graph before evidence.
 
-Tests and the committed pilot dataset MUST use deterministic fixture vectors. The evaluator MUST NOT download or initialize an embedding model. A later separately authorized experiment may inject a local open-source model without changing routing semantics.
+### Record/source-backed invariants
+
+- Eligibility gates precede relevance.
+- Existing `RRF_K = 60` is reused.
+- Namespace-local raw scores are not compared across namespaces.
+- Cross-namespace evidence identity includes namespace plus row identity.
+- Exact/oracle namespace selection is needed to separate routing loss from downstream cached-retrieval loss.
+
+### Synthetic pilot-only mechanics
+
+Fixture vectors, route limit, acceptable namespace labels, metric formulas, splits, and canonical serialization below exist only for deterministic plumbing evaluation.
+
+### Explicitly unresolved outside the pilot
+
+Real model quality, production ACLs, route limits, promotion thresholds, live latency/cost, public output, learned routing, decomposition, concepts, ontology, and graphs remain blocked.
+
+## Pilot configuration and case inputs
+
+A frozen pilot configuration MUST include:
+
+- `catalog_revision` and `taxonomy_revision`;
+- positive integer `route_limit`;
+- positive integer `evidence_cutoff`;
+- `rrf_k` fixed to `60`;
+- deterministic card vectors keyed by card identity;
+- case list in stable case-ID order.
+
+Each case MUST contain:
+
+- unique `case_id` and `source_group_id`;
+- `split`: `development` or `held_out`;
+- query text;
+- validated synthetic principal groups;
+- the complete compatibility tuple from the catalog spec;
+- deterministic query vector;
+- disjoint namespace sets: non-empty `required_namespace_ids`, optional `acceptable_namespace_ids`, and optional `forbidden_namespace_ids`;
+- ordered `oracle_namespace_ids` containing every required namespace, only required/acceptable namespaces, no duplicates, and length no greater than `route_limit`;
+- cached ordered evidence rows per eligible namespace;
+- non-empty namespace-qualified `required_evidence_ids` expressed as `(namespace_id, row_id)` pairs.
+
+Required and acceptable namespaces MUST be enabled, authorized for the case, and compatible. Forbidden namespaces MAY be ineligible and exist to test safety. All referenced namespace/evidence IDs MUST exist in the fixture.
+
+## Vector validation
+
+Every query/card vector MUST:
+
+- be a list of exactly `embedding_dimensions` numeric non-boolean values;
+- contain only finite values;
+- have non-zero Euclidean norm.
+
+Empty, wrong-dimension, NaN, infinite, boolean, and zero-norm vectors are fixture-validation errors before evaluation. Cosine similarity MUST produce a finite score.
 
 ## Eligibility first
 
-Authorization, `enabled`, and embedding-contract compatibility MUST be evaluated before every routing strategy. Ineligible namespaces MUST not be scored.
+Authorization, `enabled`, and the complete compatibility tuple MUST gate candidates before every strategy. Ineligible namespaces MUST not be scored.
 
-Forbidden namespace selection is a safety failure, not a relevance tradeoff. The evaluator MUST report an exact count and case IDs while keeping forbidden namespace metadata out of ordinary route results.
+Internal safety output reports only case ID plus violation category/count. Ordinary route output contains selected authorized namespaces only.
 
 ## Routing strategies
 
-All strategies receive the same eligible candidate set and route limit.
+Every automatic strategy receives the same eligible candidate set and positive `route_limit`. If fewer candidates exist, return all ranked candidates; zero is invalid.
+
+### Oracle/explicit control
+
+Use the case's `oracle_namespace_ids` exactly in supplied order. This is not an automatic router. It isolates downstream cached-retrieval quality from routing loss.
 
 ### Exact taxonomy
 
-- Extract query term IDs using the controlled taxonomy matching contract.
+- Extract exact term matches under the taxonomy spec.
 - Select namespaces assigned at least one matched term.
-- Rank by descending number of distinct matched terms, then `namespace_id` ascending.
-- If no term matches, return no exact candidates rather than guessing.
+- Rank by descending number of distinct matched term IDs, then `namespace_id` ascending.
+- If no term matches, return no candidates.
 
 ### Semantic card
 
-- Rank eligible namespace cards by cosine similarity between deterministic query and card vectors.
-- Sort descending by similarity, then `namespace_id` ascending.
-- Semantic scores MUST NOT be compared with namespace-local retrieval scores.
+Rank every eligible card by descending cosine similarity, then `namespace_id` ascending.
 
-### Hybrid
+### Hybrid route RRF
 
-- Fuse exact-taxonomy and semantic-card ranks using reciprocal-rank fusion with the project's existing `RRF_K = 60`.
-- Each strategy has equal weight.
-- A namespace present in only one list remains eligible for the fused list.
-- Resolve ties by `namespace_id` ascending.
+Let exact and semantic ranks be one-based. For each namespace present in either list:
+
+```text
+hybrid_score(namespace) =
+    sum(1 / (60 + rank_in_strategy))
+    for strategy in {exact, semantic}
+    where the namespace is present
+```
+
+Aggregate contributions by `namespace_id`. Rank by descending hybrid score, then `namespace_id` ascending. A namespace in one list receives one contribution. Apply `route_limit` after fusion.
+
+Route RRF is distinct from downstream evidence RRF, which preserves namespace-qualified hits instead of aggregating equal row IDs.
 
 ## Route output
 
-For each selected authorized namespace, the route result MUST include:
+Selected route rows MUST include namespace/revision IDs, route rank, strategy, matched term IDs and normalized phrases when applicable, semantic rank/score when applicable, hybrid score when applicable, and the full compatibility tuple.
 
-- `namespace_id` and `revision_id`;
-- route rank and strategy;
-- matched taxonomy term IDs/phrases when applicable;
-- semantic rank when applicable;
-- fused score when applicable;
-- compatibility contract used.
-
-Output MUST include catalog/taxonomy revisions and deterministic strategy parameters. It MUST NOT expose unauthorized candidate metadata.
+Top-level output includes catalog/taxonomy revisions, route limit, evidence cutoff, and RRF constant. Unauthorized metadata is excluded.
 
 ## Downstream cached retrieval
 
-For each strategy, the evaluator MUST take the selected namespaces' cached namespace-local ranked evidence and merge them using the existing namespace-qualified RRF semantics. Raw namespace-local scores MUST NOT be compared directly.
+Routed namespace order is the explicit downstream namespace-selection order.
 
-Cached evidence identity MUST include namespace plus row identity. The evaluator MUST not collapse equivalent row IDs across namespaces.
+The evaluator MUST directly reuse `cross_namespace_rrf` where practical or reproduce exactly:
+
+```text
+score = 1 / (60 + one_based_source_rank)
+```
+
+Each cached hit remains distinct. Sort by:
+
+1. descending score;
+2. routed namespace index ascending;
+3. source rank ascending;
+4. row ID ascending.
+
+Return the first `evidence_cutoff` hits. Equal row IDs in different namespaces remain distinct via `(namespace_id, row_id)`.
+
+No chunk/evidence tag filter or boost exists in this pilot.
 
 ## Metrics
 
-The evaluator MUST report per case, per split, and aggregate:
+For one case, let `S` be selected namespaces, `R` required, `A` acceptable, and `E` returned namespace-qualified evidence at `evidence_cutoff`.
 
-- required namespace recall;
-- selected namespace precision;
-- over-selection count;
-- selected namespace count/fan-out;
-- forbidden namespace selection count;
-- incompatible or disabled namespace selection count;
-- downstream required-evidence recall at the configured cutoff;
-- route strategy and deterministic parameters.
+- `required_namespace_recall = |S ∩ R| / |R|` (`R` is non-empty);
+- `selected_namespace_precision = |S ∩ (R ∪ A)| / |S|`, defined as `0.0` when `S` is empty;
+- `over_selection_count = |S - (R ∪ A)|`;
+- `fan_out = |S|`;
+- `forbidden_selection_count = |S ∩ forbidden|`;
+- `ineligible_selection_count`: selected namespaces that fail enabled/ACL/compatibility, expected zero;
+- `required_evidence_recall = |E ∩ required_evidence| / |required_evidence|` (required evidence is non-empty).
 
-It MUST retain individual case results; aggregate averages MUST NOT hide safety failures.
+Report every metric per case and macro arithmetic mean per strategy/split. Counts for forbidden/ineligible selection are also summed across cases and MUST remain visible; averages cannot hide them. No micro aggregate is used.
 
-The pilot is descriptive. No numeric promotion threshold is ratified. Results MUST be compared on identical held-out cases, route limits, cached evidence, and compatibility/ACL fixtures.
+Report oracle, exact, semantic, and hybrid in that fixed strategy order. Exact is the cheapest automatic control; oracle is the downstream ceiling/control.
 
-## Evaluation discipline
+## Auditable freeze and held-out discipline
 
-- Development cases MAY be used to correct fixtures and implementation defects.
-- Held-out cases MUST NOT be used to tune card text, vectors, synonyms, route limits, or fusion.
-- Any held-out-driven change creates a new fixture revision and requires a new untouched held-out set before promotion claims.
-- The pilot MUST identify exact-only routing as the cheapest control and current explicit selection/RRF as the downstream baseline.
+A separate fixture-freeze ticket MUST commit and independently review before execution:
+
+- source-grouped development/held-out assignment;
+- all fixture files and canonical card text;
+- vectors and cached evidence;
+- required/acceptable/forbidden namespace and evidence labels;
+- route/evidence limits and metric definitions;
+- SHA-256 manifest of every frozen input;
+- implementation commit expected for execution.
+
+The execution ticket MUST run the frozen commit without editing inputs or parameters. Any edit invalidates the freeze and requires a new manifest/review before another held-out run.
+
+Because fixtures and labels are synthetic and repository-visible, results are **deterministic plumbing evidence**, not held-out real-world quality evidence.
+
+## Canonical serialization
+
+Results MUST:
+
+- preserve cases by `case_id` ascending;
+- preserve strategy order `oracle`, `exact`, `semantic`, `hybrid`;
+- preserve selected/evidence rank order;
+- serialize JSON with UTF-8, sorted object keys, separators `(',', ':')`, `ensure_ascii=False`, and exactly one trailing newline;
+- contain only finite numeric values.
+
+Repeated execution of the same frozen commit MUST produce identical bytes and SHA-256 digest.
 
 ## Acceptance scenarios
 
-### ACL before relevance
-
-Given an unauthorized namespace with the best semantic similarity, when any strategy runs, then it is never selected or exposed.
-
-### Compatibility before relevance
-
-Given an incompatible namespace with exact tag and high semantic matches, when routing runs, then it is excluded before scoring.
-
-### Exact miss
-
-Given no label or synonym match, when exact routing runs, then it returns no route; semantic and hybrid results remain independently measurable.
-
-### Hybrid union
-
-Given one namespace ranked only by exact matching and another only by semantic matching, when hybrid routing runs, then both may appear subject to the route limit and deterministic RRF order.
-
-### Downstream identity
-
-Given equal row IDs in two namespaces, when cached results merge, then both remain distinct namespace-qualified evidence items.
-
-### Reproducibility
-
-Given identical fixture revisions and vectors, when the pilot runs repeatedly, then route results and metrics are byte-for-byte stable.
+- Unauthorized highest-scoring/exact-matching canary is never exposed.
+- Any compatibility mismatch excludes before scoring.
+- Exact miss returns no exact route while other strategies remain measurable.
+- Hybrid aggregates same namespace across lists with the formula above.
+- Invalid vectors/config/case labels fail before evaluation.
+- Oracle uses fixed explicit order and isolates downstream evidence recall.
+- Downstream ties follow current namespace-qualified RRF ordering; duplicate row IDs survive across namespaces.
+- Repeated frozen runs produce byte-identical canonical JSON.
 
 ## Acceptance criteria
 
-- All three strategies and eligibility gates satisfy the contracts above.
-- The evaluator is deterministic and entirely local.
-- The fixture covers public/private access, overlapping groups, disabled and incompatible namespaces, exact and synonym matches, semantic-only matches, false-exclusion cases, and duplicate cross-namespace row IDs.
-- Tests prove no network, credential lookup, model download, Turbopuffer SDK construction, live retrieval, or write occurs.
-- A recorded pilot report maps results to the metrics without selecting production architecture.
+- All contracts, formulas, validation, outputs, metrics, and freeze rules are test-covered.
+- Fixture covers public/private, overlapping groups, invalid group cases, disabled/incompatible namespaces, exact/synonym/semantic-only cases, false exclusions, forbidden canaries, tie cases, and duplicate row IDs.
+- Test sentinels fail on socket/network, credential access, model construction/download, Turbopuffer SDK construction, live retrieval/write, and persistence outside temporary paths.
+- No architecture promotion occurs.
 
 ## Explicit exclusions
 
-- Answer generation or LLM judging.
-- Live Turbopuffer reads/writes or namespace discovery.
-- Real ACL policy.
-- Public CLI/API behavior.
-- Learned routing, query decomposition, concepts, ontology, graph construction, or traversal.
-- Production storage, synchronization, or promotion thresholds.
+Answer generation, LLM judging, live services, real ACLs, public APIs, learned routing, decomposition, chunk tag filtering/boosts, concepts, ontology, graphs, production storage, and numeric promotion thresholds.

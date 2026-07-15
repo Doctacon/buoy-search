@@ -6,91 +6,145 @@ Updated: 2026-07-15
 
 ## Purpose and scope
 
-Define a small, local, controlled taxonomy for testing namespace routing and tag-aware retrieval without ratifying production taxonomy content or public tag behavior.
+Define a small, flat, local taxonomy and deterministic phrase matcher for a synthetic namespace-routing pilot. This contract does not ratify production taxonomy content, public tag behavior, hierarchy, ontology, or automatic tagging.
 
-This specification governs pilot fixtures and internal evaluator behavior only. The existing retrieval-tag output drift remains owned by `.10x/tickets/2026-07-15-reconcile-retrieval-tag-output.md`.
+The existing retrieval-tag output drift remains owned by `.10x/tickets/2026-07-15-reconcile-retrieval-tag-output.md`.
+
+## Assumption provenance
+
+### User-ratified direction
+
+The user approved a small controlled taxonomy, exact-tag routing, comparison with semantic/hybrid routing, local-only execution, and evidence before graph work.
+
+### Record/source-backed invariants
+
+- Governed tags, derived scores, and ACL attributes remain separate.
+- Probabilistic similarity MUST NOT become authoritative assignment.
+- No public tag behavior changes under this pilot.
+- No Data Vault or graph behavior is introduced.
+
+### Synthetic pilot-only mechanics
+
+The fixture fields, normalization algorithm, flat vocabulary, uniqueness rules, and exact matcher below exist only to make the pilot deterministic. They do not claim production semantics.
+
+### Explicitly unresolved outside the pilot
+
+Production taxonomy ownership, term content, hierarchy, ontology constraints, assignment review, version publication, public filters/output, and promotion thresholds remain blocked.
 
 ## Taxonomy fixture
 
-The pilot MUST use a version-controlled JSON fixture with a non-empty `taxonomy_revision` and a non-empty list of terms.
+The pilot MUST use version-controlled JSON with a non-empty `taxonomy_revision` and a non-empty `terms` list.
 
 Each term MUST contain:
 
-- `term_id`: stable unique identifier;
-- `label`: human-readable canonical label;
-- `description`: what the term means in the synthetic fixture;
-- `synonyms`: zero or more unique alternative phrases.
+- `term_id`: stable unique identifier matching `[a-z][a-z0-9_-]{0,63}`;
+- `label`: human-readable canonical phrase;
+- `description`: synthetic fixture meaning;
+- `synonyms`: zero or more alternative phrases.
 
-Term IDs are identity. Labels, descriptions, and synonyms are descriptors. The pilot MUST reject duplicate term IDs, case-insensitive duplicate labels, a synonym duplicated across terms, empty required values, and a synonym equal to its own label after normalization.
+Term ID is identity. Label, description, and synonyms are descriptors.
 
-The first pilot taxonomy MUST remain flat. Parent/child hierarchies, ontology constraints, open-set terms, and automatic taxonomy growth are excluded until evidence shows they are required.
+## Canonical phrase normalization
 
-## Assignment classes
+For every query, label, and synonym, normalization MUST:
 
-Namespace `tag_ids` in the catalog fixture are governed synthetic assignments. They MAY participate in exact filters and exact routing.
+1. apply Unicode NFKC normalization;
+2. apply Unicode `casefold()`;
+3. replace every maximal run of non-alphanumeric Unicode characters with one ASCII space;
+4. collapse whitespace runs to one ASCII space;
+5. trim leading/trailing space.
 
-Semantic similarity between a query and a namespace card is a derived score. It MUST NOT create, persist, or silently promote a governed taxonomy assignment.
+A normalized descriptor MUST contain at least one alphanumeric token.
 
-Probabilistic or LLM-generated tags are excluded from the first pilot. ACL groups MUST remain separate fields and MUST NOT be represented as taxonomy terms.
+Examples:
 
-## Query-term matching
+- `"Machine-Learning"` → `"machine learning"`;
+- `"  Customer Risk "` (including non-breaking space) → `"customer risk"`;
+- `"Café"` and its canonically equivalent Unicode spelling normalize identically;
+- `"art"` MUST NOT match the token `"cart"`.
 
-Exact matching MUST:
+## Global uniqueness validation
 
-1. Unicode-normalize and case-fold the query and labels/synonyms;
-2. match complete normalized phrases rather than arbitrary substrings;
-3. map a matched label or synonym to exactly one term ID;
-4. return each matched term once;
-5. expose matched term IDs and matched phrases for authorized selected namespaces.
+The loader MUST build one global map across every normalized label and synonym. Every normalized phrase MUST map to exactly one term ID.
 
-Exact matching MUST NOT infer related terms, expand hierarchy, or call an LLM.
+It MUST reject:
 
-## Tag-aware cached evidence
+- duplicate term IDs;
+- empty required fields;
+- two labels normalizing to the same phrase;
+- any synonym normalizing to any label or synonym belonging to another term;
+- a synonym normalizing to its own label;
+- duplicate synonyms after normalization.
 
-Pilot cached evidence rows MAY carry internal `tag_ids` solely to evaluate tag filtering or a bounded tag-match boost. Those tags use the same taxonomy revision and validation rules as namespace assignments.
+The taxonomy is flat. Parent/child relations are not accepted.
 
-Hard filtering MUST use governed fixture tags only. Semantic similarity MUST NOT act as a hard exclusion. An untagged relevant evidence row MUST remain measurable so false exclusion is visible.
+## Exact query matching
 
-No pilot tag field changes the public `SearchHit`, CLI, Turbopuffer schema, or live retrieval contract.
+A descriptor matches only when its normalized token sequence occurs as a contiguous complete token sequence in the normalized query.
+
+The matcher MUST:
+
+- find every complete-phrase occurrence;
+- return each term once;
+- include every distinct normalized matched phrase for that term;
+- order matched phrases lexicographically;
+- order term matches by `term_id` ascending.
+
+Overlapping descriptors for the same term are allowed, but global uniqueness prevents one phrase from mapping to multiple terms. Repeated query occurrences do not duplicate output.
+
+Exact matching MUST NOT infer related terms, expand hierarchy, persist assignments, or call an LLM.
+
+## Assignment semantics
+
+Namespace `tag_ids` in the catalog fixture are governed synthetic assignments and MAY participate in exact namespace routing.
+
+Semantic query/card similarity is a derived score. It MUST NOT create, modify, or persist taxonomy terms or namespace assignments.
+
+ACL group IDs are not taxonomy terms and MUST NOT be accepted as authorization evidence.
+
+The first pilot has no chunk/evidence tag filter or boost arm. False exclusion is measured as missed required namespaces and missed namespace-qualified cached evidence. No pilot tag field changes public `SearchHit`, CLI, Turbopuffer schema, or live retrieval.
 
 ## Acceptance scenarios
 
 ### Canonical label
 
-Given a query containing a term label as a complete phrase, when exact matching runs, then the corresponding term ID is returned once.
+Given a query containing a normalized complete label phrase, exact matching returns its term once.
 
-### Synonym
+### Unique synonym
 
-Given a query containing a unique synonym, when exact matching runs, then its canonical term ID is returned with the synonym as match evidence.
+Given a query containing a synonym, exact matching returns its canonical term ID and normalized matched phrase.
+
+### Punctuation and Unicode
+
+Given punctuation, compatibility characters, or repeated whitespace, matching follows the canonical normalization examples above.
 
 ### Substring
 
-Given a query containing characters that only form a substring of a label, when exact matching runs, then the term does not match.
+Given `art` only inside `cart`, the `art` term does not match.
 
-### Ambiguous taxonomy
+### Global collision
 
-Given the same normalized synonym on two terms, when the taxonomy loads, then validation fails.
+Given a synonym that normalizes to another term's label or synonym, fixture loading fails.
+
+### Repeated/overlapping match
+
+Given repeated descriptors for one term, output contains one term with unique lexicographically ordered matched phrases.
 
 ### ACL separation
 
-Given a taxonomy label resembling a group name, when authorization runs, then the label grants no access.
-
-### Derived score
-
-Given semantic card similarity without an exact term match, when routing completes, then no governed tag assignment is created or persisted.
+Given a taxonomy descriptor equal to a synthetic group ID, the match creates no authorization.
 
 ## Acceptance criteria
 
-- Taxonomy and assignment validation are deterministic and test-covered.
-- Exact matching produces explainable stable term IDs.
-- ACL fields and topical taxonomy remain structurally separate.
-- Derived semantic scores do not mutate governed assignments.
-- No LLM, remote model, network, credential, or Turbopuffer operation is used.
+- Fixture validation and matching satisfy every rule above.
+- Matching output is deterministic and explainable.
+- Governed assignments, derived scores, and ACL groups remain structurally separate.
+- No network, credential, model, Turbopuffer, persistent database, or external mutation occurs.
 
 ## Explicit exclusions
 
-- Production taxonomy governance or stewardship workflow.
-- Hierarchies, ontology constraints, entity extraction, concepts, or relationships.
-- Automatic tagging or open-set keyword generation.
-- Public CLI/API tag filters or output.
-- Live chunk updates or Turbopuffer writes.
+- Production taxonomy governance or terminology.
+- Hierarchy, ontology, entities, concepts, relationships, or graph traversal.
+- Automatic/open-set/LLM tagging.
+- Chunk/evidence filtering or boosts.
+- Public CLI/API tags or live writes.

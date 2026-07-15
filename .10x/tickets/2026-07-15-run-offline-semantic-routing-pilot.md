@@ -1,48 +1,49 @@
-Status: open
+Status: blocked
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-semantic-routing-offline-pilot-plan.md
-Depends-On: .10x/tickets/2026-07-15-build-offline-semantic-router-evaluator.md
+Depends-On: .10x/tickets/2026-07-15-freeze-offline-semantic-routing-fixture.md
 
 # Run Offline Semantic Routing Pilot
 
 ## Scope
 
-Create the fixed synthetic catalog, taxonomy, deterministic vectors, development/held-out routing cases, and cached namespace-local evidence required by the active specifications; run all routing strategies; record reproducible evidence and a bounded research synthesis.
+Run the independently reviewed frozen fixture exactly once on the pinned implementation, rerun for deterministic digest confirmation, and record durable plumbing evidence and bounded synthesis.
 
-Execute on branch `work/run-offline-semantic-routing-pilot` in its own worktree based on current `develop` after the evaluator dependency is integrated.
+Execute on `work/run-offline-semantic-routing-pilot` after freeze integration.
 
 ## Acceptance criteria
 
-- Fixtures cover every scenario required by all three active pilot specifications without encoding real users, secrets, or proprietary data.
-- Held-out cases are identified before execution and are not used to tune card text, vectors, taxonomy, route limits, or fusion.
-- Exact, semantic-card, and hybrid strategies run with identical eligibility gates, route limits, cached evidence, and compatibility contracts.
-- Record per-case and aggregate required-namespace recall, selected precision, over-selection, fan-out, forbidden/incompatible selection counts, and downstream evidence recall.
-- Safety failures are reported exactly and never hidden by averages.
-- Repeat execution proves byte-for-byte deterministic results.
-- Create durable evidence and a research synthesis that states findings, contradictions, limits, and the smallest justified next action.
-- Do not activate architecture, create implementation specs, or close the parent without user review.
-- Run focused tests, full suite, diff checks, and independent review.
+- Verify implementation/input manifest before execution; make no fixture/parameter edits.
+- Run oracle, exact, semantic, and hybrid with identical frozen gates/limits/evidence.
+- Record canonical per-case, split, aggregate, safety-count, and downstream evidence metrics.
+- Repeat and prove byte-identical output/SHA-256 digest.
+- Describe results only as synthetic deterministic plumbing evidence.
+- Create durable evidence/research synthesis with findings, contradictions, limits, and smallest next action.
+- Do not promote architecture or close parent without user review.
+- Run focused/full tests, diff checks, and independent review.
+
+## Assumption provenance
+
+Execution of the local pilot is user-ratified. Frozen fixture semantics/metrics are pilot-only. Real quality, ACLs, models, thresholds, and architecture remain unresolved.
 
 ## Explicit exclusions
 
-- Real namespaces or ACLs, network, credentials, Turbopuffer SDK/API calls, model downloads, hosted APIs, live evals/writes, answer generation, production infrastructure, Data Vault, graph database, concept extraction, ontology, or graph traversal.
+Editing frozen inputs, real namespaces/ACLs, network/credentials, Turbopuffer/model/hosted calls, live evals/writes, answer generation, production infrastructure, Data Vault, concepts, ontology, or graphs.
 
 ## References
 
 - `.10x/specs/offline-semantic-routing-evaluation.md`
-- `.10x/specs/semantic-namespace-catalog-pilot.md`
-- `.10x/specs/controlled-taxonomy-pilot.md`
 - `.10x/tickets/2026-07-15-semantic-routing-offline-pilot-plan.md`
 
 ## Evidence expectations
 
-Record fixture revisions, immutable case inventory/splits, command outputs, per-case and aggregate metrics, deterministic rerun digest, validation commands, independent review, no-network/external-side-effect confirmation, and limits.
+Manifest verification, commands, canonical output/digests, metrics, deterministic rerun, tests, independent review, no-network/external-side-effect confirmation, and limits.
 
 ## Blockers
 
-Depends on the evaluator child being closed and integrated into current `develop`.
+Blocked pending shaping pass and integrated reviewed freeze dependency.
 
 ## Progress and notes
 
-- 2026-07-15: Ticket opened from the user-ratified offline pilot specification set. Execution deferred until dependency closure.
+- 2026-07-15: Split from fixture authoring after shaping review. This executor may not change frozen inputs or tune held-out cases.
