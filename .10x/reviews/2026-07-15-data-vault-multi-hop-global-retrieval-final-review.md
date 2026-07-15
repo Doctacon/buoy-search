@@ -18,7 +18,7 @@ I inspected the exact `6cd01f4..a66be2e` diff, checked it with `git diff --check
 
 The KG²RAG ledger row now records the exact version-pinned primary-paper URL, arXiv identifier/version, peer-reviewed ACL Anthology publication URL, venue, and evidence-class boundary at `.10x/research/2026-07-15-data-vault-multi-hop-global-retrieval.md:71`. The title, `2502.06864v1`, and NAACL 2025 long-paper status agree with the independently checked primary sources.
 
-This satisfies the ticket requirement to record paper/version links at `.10x/tickets/2026-07-15-research-data-vault-multi-hop-global-retrieval.md:40-42`. The row also retains the honest limitation that no implementation pin was recorded and that transfer to Buoy's derived graph is untested; it therefore does not overstate reproducibility or applicability.
+This satisfies the ticket requirement to record paper/version links at `.10x/tickets/done/2026-07-15-research-data-vault-multi-hop-global-retrieval.md:40-42`. The row also retains the honest limitation that no implementation pin was recorded and that transfer to Buoy's derived graph is untested; it therefore does not overstate reproducibility or applicability.
 
 ### Correct — no regression or scope widening found
 
@@ -32,7 +32,7 @@ The prior re-review found every other acceptance criterion met. With this exact 
 
 ## Remaining blocker
 
-There is no remaining blocker to accepting or closing this research child ticket. Downstream experiments and implementation remain separately blocked on synthesis and user ratification, as explicitly stated at `.10x/tickets/2026-07-15-research-data-vault-multi-hop-global-retrieval.md:44-46`; this is not a defect in the completed research deliverable.
+There is no remaining blocker to accepting or closing this research child ticket. Downstream experiments and implementation remain separately blocked on synthesis and user ratification, as explicitly stated at `.10x/tickets/done/2026-07-15-research-data-vault-multi-hop-global-retrieval.md:44-46`; this is not a defect in the completed research deliverable.
 
 ## Residual risk
 

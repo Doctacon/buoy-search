@@ -10,7 +10,7 @@ Verdict: concerns
 
 Independently reviewed commit `34cab2f716d9ec13192928ce24fe335d884dd586` against:
 
-- `.10x/tickets/2026-07-15-research-data-vault-multi-hop-global-retrieval.md`;
+- `.10x/tickets/done/2026-07-15-research-data-vault-multi-hop-global-retrieval.md`;
 - `.10x/tickets/2026-07-15-data-vault-semantic-retrieval-research-plan.md`;
 - current retrieval/eval specifications, decisions, evidence, docs, implementation, and focused tests named by the research record;
 - primary-paper pages, ACL Anthology entries, official project repositories, and current Microsoft GraphRAG query documentation.
@@ -21,7 +21,7 @@ The requested worktree-root `plan.md` and `progress.md` were absent, consistent 
 
 ### Significant — primary-source traceability does not fully meet the ticket's evidence expectations
 
-The source table is broad and generally careful, but it remains a qualitative bibliography rather than a reproducible evidence ledger. `.10x/research/2026-07-15-data-vault-multi-hop-global-retrieval.md:57-74` does not pin repository/documentation revisions, record source-specific access dates, reproduce any paper-reported metric with its task/model/setting, or assign confidence to individual findings. The ticket explicitly requires paper/version links, reported metrics with limitations, and confidence at `.10x/tickets/2026-07-15-research-data-vault-multi-hop-global-retrieval.md:40-42`.
+The source table is broad and generally careful, but it remains a qualitative bibliography rather than a reproducible evidence ledger. `.10x/research/2026-07-15-data-vault-multi-hop-global-retrieval.md:57-74` does not pin repository/documentation revisions, record source-specific access dates, reproduce any paper-reported metric with its task/model/setting, or assign confidence to individual findings. The ticket explicitly requires paper/version links, reported metrics with limitations, and confidence at `.10x/tickets/done/2026-07-15-research-data-vault-multi-hop-global-retrieval.md:40-42`.
 
 Two spot-check details also need correction or clarification:
 

@@ -10,7 +10,7 @@ Verdict: concerns
 
 Re-reviewed repair commit `f2538f001820bd3cf9c4596ab54092e3094844de` against:
 
-- `.10x/tickets/2026-07-15-research-data-vault-multi-hop-global-retrieval.md`;
+- `.10x/tickets/done/2026-07-15-research-data-vault-multi-hop-global-retrieval.md`;
 - `.10x/tickets/2026-07-15-data-vault-semantic-retrieval-research-plan.md`;
 - `.10x/research/2026-07-15-data-vault-multi-hop-global-retrieval.md`;
 - `.10x/reviews/2026-07-15-data-vault-multi-hop-global-retrieval-review.md`; and
@@ -24,7 +24,7 @@ Validation was read-only except for this review record. I fetched the explicitly
 
 ### Significant — one graph-source ledger entry still lacks the required paper/version link
 
-The repair materially improves the ledger, but the KG²RAG row at `.10x/research/2026-07-15-data-vault-multi-hop-global-retrieval.md:71` identifies only “cited publication page”; it records no URL, publication venue/revision, paper identifier, or implementation revision. That is not independently refindable from the record and does not satisfy the ticket's explicit requirement to record paper/version links at `.10x/tickets/2026-07-15-research-data-vault-multi-hop-global-retrieval.md:40-42`. It also conflicts with the ledger's own pinning description at research line 59 and the blanket claim at line 424 that inspected sources are pinned.
+The repair materially improves the ledger, but the KG²RAG row at `.10x/research/2026-07-15-data-vault-multi-hop-global-retrieval.md:71` identifies only “cited publication page”; it records no URL, publication venue/revision, paper identifier, or implementation revision. That is not independently refindable from the record and does not satisfy the ticket's explicit requirement to record paper/version links at `.10x/tickets/done/2026-07-15-research-data-vault-multi-hop-global-retrieval.md:40-42`. It also conflicts with the ledger's own pinning description at research line 59 and the blanket claim at line 424 that inspected sources are pinned.
 
 This is relevant rather than incidental: KG²RAG is used as the closest chunk-evidence pattern for B8 and remains a named research reference at research lines 206 and 410. The repaired record should supply the exact primary publication URL/identifier and revision or explicitly remove the unsupported source-specific reliance. This does not overturn the staged recommendation, because other pinned graph sources and the oracle-first gate independently support evaluating graph expansion only after cheaper controls. It does block treating the ticket's evidence expectations as fully met.
 
