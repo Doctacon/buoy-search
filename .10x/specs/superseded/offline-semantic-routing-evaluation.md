@@ -1,8 +1,13 @@
-Status: active
+Status: superseded
 Created: 2026-07-15
 Updated: 2026-07-15
 
 # Offline Semantic Routing Evaluation
+
+## Supersession
+
+Superseded on 2026-07-15 by `.10x/specs/representative-semantic-namespace-routing-experiment.md`. The synthetic five-stage plumbing pilot was replaced by one representative public/project routing experiment. The historical contract remains evidence of the rejected synthetic framework shape, not active behavior.
+
 
 ## Purpose and scope
 

@@ -1,8 +1,13 @@
-Status: active
+Status: superseded
 Created: 2026-07-15
 Updated: 2026-07-15
 
 # Semantic Namespace Catalog Pilot
+
+## Supersession
+
+Superseded on 2026-07-15 by `.10x/specs/representative-semantic-namespace-routing-experiment.md`. Representative semantic routing will use reviewed experiment-local namespace cards instead of a production-shaped catalog model. The historical contract remains evidence of the rejected synthetic framework shape, not active behavior.
+
 
 ## Purpose and scope
 

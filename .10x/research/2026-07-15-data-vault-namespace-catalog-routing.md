@@ -25,7 +25,7 @@ The requested root `context.md` and `plan.md` were absent from this worktree. Th
 ### Local authority inspected completely
 
 - `.10x/tickets/done/2026-07-15-research-data-vault-namespace-catalog-routing.md`
-- `.10x/tickets/2026-07-15-semantic-retrieval-research-plan.md`
+- `.10x/tickets/done/2026-07-15-semantic-retrieval-research-plan.md`
 - `.10x/research/2026-07-15-metadata-tagging-graphs-and-data-vault.md`
 - `.10x/specs/turbopuffer-namespace-discovery.md`
 - `.10x/specs/explicit-multi-namespace-retrieval.md`

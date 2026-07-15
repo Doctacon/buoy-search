@@ -10,15 +10,15 @@ Verdict: concerns
 
 Review the complete direction from the user's original questions about Turbopuffer chunk metadata, tagging, many namespaces, concepts/relationships, and knowledge graphs through the current research, Data Vault scope correction, active specifications, pilot plan, and existing Buoy code.
 
-Primary active targets:
+Reviewed targets at the time of review:
 
 - `.10x/decisions/data-vault-is-analogy-not-architecture.md`
-- `.10x/tickets/2026-07-15-semantic-retrieval-research-plan.md`
-- `.10x/tickets/2026-07-15-semantic-routing-offline-pilot-plan.md`
-- `.10x/specs/controlled-taxonomy-pilot.md`
-- `.10x/specs/semantic-namespace-catalog-pilot.md`
-- `.10x/specs/offline-semantic-routing-evaluation.md`
-- `.10x/tickets/2026-07-15-build-controlled-taxonomy-fixture.md`
+- `.10x/tickets/done/2026-07-15-semantic-retrieval-research-plan.md`
+- `.10x/tickets/cancelled/2026-07-15-semantic-routing-offline-pilot-plan.md`
+- `.10x/specs/superseded/controlled-taxonomy-pilot.md`
+- `.10x/specs/superseded/semantic-namespace-catalog-pilot.md`
+- `.10x/specs/superseded/offline-semantic-routing-evaluation.md`
+- `.10x/tickets/cancelled/2026-07-15-build-controlled-taxonomy-fixture.md`
 
 Local implementation inspected:
 
@@ -49,7 +49,7 @@ Strategic direction: **pass**. Current implementation plan: **concerns; rescope 
 
 ### Significant — The planned pilot cannot establish the improvement the user is asking about
 
-The parent and evaluator explicitly limit the result to “deterministic plumbing evidence” (`.10x/tickets/2026-07-15-semantic-routing-offline-pilot-plan.md:9-12,57-62`; `.10x/specs/offline-semantic-routing-evaluation.md:7-11,154-168`). All cards, vectors, labels, ACLs, and cached evidence are synthetic and repository-visible.
+The parent and evaluator explicitly limit the result to “deterministic plumbing evidence” (`.10x/tickets/cancelled/2026-07-15-semantic-routing-offline-pilot-plan.md:9-12,57-62`; `.10x/specs/superseded/offline-semantic-routing-evaluation.md:7-11,154-168`). All cards, vectors, labels, ACLs, and cached evidence are synthetic and repository-visible.
 
 That can prove validation, determinism, ACL gating, and rank-fusion compatibility. It cannot show that semantic namespace cards select the right real namespaces, improve real evidence recall, reduce operator effort, or improve answer quality. Therefore completing all five children would not support the claim “this improves Buoy”; it would support only “the new framework behaves as designed on data designed for it.”
 
@@ -76,7 +76,7 @@ A standalone normalization/taxonomy subsystem is not automatically an improvemen
 
 ### Significant — The five-ticket process is disproportionate for synthetic plumbing
 
-The plan serializes taxonomy, catalog, evaluator, fixture freeze, and execution into five separately integrated children (`.10x/tickets/2026-07-15-semantic-routing-offline-pilot-plan.md:43-59`). The freeze exists to protect held-out discipline, while the governing spec simultaneously states that visible synthetic labels cannot establish real quality (`.10x/specs/offline-semantic-routing-evaluation.md:154-168`).
+The plan serializes taxonomy, catalog, evaluator, fixture freeze, and execution into five separately integrated children (`.10x/tickets/cancelled/2026-07-15-semantic-routing-offline-pilot-plan.md:43-59`). The freeze exists to protect held-out discipline, while the governing spec simultaneously states that visible synthetic labels cannot establish real quality (`.10x/specs/superseded/offline-semantic-routing-evaluation.md:154-168`).
 
 The freeze is rigorous but adds little information to a synthetic plumbing check. Unit tests plus a canonical fixture already establish determinism. A separate preregistration/freeze becomes valuable when representative judgments or real model/card choices can be tuned—not before.
 

@@ -23,7 +23,7 @@ Research was performed on 2026-07-15. Official documentation and current local s
 ### Local authority inspected completely
 
 - `.10x/tickets/done/2026-07-15-research-data-vault-governed-tagging-filtering.md`
-- `.10x/tickets/2026-07-15-semantic-retrieval-research-plan.md`
+- `.10x/tickets/done/2026-07-15-semantic-retrieval-research-plan.md`
 - `.10x/tickets/2026-07-15-reconcile-retrieval-tag-output.md`
 - `.10x/research/2026-07-15-metadata-tagging-graphs-and-data-vault.md`
 - `.10x/specs/explicit-multi-namespace-retrieval.md`

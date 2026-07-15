@@ -1,8 +1,8 @@
-Status: blocked
+Status: cancelled
 Created: 2026-07-15
 Updated: 2026-07-15
-Parent: .10x/tickets/2026-07-15-semantic-routing-offline-pilot-plan.md
-Depends-On: .10x/tickets/2026-07-15-build-offline-semantic-router-evaluator.md
+Parent: .10x/tickets/cancelled/2026-07-15-semantic-routing-offline-pilot-plan.md
+Depends-On: .10x/tickets/cancelled/2026-07-15-build-offline-semantic-router-evaluator.md
 
 # Freeze Offline Semantic Routing Fixture
 
@@ -32,8 +32,8 @@ Running the final held-out report, tuning after freeze, real data/users, network
 
 ## References
 
-- `.10x/specs/offline-semantic-routing-evaluation.md`
-- `.10x/tickets/2026-07-15-semantic-routing-offline-pilot-plan.md`
+- `.10x/specs/superseded/offline-semantic-routing-evaluation.md`
+- `.10x/tickets/cancelled/2026-07-15-semantic-routing-offline-pilot-plan.md`
 
 ## Evidence expectations
 
@@ -41,9 +41,11 @@ Frozen inventory, split/group rationale, preregistration, manifest, validator/te
 
 ## Blockers
 
-Depends on `.10x/tickets/2026-07-15-build-offline-semantic-router-evaluator.md` closing and integrating into current `develop`. Repaired shaping passed independent re-review.
+Depends on `.10x/tickets/cancelled/2026-07-15-build-offline-semantic-router-evaluator.md` closing and integrating into current `develop`. Repaired shaping passed independent re-review.
 
 ## Progress and notes
 
 - 2026-07-15: Added after shaping review found that one executor could otherwise author and tune the held-out fixture. No fixture created.
 - 2026-07-15: Repaired shaping passed `.10x/reviews/2026-07-15-semantic-routing-offline-pilot-shaping-rereview.md`; dependency remains the only execution blocker.
+
+- 2026-07-15: Cancelled before implementation after the user accepted `.10x/reviews/2026-07-15-holistic-semantic-routing-workstream-review.md`. The five-stage synthetic framework could prove plumbing but not representative routing value; it is replaced by one bounded representative experiment. No implementation from this ticket occurred.
