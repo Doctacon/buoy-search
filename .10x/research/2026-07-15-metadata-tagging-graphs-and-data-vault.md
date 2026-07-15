@@ -241,7 +241,7 @@ On 2026-07-15 the user confirmed Chief at `chief.bot` and that all four capabili
 3. cross-namespace concept graphs;
 4. multi-hop and global retrieval.
 
-Each capability will receive a focused investigation in its own `work/*` branch and worktree based on current `develop`. The governing parent plan is `.10x/tickets/2026-07-15-semantic-retrieval-research-plan.md`. Research remains non-implementing until the focused findings are synthesized and the user ratifies a behavioral architecture.
+Each capability will receive a focused investigation in its own `work/*` branch and worktree based on current `develop`. The governing parent plan is `.10x/tickets/done/2026-07-15-semantic-retrieval-research-plan.md`. Research remains non-implementing until the focused findings are synthesized and the user ratifies a behavioral architecture.
 
 ## Unresolved decisions
 

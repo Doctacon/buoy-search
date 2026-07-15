@@ -1,8 +1,13 @@
-Status: active
+Status: superseded
 Created: 2026-07-15
 Updated: 2026-07-15
 
 # Controlled Taxonomy Pilot
+
+## Supersession
+
+Superseded on 2026-07-15 by `.10x/specs/representative-semantic-namespace-routing-experiment.md`. Representative semantic routing will use simple experiment-local lexical descriptors instead of a reusable taxonomy subsystem. The historical contract remains evidence of the rejected synthetic framework shape, not active behavior.
+
 
 ## Purpose and scope
 

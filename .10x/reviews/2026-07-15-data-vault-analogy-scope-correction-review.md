@@ -18,7 +18,7 @@ The new active decision states that Buoy **MUST NOT** build or require Data Vaul
 
 ### Pass — the active parent plan no longer authorizes Data Vault or implementation
 
-The renamed parent remains explicitly research-only and says it does not authorize product implementation, live Turbopuffer operations, or an architecture decision (`.10x/tickets/2026-07-15-semantic-retrieval-research-plan.md:9-18`). Its ratified context identifies Data Vault as analogy rather than architecture, its shared invariants forbid warehouse requirements, and its acceptance/blocker language prevents implementation until findings are reconciled, the user ratifies an architecture, focused specifications exist, and executable tickets are opened (`.10x/tickets/2026-07-15-semantic-retrieval-research-plan.md:20-26`, `:37-49`, `:51-60`, `:70-72`). The earlier formal-Data-Vault progress entry at line 77 is append-only history and is expressly corrected by line 81; it does not function as current authorization.
+The renamed parent remains explicitly research-only and says it does not authorize product implementation, live Turbopuffer operations, or an architecture decision (`.10x/tickets/done/2026-07-15-semantic-retrieval-research-plan.md:9-18`). Its ratified context identifies Data Vault as analogy rather than architecture, its shared invariants forbid warehouse requirements, and its acceptance/blocker language prevents implementation until findings are reconciled, the user ratifies an architecture, focused specifications exist, and executable tickets are opened (`.10x/tickets/done/2026-07-15-semantic-retrieval-research-plan.md:20-26`, `:37-49`, `:51-60`, `:70-72`). The earlier formal-Data-Vault progress entry at line 77 is append-only history and is expressly corrected by line 81; it does not function as current authorization.
 
 ### Pass — all five research records have prominent, non-contradictory corrections
 
@@ -34,7 +34,7 @@ The corrections consistently defer to the active decision, withdraw recommendati
 
 ### Pass — rename and history repairs are bounded
 
-Repository-wide exact searches found no remaining occurrence of either the predecessor parent path or its basename. The live parent, all five research references, all affected review references, and all four completed child `Parent:` headers point to `.10x/tickets/2026-07-15-semantic-retrieval-research-plan.md` (for examples, `.10x/research/2026-07-15-data-vault-concept-graph.md:25-29` and `.10x/tickets/done/2026-07-15-research-data-vault-concept-graph.md:1-5`). Diff inspection confirms that completed tickets changed only their `Parent:` path and completed reviews changed only the cited parent path; their historical semantics, findings, and verdicts were not rewritten.
+Repository-wide exact searches found no remaining occurrence of either the predecessor parent path or its basename. The live parent, all five research references, all affected review references, and all four completed child `Parent:` headers point to `.10x/tickets/done/2026-07-15-semantic-retrieval-research-plan.md` (for examples, `.10x/research/2026-07-15-data-vault-concept-graph.md:25-29` and `.10x/tickets/done/2026-07-15-research-data-vault-concept-graph.md:1-5`). Diff inspection confirms that completed tickets changed only their `Parent:` path and completed reviews changed only the cited parent path; their historical semantics, findings, and verdicts were not rewritten.
 
 ### Pass — no product, specification, or implementation behavior was introduced
 

@@ -1,4 +1,4 @@
-Status: open
+Status: cancelled
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: None
@@ -15,9 +15,9 @@ This is a parent plan, not an executable ticket.
 ## Governing records
 
 - `.10x/decisions/data-vault-is-analogy-not-architecture.md`
-- `.10x/specs/controlled-taxonomy-pilot.md`
-- `.10x/specs/semantic-namespace-catalog-pilot.md`
-- `.10x/specs/offline-semantic-routing-evaluation.md`
+- `.10x/specs/superseded/controlled-taxonomy-pilot.md`
+- `.10x/specs/superseded/semantic-namespace-catalog-pilot.md`
+- `.10x/specs/superseded/offline-semantic-routing-evaluation.md`
 - `.10x/reviews/2026-07-15-semantic-routing-offline-pilot-shaping-review.md`
 - `.10x/reviews/2026-07-15-semantic-routing-offline-pilot-shaping-rereview.md`
 - focused 2026-07-15 namespace, tagging, multi-hop, and concept-graph research records
@@ -42,11 +42,11 @@ Production semantics, real quality, ACLs, taxonomy, public behavior, storage, mo
 
 ## Child sequence
 
-1. `.10x/tickets/2026-07-15-build-controlled-taxonomy-fixture.md`
-2. `.10x/tickets/2026-07-15-build-offline-namespace-catalog-fixture.md`
-3. `.10x/tickets/2026-07-15-build-offline-semantic-router-evaluator.md`
-4. `.10x/tickets/2026-07-15-freeze-offline-semantic-routing-fixture.md`
-5. `.10x/tickets/2026-07-15-run-offline-semantic-routing-pilot.md`
+1. `.10x/tickets/cancelled/2026-07-15-build-controlled-taxonomy-fixture.md`
+2. `.10x/tickets/cancelled/2026-07-15-build-offline-namespace-catalog-fixture.md`
+3. `.10x/tickets/cancelled/2026-07-15-build-offline-semantic-router-evaluator.md`
+4. `.10x/tickets/cancelled/2026-07-15-freeze-offline-semantic-routing-fixture.md`
+5. `.10x/tickets/cancelled/2026-07-15-run-offline-semantic-routing-pilot.md`
 
 Each child executes in its own `work/*` branch/worktree based on current `develop`.
 
@@ -71,3 +71,5 @@ No semantic blocker remains. The taxonomy child is executable; later children re
 - 2026-07-15: Initial shaping review failed due to underdefined taxonomy, compatibility, vector, routing, RRF, metric, freeze, dependency, and synthetic ACL mechanics. Child execution blocked.
 - 2026-07-15: Repaired the specifications and ticket graph; added provenance classifications and a separate fixture-freeze child. Awaiting independent re-review before opening execution.
 - 2026-07-15: Independent re-review passed with no semantic blocker. Reopened the taxonomy child; downstream children remain dependency-blocked.
+
+- 2026-07-15: Cancelled before implementation after the user accepted `.10x/reviews/2026-07-15-holistic-semantic-routing-workstream-review.md`. The five-stage synthetic framework could prove plumbing but not representative routing value; it is replaced by one bounded representative experiment. No implementation from this ticket occurred.

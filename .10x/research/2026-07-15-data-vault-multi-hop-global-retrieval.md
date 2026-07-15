@@ -37,7 +37,7 @@ Research was performed 2026-07-15 from the current Buoy source and durable proje
 
 ### Local authority inspected
 
-- `.10x/tickets/2026-07-15-semantic-retrieval-research-plan.md`
+- `.10x/tickets/done/2026-07-15-semantic-retrieval-research-plan.md`
 - `.10x/tickets/done/2026-07-15-research-data-vault-multi-hop-global-retrieval.md`
 - `.10x/research/2026-07-15-metadata-tagging-graphs-and-data-vault.md`
 - `.10x/specs/explicit-multi-namespace-retrieval.md`
