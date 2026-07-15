@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-data-vault-semantic-retrieval-research-plan.md
@@ -49,3 +49,6 @@ None for research. Architecture selection and implementation remain blocked on s
 ## Progress and notes
 
 - 2026-07-15: Ticket opened from the ratified four-track research plan. Execution intentionally deferred from the ticket-authoring turn.
+- 2026-07-15: Inspected the parent plan, broad preliminary research, active namespace/retrieval/state/artifact contracts, completed implementation records, and relevant Buoy source. The requested worktree-root `context.md` and `plan.md` were absent; durable ticket/parent records were available.
+- 2026-07-15: Researched official Turbopuffer namespace/query/metadata/schema/permission/limit documentation, Data Vault 2.0 authority and lineage sources, and open-source/self-hostable catalog, lineage, and semantic-routing implementations. No live service call or mutation occurred.
+- 2026-07-15: Produced `.10x/research/2026-07-15-data-vault-namespace-catalog-routing.md` with separated facts/recommendations, three competing architectures, candidate identity/catalog/history model, fail-closed routing and fallback design, offline evals, local implications, smallest experiment, limits, and unresolved semantic blockers. Ticket intentionally remains active for independent review.
