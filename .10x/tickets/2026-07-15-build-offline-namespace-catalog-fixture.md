@@ -41,8 +41,9 @@ Changed files, field/validation contract, scenario and sentinel tests, full-suit
 
 ## Blockers
 
-Blocked pending shaping pass and integrated taxonomy child.
+Depends on `.10x/tickets/2026-07-15-build-controlled-taxonomy-fixture.md` closing and integrating into current `develop`. Repaired shaping passed independent re-review.
 
 ## Progress and notes
 
 - 2026-07-15: Initially declared independent; shaping review found a real taxonomy dependency. Ticket now depends on integrated taxonomy and remains unimplemented.
+- 2026-07-15: Repaired shaping passed `.10x/reviews/2026-07-15-semantic-routing-offline-pilot-shaping-rereview.md`; dependency remains the only execution blocker.

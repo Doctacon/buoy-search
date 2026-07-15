@@ -42,8 +42,9 @@ Changed files, formula examples, safety and repeatability tests, full-suite resu
 
 ## Blockers
 
-Blocked pending shaping pass and integrated catalog dependency.
+Depends on `.10x/tickets/2026-07-15-build-offline-namespace-catalog-fixture.md` closing and integrating into current `develop`. Repaired shaping passed independent re-review.
 
 ## Progress and notes
 
 - 2026-07-15: Initial evaluator semantics were incomplete; repaired spec now defines validation, formulas, metrics, oracle, serialization, and exact RRF compatibility. No implementation started.
+- 2026-07-15: Repaired shaping passed `.10x/reviews/2026-07-15-semantic-routing-offline-pilot-shaping-rereview.md`; dependency remains the only execution blocker.

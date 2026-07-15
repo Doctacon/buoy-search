@@ -19,6 +19,7 @@ This is a parent plan, not an executable ticket.
 - `.10x/specs/semantic-namespace-catalog-pilot.md`
 - `.10x/specs/offline-semantic-routing-evaluation.md`
 - `.10x/reviews/2026-07-15-semantic-routing-offline-pilot-shaping-review.md`
+- `.10x/reviews/2026-07-15-semantic-routing-offline-pilot-shaping-rereview.md`
 - focused 2026-07-15 namespace, tagging, multi-hop, and concept-graph research records
 
 ## Assumption provenance
@@ -62,10 +63,11 @@ The catalog child depends on the integrated taxonomy model. The evaluator depend
 
 ## Blockers
 
-All children are blocked pending pass re-review of the repaired shaping records. Production and architecture work remain blocked on pilot evidence and later user ratification.
+No semantic blocker remains. The taxonomy child is executable; later children remain blocked only on their explicit dependencies. Production and architecture work remain blocked on pilot evidence and later user ratification.
 
 ## Progress and notes
 
 - 2026-07-15: User approved the offline pilot direction.
 - 2026-07-15: Initial shaping review failed due to underdefined taxonomy, compatibility, vector, routing, RRF, metric, freeze, dependency, and synthetic ACL mechanics. Child execution blocked.
 - 2026-07-15: Repaired the specifications and ticket graph; added provenance classifications and a separate fixture-freeze child. Awaiting independent re-review before opening execution.
+- 2026-07-15: Independent re-review passed with no semantic blocker. Reopened the taxonomy child; downstream children remain dependency-blocked.

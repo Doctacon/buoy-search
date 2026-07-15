@@ -1,4 +1,4 @@
-Status: blocked
+Status: open
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-semantic-routing-offline-pilot-plan.md
@@ -39,8 +39,9 @@ Changed files, exact normalization examples, scenario tests, full-suite result, 
 
 ## Blockers
 
-Blocked pending pass re-review of the repaired shaping records.
+None. Repaired shaping passed independent re-review; downstream production semantics remain excluded rather than execution blockers.
 
 ## Progress and notes
 
 - 2026-07-15: Opened from initial spec set, then blocked after shaping review found execution-critical ambiguity. Repaired governing spec; no implementation started.
+- 2026-07-15: Repaired shaping passed `.10x/reviews/2026-07-15-semantic-routing-offline-pilot-shaping-rereview.md`; ticket reopened for execution in its named worktree.

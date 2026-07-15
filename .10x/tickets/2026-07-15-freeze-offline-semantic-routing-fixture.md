@@ -41,8 +41,9 @@ Frozen inventory, split/group rationale, preregistration, manifest, validator/te
 
 ## Blockers
 
-Blocked pending shaping pass and integrated evaluator dependency.
+Depends on `.10x/tickets/2026-07-15-build-offline-semantic-router-evaluator.md` closing and integrating into current `develop`. Repaired shaping passed independent re-review.
 
 ## Progress and notes
 
 - 2026-07-15: Added after shaping review found that one executor could otherwise author and tune the held-out fixture. No fixture created.
+- 2026-07-15: Repaired shaping passed `.10x/reviews/2026-07-15-semantic-routing-offline-pilot-shaping-rereview.md`; dependency remains the only execution blocker.
