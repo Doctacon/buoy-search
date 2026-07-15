@@ -10,7 +10,7 @@ Verdict: concerns
 
 Independently reviewed commit `a168081` against:
 
-- `.10x/tickets/2026-07-15-research-data-vault-governed-tagging-filtering.md`
+- `.10x/tickets/done/2026-07-15-research-data-vault-governed-tagging-filtering.md`
 - `.10x/tickets/2026-07-15-data-vault-semantic-retrieval-research-plan.md`
 - `.10x/tickets/2026-07-15-reconcile-retrieval-tag-output.md`
 - the active retrieval specification, preliminary research, current Buoy tagging/schema/retrieval/diff/apply source, and relevant tests

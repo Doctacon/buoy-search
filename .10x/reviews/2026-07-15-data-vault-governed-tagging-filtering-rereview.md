@@ -10,7 +10,7 @@ Verdict: pass
 
 Re-reviewed repair commit `fc16b4a` against:
 
-- `.10x/tickets/2026-07-15-research-data-vault-governed-tagging-filtering.md`
+- `.10x/tickets/done/2026-07-15-research-data-vault-governed-tagging-filtering.md`
 - `.10x/research/2026-07-15-data-vault-governed-tagging-filtering.md`
 - `.10x/reviews/2026-07-15-data-vault-governed-tagging-filtering-review.md`
 - the exact `a5729e9..fc16b4a` repair diff
@@ -32,7 +32,7 @@ The requested worktree-root `plan.md` and `progress.md` were absent. The executa
 
 5. **The DataHub comparison now has direct documentation support.** The specific official Tags tutorial describes tags as informal, loosely controlled labels, while the Terms tutorial describes a standardized shared vocabulary associated with physical assets. This directly supports the limited label-versus-glossary distinction at `.10x/research/2026-07-15-data-vault-governed-tagging-filtering.md:183-189`; the record still disclaims workflow, governance, scale, and fitness equivalence.
 
-6. **Ticket acceptance remains fully supported.** The repair does not weaken the previously verified taxonomy, three candidate architectures and lifecycle behavior, assignment/provenance model, minimal Turbopuffer projection, single/multi-namespace filter and boost semantics, ACL separation, eval design, or bounded offline experiment. Those satisfy `.10x/tickets/2026-07-15-research-data-vault-governed-tagging-filtering.md:24-42`. The newly added implementation evidence closes the only acceptance concern about open-source source evidence where available.
+6. **Ticket acceptance remains fully supported.** The repair does not weaken the previously verified taxonomy, three candidate architectures and lifecycle behavior, assignment/provenance model, minimal Turbopuffer projection, single/multi-namespace filter and boost semantics, ACL separation, eval design, or bounded offline experiment. Those satisfy `.10x/tickets/done/2026-07-15-research-data-vault-governed-tagging-filtering.md:24-42`. The newly added implementation evidence closes the only acceptance concern about open-source source evidence where available.
 
 ### Fixed
 
