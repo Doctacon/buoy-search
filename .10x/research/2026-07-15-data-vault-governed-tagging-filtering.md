@@ -42,10 +42,12 @@ Chief (official help, accessed 2026-07-15):
 - [How Chief creates Concepts](https://help.chief.bot/articles/2999623-how-chief-creates-concepts)
 - [How to navigate Concepts View](https://help.chief.bot/articles/7283674-how-to-navigate-concepts-view)
 
-RAGFlow and Cognee (official docs, accessed 2026-07-15):
+RAGFlow and Cognee (official docs plus bounded open-source spot checks, accessed 2026-07-15):
 
 - [RAGFlow: Use tag set](https://ragflow.io/docs/use_tag_sets) (displayed version 0.26.4)
+- RAGFlow source snapshot `df5c8e73fc37d575c7d4074392447b747384161a`: [ingestion-time chunk tagging](https://github.com/infiniflow/ragflow/blob/df5c8e73fc37d575c7d4074392447b747384161a/rag/svr/task_executor.py#L559-L624) and [content/query tag feature calculation](https://github.com/infiniflow/ragflow/blob/df5c8e73fc37d575c7d4074392447b747384161a/rag/nlp/search.py#L813-L837)
 - [Cognee: NodeSets](https://docs.cognee.ai/core-concepts/further-concepts/node-sets)
+- Cognee source snapshot `252f2c3efb184533a0955e31e83a28ea7db9813d`: [NodeSet construction on documents](https://github.com/topoteretes/cognee/blob/252f2c3efb184533a0955e31e83a28ea7db9813d/cognee/tasks/documents/classify_documents.py#L64-L99), [document-to-chunk propagation](https://github.com/topoteretes/cognee/blob/252f2c3efb184533a0955e31e83a28ea7db9813d/cognee/tasks/documents/extract_chunks_from_documents.py#L44-L59), and [OR/AND adapter tests](https://github.com/topoteretes/cognee/blob/252f2c3efb184533a0955e31e83a28ea7db9813d/cognee/tests/test_pgvector.py#L92-L206)
 
 Turbopuffer (official docs, accessed 2026-07-15):
 
@@ -57,23 +59,26 @@ Turbopuffer (official docs, accessed 2026-07-15):
 
 Data Vault and comparable open standards/systems used as boundary comparisons:
 
-- [Databricks: What is a Data Vault?](https://www.databricks.com/blog/what-is-data-vault), an explanatory source rather than the full Data Vault 2.0 standard
-- [W3C SKOS Reference](https://www.w3.org/TR/skos-reference/), an open standard for concepts, labels, semantic relations, and concept schemes
-- [DataHub tags and glossary terms](https://datahubproject.io/docs/metadata-modeling/metadata-model/), open-source metadata-catalog comparison
-- [OpenMetadata classification and glossary concepts](https://docs.open-metadata.org/latest/how-to-guides/data-governance), open-source metadata-governance comparison
+- [Databricks: What is a Data Vault?](https://www.databricks.com/blog/what-is-data-vault), a vendor-authored explanatory comparison, **not** primary Data Vault methodology evidence
+- [W3C SKOS Reference](https://www.w3.org/TR/skos-reference/), a primary open standard for concepts, labels, semantic relations, and concept schemes
+- DataHub's specific [Tags API tutorial](https://docs.datahub.com/docs/api/tutorials/tags) and [Terms API tutorial](https://docs.datahub.com/docs/api/tutorials/terms), official open-source catalog documentation that directly describes tags as informal/loosely controlled and glossary terms as standardized shared concepts
+- [OpenMetadata classification and glossary concepts](https://docs.open-metadata.org/latest/how-to-guides/data-governance), official open-source metadata-governance documentation
 
-The last three comparisons inform the architecture vocabulary and open-source alternatives. Their exact current UI behavior and scale were not independently exercised.
+These are boundary comparisons, not deployment evaluations. Their exact current UI behavior, scale, and production quality were not independently exercised. No public primary Data Vault 2.0 methodology text was inspected, so the Databricks explanation supplies vocabulary only and cannot substantiate normative loading, effectivity, retention, or erasure semantics.
 
 ## Evidence quality and terminology
 
-| Claim family | Evidence | Confidence / limit |
-|---|---|---|
-| Buoy's current schema, tag derivation, row projection, filters, output, and stale-row lifecycle | Current branch source, active records, and tests | High for inspected commit `f7eeb012d3a7147009e5c822914bf9da16699b69` |
-| Turbopuffer types, filters, writes, consistency, limits, and permission pattern | Official current API/guides | High for documented behavior; no live performance measurement |
-| Chief Labels/Collections/Concepts | Official product help | High for documented product behavior; storage and algorithms are private/undocumented |
-| RAGFlow tag sets and Cognee NodeSets | Official project docs | High for documented behavior; source paths and production quality not audited in this study |
-| Data Vault 2.0 structure | Explanatory source plus established hub/link/satellite vocabulary | Medium; this study did not inspect the licensed standard or a full methodology text |
-| Proposed authority, projection, query, and eval designs | Synthesis below | Recommendation, not fact or ratified behavior |
+| Claim family | Evidence class | Evidence | Confidence / limit |
+|---|---|---|---|
+| Buoy's current schema, tag derivation, row projection, filters, output, and stale-row lifecycle | Primary local implementation evidence | Current branch source, active records, and tests | High for inspected commit `f7eeb012d3a7147009e5c822914bf9da16699b69` |
+| Turbopuffer types, filters, writes, consistency, limits, and permission pattern | Official vendor documentation | Current API/guides | High for documented behavior only; no live performance measurement |
+| Chief Labels/Collections/Concepts | Official vendor documentation | Product help | High for documented product behavior; storage and algorithms are private/undocumented |
+| RAGFlow tag sets | Official project docs plus narrow open-source source spot check | Versioned guide; fixed source permalinks for ingestion-time and query-time tag feature wiring | High for described mechanics at the cited snapshots; no end-to-end execution, dependency audit, or production-quality inference |
+| Cognee NodeSets | Official project docs plus narrow open-source source/test spot check | Fixed source permalinks for document construction, chunk propagation, and OR/AND adapter tests | High for those cited paths at the snapshot; unsupported-search-type statement remains documentation-only; no end-to-end execution or production-quality inference |
+| Data Vault vocabulary used here | Non-primary explanatory evidence | Databricks vendor explainer; no licensed/primary methodology text inspected | Low-to-medium and vocabulary-only; not evidence for normative loading, effectivity, retention, erasure, or physical design |
+| SKOS identity/label/hierarchy vocabulary | Primary standards evidence | W3C Recommendation | High for the standard's stated model; not an assignment workflow, ACL, or retrieval design |
+| DataHub/OpenMetadata label-versus-glossary comparison | Official project documentation | Specific DataHub tag/term tutorials and OpenMetadata governance guide | High for documented conceptual distinction; no deployment or scale evaluation |
+| Proposed authority, projection, query, and eval designs | Architectural synthesis | Recommendations derived below | Recommendation, not fact or ratified behavior |
 
 Terms in this record:
 
@@ -125,17 +130,21 @@ The following taxonomy separates facts about production method from recommendati
 
 ### 4. RAGFlow distinguishes closed-set similarity tags from open-set keywords
 
-**Documented fact.** A RAGFlow tag set is a closed, user-defined vocabulary supplied as description/tag table entries. Every chunk is compared with entries, and tags are assigned by similarity. A query is also tagged; corresponding chunk tags increase retrieval likelihood. The tag-set dataset itself is not a retrieval dataset.
+**Officially documented fact.** A RAGFlow tag set is a closed, user-defined vocabulary supplied as description/tag table entries. Every chunk is compared with entries, and tags are assigned by similarity. A query is also tagged; corresponding chunk tags increase retrieval likelihood. The tag-set dataset itself is not a retrieval dataset.
 
-**Documented fact.** Updating or deleting tags requires affected documents to be re-parsed for assignments to change. Adding entries leaves re-parsing to the operator. Multiple tag sets are supported, with guidance that they should be independent. RAGFlow explicitly contrasts vector-similarity auto-tags (closed set) with LLM auto-keywords (open set and token-consuming).
+**Officially documented fact.** Updating or deleting tags requires affected documents to be re-parsed for assignments to change. Adding entries leaves re-parsing to the operator. Multiple tag sets are supported, with guidance that they should be independent. RAGFlow explicitly contrasts vector-similarity auto-tags (closed set) with LLM auto-keywords (open set and token-consuming).
 
-**Implication.** Closed vocabulary does not imply authoritative assignment. RAGFlow's assignment is still probabilistic. Its explicit reprocessing requirement is evidence that taxonomy changes need a lifecycle contract, not an in-place label rename alone.
+**Source spot check, not an execution result.** At source snapshot `df5c8e7`, the ingestion executor invokes tag calculation for chunks and records applied tags, while retrieval code computes content and query tag features from `tag_kwd`. This corroborates that the documented feature has ingestion- and query-path implementation wiring. It does not independently establish exact end-to-end scoring effects, reparse completeness, dependency behavior, scale, or production quality.
+
+**Implication.** Closed vocabulary does not imply authoritative assignment. RAGFlow's assignment is still probabilistic. Its documented reprocessing requirement is evidence that taxonomy changes need a lifecycle contract, not an in-place label rename alone.
 
 ### 5. Cognee demonstrates tags promoted to graph anchors
 
-**Documented fact.** Cognee accepts NodeSet names when data is remembered, propagates them to documents/chunks, materializes first-class `NodeSet` nodes and `belongs_to_set` edges, and links extracted entities back to those sets.
+**Officially documented fact.** Cognee accepts NodeSet names when data is remembered, propagates them to documents/chunks, materializes first-class `NodeSet` nodes and `belongs_to_set` edges, and links extracted entities back to those sets.
 
-**Documented fact.** Recall can filter supported graph-completion search types by NodeSet using OR (default) or AND. The docs state the filter has no effect on some search types (`SUMMARIES`, `CYPHER`, and `NATURAL_LANGUAGE`).
+**Officially documented fact.** Recall can filter supported graph-completion search types by NodeSet using OR (default) or AND. The docs state the filter has no effect on some search types (`SUMMARIES`, `CYPHER`, and `NATURAL_LANGUAGE`).
+
+**Source spot check, not an execution result.** At source snapshot `252f2c3`, document classification constructs stable `NodeSet` objects from ingestion metadata, chunk extraction copies `belongs_to_set`, and repository adapter tests exercise OR/AND behavior. This corroborates document-to-chunk propagation and tested filter wiring in the cited paths. The source spot check did not execute those tests, inspect every retriever, or independently verify the documentation's unsupported-search-type list, entity-linking behavior, scale, or production quality.
 
 **Implication.** First-class identity and edges enable traversal, but filter support must be verified per query path. A control exposed on only some retrievers is unsafe as an ACL. NodeSets are a useful topology pattern for topical grouping, not evidence of authorization enforcement or Data Vault authority.
 
@@ -153,7 +162,7 @@ Relevant documented limits include 1,024 attribute names per namespace, 128-byte
 
 ### 7. Data Vault authority and semantic inference must remain separate
 
-**Established Data Vault framing.** Hubs preserve stable business keys, Links preserve relationships among business keys, and Satellites preserve descriptive context and change history with lineage. Raw-vault records retain source meaning; business-vault outputs apply governed derivations without rewriting raw history.
+**Working vocabulary from non-primary evidence.** The inspected Databricks explainer describes Hubs around business keys, Links around relationships, Satellites around descriptive context/history, and Raw Vault versus Business Vault separation. This is sufficient to explain the candidate mapping below, but it is not primary methodology authority. Accordingly, this research makes no normative claim about Data Vault 2.0 loading, effectivity, retention, physical erasure, or physical modeling rules. Those semantics require validation against the enterprise's actual licensed methodology, standards, and owners before implementation.
 
 **Recommended mapping, not a claim that the standard mandates these objects:**
 
@@ -175,7 +184,7 @@ This mapping is justified only if Buoy is integrated with a real Data Vault prog
 
 **Standards comparison.** SKOS distinguishes concept identity from preferred, alternate, and hidden labels; organizes concepts into schemes; and provides broader/narrower/related relations. This is a better model for controlled term identity, synonyms, and hierarchy than using display strings as keys. SKOS does not define assignment workflow, ACLs, or vector-retrieval scoring.
 
-**Catalog comparison.** DataHub and OpenMetadata expose tags/classifications alongside more governed glossary concepts. This common separation is useful: lightweight labels and curated business terms serve different purposes. Both are open-source/self-hostable candidates for an enterprise metadata control plane, but adopting either is substantially larger than Buoy's smallest experiment and was not selected here.
+**Catalog comparison.** DataHub's specific official tutorials call tags “informal, loosely controlled labels” and describe glossary terms as a standardized shared vocabulary associated with physical assets. OpenMetadata's governance guide similarly documents classifications and glossaries as distinct concepts. This directly supports the narrow vocabulary distinction used here: lightweight labels and curated business terms serve different purposes. It does not prove equivalent workflows, governance rigor, scale, or fitness for Buoy. Both projects are open-source/self-hostable candidates for an enterprise metadata control plane, but adopting either is substantially larger than Buoy's smallest experiment and was not selected here.
 
 **Recommendation.** Start with stable opaque term IDs, a scheme/version, labels/synonyms, and optional parent relationships. Do not require RDF, a graph database, or a full catalog for the first experiment.
 
@@ -463,8 +472,8 @@ Research can proceed without blockers, but implementation remains blocked on:
 
 - No live corpus or Turbopuffer namespace was inspected, so tag distribution, latency, costs, and current remote stale rows are unknown.
 - Chief documents product behavior but not storage, thresholds, scoring, consistency, ACL enforcement, or source code.
-- RAGFlow and Cognee behavior was taken from current official docs; their source implementations, licenses by dependency, and production failure behavior were not audited here.
-- The full Data Vault 2.0 standard was not inspected; the proposed mapping is architectural synthesis, not normative Data Vault guidance.
+- RAGFlow and Cognee mechanics were taken from current official docs and corroborated only by the fixed, narrow source/test paths cited above. No end-to-end execution, full implementation or dependency/license audit, production failure analysis, or quality assessment was performed.
+- No primary Data Vault 2.0 methodology text was inspected. The Databricks explainer is non-primary and vocabulary-only; the proposed mapping is architectural synthesis, not normative Data Vault guidance. Loading, effectivity, retention, erasure, and physical-design semantics require revalidation against the enterprise authority.
 - DataHub, OpenMetadata, and SKOS were boundary comparisons, not deployment evaluations.
 - Turbopuffer documentation establishes supported mechanics and limits, not Buoy-specific performance or correctness.
 - The absent task-referenced `context.md` and `plan.md` limited inspection to the executable ticket graph and worker input artifact.
