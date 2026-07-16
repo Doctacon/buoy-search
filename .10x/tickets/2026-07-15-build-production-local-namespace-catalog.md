@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-production-semantic-routing-plan.md
@@ -59,3 +59,5 @@ None after shaping review/integration.
 ## Progress and notes
 
 - 2026-07-15: Opened as the first executable child. No implementation occurred in the specification-authoring turn.
+- 2026-07-15: Implementation active on `work/build-production-local-namespace-catalog`. Added the strict canonical catalog model/store, pinned local-only routing projection, deterministic generated-semantic and manual-preserving merge helpers, local catalog CLI lifecycle, documentation, and focused tests. Apply/pending reconciliation and automatic routing remain explicitly excluded.
+- 2026-07-15: Focused catalog tests passed (32), the full suite passed (324), Python compilation and `git diff --check` passed, and the exact cached model produced a finite normalized 384-dimensional vector under forced offline mode. Evidence: `.10x/evidence/2026-07-15-production-local-namespace-catalog-implementation.md`. Ticket remains active pending independent review.
