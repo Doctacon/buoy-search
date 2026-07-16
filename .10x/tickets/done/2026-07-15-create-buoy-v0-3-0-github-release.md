@@ -1,4 +1,4 @@
-Status: active
+Status: done
 Created: 2026-07-15
 Updated: 2026-07-16
 Parent: .10x/tickets/2026-07-15-buoy-v0-3-0-release-plan.md
@@ -51,3 +51,17 @@ None. Main promotion completed and passed review.
 - 2026-07-16: Release `355388511` contains exactly the verified 0.3.0 wheel/sdist with matching downloaded/API digests and strict SLSA provenance. Isolated install behavior, prior immutable history, one-run uniqueness, no PyPI, and no Turbopuffer/branch/protection mutation passed. Evidence: `.10x/evidence/2026-07-16-buoy-v0-3-0-github-release.md`. Ticket remains active pending independent review.
 
 - 2026-07-16: Corrected release chronology after review: preflight, tag push, hosted workflow approval/publication, verification, evidence recording, and commit occurred on July 16. Renamed temporal evidence and raw storage to `2026-07-16-*` and repaired references. Ticket creation and prior July 15 history remain unchanged; substantive IDs, hosted timestamps, digests, and claims are unchanged. Ticket remains active pending re-review.
+
+- 2026-07-16: Two independent hosted-release audits passed after chronology was corrected in records. Review: `.10x/reviews/2026-07-16-buoy-v0-3-0-github-release-review.md`.
+
+## Closure mapping
+
+- Annotated tag: object `21a8d122151711a863dfb63d356baebbddca8d45`, exact reviewed main `595d157177bd032c20cf6e6c0112ee6b43212a88`.
+- Workflow/approval: run `29538957482` passed; validation preceded environment wait/approval, which preceded attestation and Release creation.
+- Release/assets: GitHub Release `355388511`; exact wheel/sdist identities, digests, metadata/content, generated notes, and SLSA provenance verified.
+- Boundaries: prior history immutable, PyPI absent, no branch/source/tag overwrite or Turbopuffer operation.
+- Review: pass with transient attestation-API availability recorded as residual risk.
+
+## Retrospective
+
+Release evidence chronology must use authoritative hosted event dates rather than the ticket's creation date. The release gate is two-stage: annotated-tag push is an external mutation, while the protected environment separately gates provenance and Release/assets publication.
