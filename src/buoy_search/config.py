@@ -48,8 +48,9 @@ def load_config(*, warning_callback: Callable[[str], None] | None = None) -> Run
     """Load non-secret runtime configuration from environment defaults.
 
     Deliberately excludes TURBOPUFFER_API_KEY so help and dry-run commands can be
-    used safely without credentials. Buoy 0.2 accepts the old branded embedding
-    variable only as a bounded compatibility fallback.
+    used safely without credentials. Buoy retains the old branded embedding
+    variables through 0.3 as bounded compatibility fallbacks scheduled for
+    removal in 0.4.
     """
 
     current_model = os.environ.get(EMBEDDING_MODEL_ENV)

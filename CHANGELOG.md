@@ -8,12 +8,18 @@ Notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ### Added
 
+- Opt-in float16 corpus and query embedding inference on supported accelerators, with precision bound into plans and outputs while float32 remains the default.
+- Read-only `buoy namespaces` discovery with deterministic identifier filtering.
+- Explicit repeatable `--namespace` retrieval that embeds once, queries namespaces sequentially, and merges namespace-qualified results with deterministic reciprocal-rank fusion instead of using a demo fallback.
 - A canonical local namespace-card catalog with atomic persistence, manual lifecycle commands, validated retrieval contracts, and persisted normalized routing vectors.
 - Explicit `buoy retrieve --auto-route` selection with eligibility-first filtering, deterministic lexical and semantic ranking, hybrid reciprocal-rank fusion, a default top-three route, and local-only dry previews.
 - Approved-apply catalog registration with precomputed pending state, namespace locking, reconciliation, and explicitly approved abandonment for unconfirmed recovery state.
 
 ### Changed
 
+- Planning performs one extraction/chunk pass and reports stage timings without loading embeddings or contacting Turbopuffer.
+- Approved apply overlaps coordinator-thread embedding with one ordered background upsert at bounded depth one while preserving failure and commit ordering.
+- Plan/apply preflight and success output expose decision-complete source, region, model, precision, and stale-row intent plus shell-safe preview/live retrieval commands.
 - Routed live retrieval now hands selected cards to the existing multi-namespace retriever and downstream cross-namespace fusion while explicit `--namespace` retrieval remains authoritative and unchanged.
 - Apply preserves manual card semantics and every existing enabled state while refreshing verified source, model, precision, schema, ranking, and apply-lineage fields.
 - New local state continues to default to `.buoy`; legacy `.turbo-search` state-root fallback remains explicit and non-migrating.

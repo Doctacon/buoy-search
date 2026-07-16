@@ -21,7 +21,7 @@ uv run python -m buoy_search.autoresearch --help
 
 ## Environment variables
 
-Use `BUOY_EMBEDDING_MODEL` instead of `TURBO_SEARCH_EMBEDDING_MODEL`. In 0.2, the old variable is accepted with a warning only when the new variable is absent. If both are set differently, Buoy stops rather than guessing.
+Use `BUOY_EMBEDDING_MODEL` instead of `TURBO_SEARCH_EMBEDDING_MODEL`. Through 0.3, the old model and precision variables are accepted with warnings only when their corresponding `BUOY_*` variables are absent; they are scheduled for removal in 0.4. If an old and new variable are both set differently, Buoy stops rather than guessing.
 
 Turbopuffer-owned variables are unchanged:
 
