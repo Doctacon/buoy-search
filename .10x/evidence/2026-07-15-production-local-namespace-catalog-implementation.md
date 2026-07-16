@@ -38,6 +38,29 @@ dimensions=384 finite=True norm=1.00000005
 vector_hash=a5820500abac680a92ee4a8ef8faa93bcbd2b53b5e4af465c080e1426aec080f
 ```
 
+## Post-review blocker repair verification
+
+Independent review identified strictness and evidence gaps. The bounded repair added paired persisted lineage enforcement plus an explicitly non-persistable prospective-card helper, exact JSON-integer validation, non-string source-kind rejection, source-kind-aware URI validation, direct file/directory `fsync` assertions, an environment credential-read sentinel, the catalog-specific both-root diagnostic, and corrected explicit retrieval documentation.
+
+```text
+uv run python -m unittest tests.test_catalog tests.test_catalog_cli
+.....................................
+Ran 37 tests in 0.141s
+OK
+
+uv run python -m unittest discover -s tests -p 'test_*.py'
+Ran 329 tests in 7.055s
+OK
+
+uv run python -m py_compile src/buoy_search/catalog.py src/buoy_search/catalog_cli.py src/buoy_search/cli.py
+# no output
+
+git diff --check
+# no output
+```
+
+The focused repair tests directly exercise generated/manual lineage mismatches and prospective persistence rejection; `1.0`/`384.0`/`20.0` corruption; non-string source kinds; whitespace, malformed host/port, opaque scheme, and source-kind URI contradictions; one file plus one directory `fsync` call and best-effort directory failure; and an environment mapping that raises immediately if `TURBOPUFFER_API_KEY` is queried.
+
 ## What this supports
 
 This supports the child ticket's local catalog schema, hashing, persistence/locking, pinned local-only vector, generated-semantics, manual-preservation merge/commit, CLI lifecycle, compatibility, and local-only side-effect claims.

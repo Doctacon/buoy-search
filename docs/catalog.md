@@ -68,4 +68,4 @@ uv run buoy catalog remove site-example-com-v1 --approve
 
 Enable and disable are idempotent and preserve card semantics and vectors. Remove requires `--approve` to mutate and never deletes Turbopuffer data or applied state.
 
-The catalog is routing metadata, not proof that a remote namespace exists, a remote catalog, an authorization system, or a replacement for explicit namespace selection. Current retrieval continues to require explicit `--namespace` values.
+The catalog is routing metadata, not proof that a remote namespace exists, a remote catalog, an authorization system, or a replacement for explicit namespace selection. Current retrieval continues to require `--namespace` or an explicitly set `TURBOPUFFER_NAMESPACE` environment value.

@@ -30,8 +30,10 @@ from buoy_search.catalog import (
     load_catalog,
     load_routing_embedder,
     merge_system_card,
+    parse_card,
     parse_catalog,
     prepare_card,
+    prepare_prospective_card,
     resolve_catalog_path,
     save_catalog,
     semantic_hash_for_fields,
@@ -180,6 +182,41 @@ class CatalogProjectionTests(unittest.TestCase):
                 prepare_card(fields(**override), embedder=FailingEmbedder())
         self.assertEqual(canonical_text("  Data___Vault!!! "), "data vault")
 
+    def test_persisted_lineage_is_strict_and_prospective_cards_cannot_be_saved(self) -> None:
+        invalid_fields = (
+            ({"last_apply_id": "apply-only"}, "last_apply_id requires"),
+            ({"last_plan_id": "plan-only"}, "both IDs null or both non-empty"),
+            ({"semantic_origin": "generated"}, "generated card requires"),
+            (
+                {"semantic_origin": "generated", "last_plan_id": "plan-only"},
+                "generated card requires",
+            ),
+        )
+        for overrides, message in invalid_fields:
+            with self.subTest(overrides=overrides), self.assertRaisesRegex(CatalogError, message):
+                prepare_card(fields(**overrides), embedder=FailingEmbedder())
+
+        prospective_fields = fields(
+            semantic_origin="generated", last_plan_id="plan-new", last_apply_id=None
+        )
+        prospective = prepare_prospective_card(
+            prospective_fields,
+            embedder=FixedEmbedder(),
+            now="2026-07-15T12:00:00+00:00",
+        )
+        self.assertEqual((prospective.last_plan_id, prospective.last_apply_id), ("plan-new", None))
+        with tempfile.TemporaryDirectory() as tmp, self.assertRaisesRegex(
+            CatalogError, "generated card requires"
+        ):
+            save_catalog(Path(tmp) / "catalog.json", [prospective])
+        finalized = prepare_card(
+            replace(prospective_fields, last_apply_id="apply-new"),
+            existing=prospective,
+            embedder=FailingEmbedder(),
+            now="2026-07-15T13:00:00+00:00",
+        )
+        self.assertEqual((finalized.last_plan_id, finalized.last_apply_id), ("plan-new", "apply-new"))
+
     def test_vector_validation_rejects_wrong_dimension_bool_nonfinite_zero_and_norm(self) -> None:
         bad_vectors = [
             [1.0],
@@ -255,6 +292,33 @@ class CatalogPersistenceTests(unittest.TestCase):
             with self.subTest(message=message), self.assertRaisesRegex(CatalogError, message):
                 parse_catalog(payload)
 
+    def test_integer_only_fields_reject_json_floats_and_booleans(self) -> None:
+        valid = document_to_dict(save_document_for_parse([make_card()]))
+        cases = []
+        for field, value in (
+            ("plan_schema_version", 1.0),
+            ("vector_dimensions", 384.0),
+            ("ranking_pool", 20.0),
+        ):
+            payload = json.loads(json.dumps(valid))
+            payload["cards"][0][field] = value
+            cases.append((payload, field))
+        for value in (1.0, True):
+            payload = json.loads(json.dumps(valid))
+            payload["schema_version"] = value
+            cases.append((payload, "schema_version"))
+        for payload, field in cases:
+            with self.subTest(field=field), self.assertRaisesRegex(
+                CatalogError, f"{field} must be a JSON integer"
+            ):
+                parse_catalog(payload)
+        for overrides, field in (
+            ({"plan_schema_version": 1.0}, "plan_schema_version"),
+            ({"ranking_pool": 20.0}, "ranking_pool"),
+        ):
+            with self.subTest(field=field), self.assertRaisesRegex(CatalogError, "JSON integer"):
+                prepare_card(fields(**overrides), embedder=FailingEmbedder())
+
     def test_json_nan_and_malformed_file_report_path_and_recovery(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "catalog.json"
@@ -263,6 +327,52 @@ class CatalogPersistenceTests(unittest.TestCase):
                 with self.subTest(contents=contents), self.assertRaisesRegex(CatalogError, "repair or restore") as raised:
                     load_catalog(path)
                 self.assertIn(str(path), str(raised.exception))
+
+    def test_atomic_save_fsyncs_file_and_best_effort_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "catalog.json"
+            directory_fd = 987654
+            fsync_fds: list[int] = []
+            real_open = os.open
+            real_close = os.close
+            open_calls: list[tuple[object, int]] = []
+            close_calls: list[int] = []
+
+            def recording_open(target, flags, *args):  # noqa: ANN001 - mirrors os.open.
+                if Path(target) == path.parent and flags == os.O_RDONLY:
+                    open_calls.append((target, flags))
+                    return directory_fd
+                return real_open(target, flags, *args)
+
+            def recording_close(fd: int) -> None:
+                if fd == directory_fd:
+                    close_calls.append(fd)
+                    return
+                real_close(fd)
+
+            with patch("buoy_search.catalog.os.open", side_effect=recording_open), patch(
+                "buoy_search.catalog.os.fsync", side_effect=fsync_fds.append
+            ), patch("buoy_search.catalog.os.close", side_effect=recording_close):
+                save_catalog(path, [make_card()])
+            self.assertEqual(len(fsync_fds), 2)
+            self.assertNotEqual(fsync_fds[0], directory_fd)
+            self.assertEqual(fsync_fds[1], directory_fd)
+            self.assertEqual(open_calls, [(path.parent, os.O_RDONLY)])
+            self.assertEqual(close_calls, [directory_fd])
+
+            second_path = Path(tmp) / "catalog-no-directory-fsync.json"
+
+            def unsupported_directory_open(target, flags, *args):  # noqa: ANN001
+                if Path(target) == second_path.parent and flags == os.O_RDONLY:
+                    raise OSError("unsupported")
+                return real_open(target, flags, *args)
+
+            with patch("buoy_search.catalog.os.open", side_effect=unsupported_directory_open), patch(
+                "buoy_search.catalog.os.fsync"
+            ) as fsync_mock:
+                save_catalog(second_path, [make_card()])
+            fsync_mock.assert_called_once()
+            self.assertTrue(second_path.exists())
 
     def test_failed_atomic_replace_preserves_previous_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -408,6 +518,38 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
         self.assertEqual(legacy.aliases, [])
         self.assertNotIn("opaque-source-id", legacy.title)
 
+    def test_source_uri_validation_is_kind_aware_and_rejects_malformed_values(self) -> None:
+        invalid = (
+            ("website", " https://example.com", "whitespace"),
+            ("website", "https://example.com/a b", "whitespace"),
+            ("website", "https://example.com:not-a-port", "malformed"),
+            ("website", "https://bad_host.example", "malformed hostname"),
+            ("website", "example.com/docs", "unsupported scheme"),
+            ("website", "urn:example", "unsupported scheme"),
+            ("website", "file://site-example", "requires HTTP"),
+            ("document", "ftp://example.com/file.pdf", "unsupported scheme"),
+            ("document", "file://", "supported file"),
+            ("document", "file://source/path", "supported file"),
+        )
+        for source_kind, source_uri, message in invalid:
+            with self.subTest(source_uri=source_uri), self.assertRaisesRegex(CatalogError, message):
+                prepare_card(
+                    fields(source_kind=source_kind, source_uri=source_uri),
+                    embedder=FailingEmbedder(),
+                )
+        for source_kind, source_uri in (
+            ("github_repo", "http://github.com/owner/repo"),
+            ("website", "https://docs.example.com:8443/path"),
+            ("document", "https://example.com/document.pdf"),
+            ("document", "file://stable-source-id"),
+        ):
+            with self.subTest(valid=source_uri):
+                card = prepare_card(
+                    fields(source_kind=source_kind, source_uri=source_uri),
+                    embedder=FixedEmbedder(),
+                )
+                self.assertEqual(card.source_uri, source_uri)
+
     def test_generated_metadata_contradictions_and_unsupported_inputs_fail(self) -> None:
         cases = [
             ({"base_url": "https://example.com", "source_metadata": [{"source_kind": "github_repo"}]}, "contradicts"),
@@ -417,12 +559,16 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
             ({"base_url": "file://source", "source_metadata": [{"source_kind": "pdf", "pdf_filename": "a.pdf"}, {"source_kind": "pdf", "pdf_filename": "b.pdf"}]}, "contradictory pdf_filename"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": "pdf"}]}, "requires one consistent.*pdf_filename"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": "local_file"}]}, "requires one consistent.*file_filename"),
+            ({"base_url": "file://source", "source_metadata": [{"source_kind": 1}]}, "source_kind must be a string"),
+            ({"base_url": "file://source", "source_metadata": [{"source_kind": None}]}, "source_kind must be a string"),
         ]
         for values, message in cases:
             with self.subTest(values=values), self.assertRaisesRegex(CatalogError, message):
                 generated_semantics(site_id="site", plan_schema_version=1, **values)
-        with self.assertRaisesRegex(CatalogError, "unsupported plan schema"):
+        with self.assertRaisesRegex(CatalogError, "plan_schema_version must equal"):
             generated_semantics(base_url="https://example.com", site_id="site", plan_schema_version=2, source_metadata=[])
+        with self.assertRaisesRegex(CatalogError, "plan_schema_version must be a JSON integer"):
+            generated_semantics(base_url="https://example.com", site_id="site", plan_schema_version=1.0, source_metadata=[])
 
 
 class CatalogPathAndModelTests(unittest.TestCase):
@@ -453,8 +599,10 @@ class CatalogPathAndModelTests(unittest.TestCase):
                 self.assertEqual(path, legacy / "catalog.json")
                 self.assertIn("legacy state root", warning or "")
                 current.mkdir()
-                with self.assertRaisesRegex(CatalogError, "both implicit state roots"):
+                with self.assertRaisesRegex(CatalogError, "both implicit state roots") as raised:
                     resolve_catalog_path(None, environ={})
+                self.assertIn("--catalog", str(raised.exception))
+                self.assertNotIn("--state-root", str(raised.exception))
 
     def test_model_constructor_is_exact_pinned_local_only_and_missing_cache_fails_closed(self) -> None:
         calls: list[tuple[tuple[object, ...], dict[str, object]]] = []

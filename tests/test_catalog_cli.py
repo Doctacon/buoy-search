@@ -16,6 +16,24 @@ from buoy_search.cli import main
 UNIT_VECTOR = [1.0] + [0.0] * (ROUTING_DIMENSIONS - 1)
 
 
+class CredentialReadSentinel(dict[str, str]):
+    def _reject_secret(self, key: object) -> None:
+        if key == "TURBOPUFFER_API_KEY":
+            raise AssertionError("TURBOPUFFER_API_KEY was read")
+
+    def __contains__(self, key: object) -> bool:
+        self._reject_secret(key)
+        return super().__contains__(key)
+
+    def __getitem__(self, key: str) -> str:
+        self._reject_secret(key)
+        return super().__getitem__(key)
+
+    def get(self, key: str, default: str | None = None) -> str | None:
+        self._reject_secret(key)
+        return super().get(key, default)
+
+
 class FixedEmbedder:
     def __init__(self) -> None:
         self.calls: list[list[str]] = []
@@ -200,6 +218,27 @@ class CatalogCliTests(unittest.TestCase):
             self.assertIn("model unavailable", stderr)
             self.assertEqual(path.read_bytes(), before)
 
+    def test_malformed_source_uri_fails_before_model_and_preserves_json_stdout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "catalog.json"
+            for source_uri in (
+                " https://example.com",
+                "https://example.com:not-a-port",
+                "https://bad_host.example",
+                "urn:example",
+            ):
+                args = upsert_args(path)
+                args[args.index("https://example.com/docs")] = source_uri
+                with self.subTest(source_uri=source_uri), patch(
+                    "buoy_search.catalog.load_routing_embedder",
+                    side_effect=AssertionError("model loaded for malformed URI"),
+                ):
+                    result, stdout, stderr = run_cli(args)
+                self.assertEqual(result, 2)
+                self.assertEqual(stdout, "")
+                self.assertIn("source_uri", stderr)
+                self.assertFalse(path.exists())
+
     def test_corruption_fails_before_model_and_reports_path_on_stderr(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "catalog.json"
@@ -245,6 +284,16 @@ class CatalogCliTests(unittest.TestCase):
             self.assertEqual(json.loads(stdout)["catalog_path"], str(legacy / "catalog.json"))
             self.assertIn("legacy state root", stderr)
 
+            current.mkdir()
+            with patch("buoy_search.applied_state.DEFAULT_STATE_ROOT", current), patch(
+                "buoy_search.applied_state.LEGACY_STATE_ROOT", legacy
+            ):
+                result, stdout, stderr = run_cli(["catalog", "list", "--json"])
+            self.assertEqual(result, 2)
+            self.assertEqual(stdout, "")
+            self.assertIn("--catalog", stderr)
+            self.assertNotIn("--state-root", stderr)
+
     def test_absent_namespace_errors_and_missing_catalog_list_is_nonmutating(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "nested" / "catalog.json"
@@ -261,16 +310,22 @@ class CatalogCliTests(unittest.TestCase):
     def test_commands_do_not_read_credentials_or_contact_turbopuffer(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "catalog.json"
-            with patch("buoy_search.catalog.load_routing_embedder", return_value=FixedEmbedder()), patch(
+            environment = CredentialReadSentinel(
+                {"TURBOPUFFER_API_KEY": "must-not-be-read", "BUOY_CATALOG_PATH": str(path)}
+            )
+            stdout = StringIO()
+            stderr = StringIO()
+            args = upsert_args(path)
+            with patch("buoy_search.catalog.os.environ", environment), patch(
+                "buoy_search.catalog.load_routing_embedder", return_value=FixedEmbedder()
+            ), patch(
                 "buoy_search.namespaces.list_namespace_ids", side_effect=AssertionError("remote catalog call")
             ), patch(
                 "buoy_search.retriever.build_namespace", side_effect=AssertionError("Turbopuffer client")
-            ):
-                result, stdout, stderr = run_cli(
-                    upsert_args(path), env={"TURBOPUFFER_API_KEY": "must-not-be-used"}
-                )
-            self.assertEqual((result, stderr), (0, ""))
-            self.assertFalse(json.loads(stdout)["card"].get("vector"))
+            ), redirect_stdout(stdout), redirect_stderr(stderr):
+                result = main(args)
+            self.assertEqual((result, stderr.getvalue()), (0, ""))
+            self.assertFalse(json.loads(stdout.getvalue())["card"].get("vector"))
 
     def test_explicit_retrieval_is_unchanged_when_catalog_environment_is_set(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

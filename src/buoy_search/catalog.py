@@ -10,6 +10,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
+import ipaddress
 import json
 import math
 import os
@@ -249,7 +250,13 @@ def resolve_catalog_path(
     try:
         state_root, warning = resolve_state_root(None)
     except AppliedStateError as exc:
-        raise CatalogError(str(exc)) from exc
+        message = str(exc)
+        if "both implicit state roots exist" in message:
+            raise CatalogError(
+                "both implicit state roots exist: .buoy and .turbo-search; "
+                "pass --catalog PATH to choose the local catalog"
+            ) from exc
+        raise CatalogError(message) from exc
     return state_root / "catalog.json", warning
 
 
@@ -275,6 +282,55 @@ def _require_optional_id(value: object, *, field: str, namespace: str) -> str | 
     return _require_string(value, field=field, namespace=namespace)
 
 
+def _require_exact_int(
+    value: object,
+    *,
+    field: str,
+    namespace: str | None = None,
+    expected: int | None = None,
+    positive: bool = False,
+) -> int:
+    prefix = f"namespace {namespace!r} " if namespace else "catalog "
+    if type(value) is not int:
+        raise CatalogError(f"{prefix}field {field} must be a JSON integer")
+    if expected is not None and value != expected:
+        raise CatalogError(f"{prefix}field {field} must equal {expected}")
+    if positive and value <= 0:
+        raise CatalogError(f"{prefix}field {field} must be a positive integer")
+    return value
+
+
+def _validate_lineage(
+    *,
+    semantic_origin: str,
+    last_plan_id: object,
+    last_apply_id: object,
+    namespace: str,
+    persisted: bool,
+) -> tuple[str | None, str | None]:
+    plan_id = _require_optional_id(last_plan_id, field="last_plan_id", namespace=namespace)
+    apply_id = _require_optional_id(last_apply_id, field="last_apply_id", namespace=namespace)
+    if apply_id is not None and plan_id is None:
+        raise CatalogError(
+            f"namespace {namespace!r} field last_apply_id requires non-empty last_plan_id"
+        )
+    if not persisted:
+        if plan_id is None or apply_id is not None:
+            raise CatalogError(
+                f"namespace {namespace!r} prospective card requires last_plan_id and no last_apply_id"
+            )
+        return plan_id, apply_id
+    if semantic_origin == "generated" and (plan_id is None or apply_id is None):
+        raise CatalogError(
+            f"namespace {namespace!r} generated card requires non-empty last_plan_id and last_apply_id"
+        )
+    if semantic_origin == "manual" and ((plan_id is None) != (apply_id is None)):
+        raise CatalogError(
+            f"namespace {namespace!r} manual card lineage must have both IDs null or both non-empty"
+        )
+    return plan_id, apply_id
+
+
 def _validate_utc(value: object, *, field: str, namespace: str | None = None) -> str:
     text = _require_string(value, field=field, namespace=namespace)
     try:
@@ -286,14 +342,69 @@ def _validate_utc(value: object, *, field: str, namespace: str | None = None) ->
     return text
 
 
-def _validate_source_uri(value: object, *, namespace: str) -> str:
+def _validate_http_hostname(hostname: str, *, namespace: str) -> None:
+    try:
+        ipaddress.ip_address(hostname)
+        return
+    except ValueError:
+        pass
+    try:
+        ascii_hostname = hostname.encode("idna").decode("ascii")
+    except UnicodeError as exc:
+        raise CatalogError(f"namespace {namespace!r} field source_uri has a malformed hostname") from exc
+    labels = ascii_hostname.split(".")
+    if any(
+        not label
+        or len(label) > 63
+        or label.startswith("-")
+        or label.endswith("-")
+        or re.fullmatch(r"[A-Za-z0-9-]+", label) is None
+        for label in labels
+    ):
+        raise CatalogError(f"namespace {namespace!r} field source_uri has a malformed hostname")
+
+
+def _validate_source_uri(
+    value: object,
+    *,
+    namespace: str,
+    source_kind: str | None = None,
+) -> str:
     uri = _require_string(value, field="source_uri", namespace=namespace)
-    parsed = urlsplit(uri)
-    if not parsed.scheme or (parsed.scheme in {"http", "https"} and not parsed.hostname):
-        raise CatalogError(f"namespace {namespace!r} field source_uri must be an absolute URL/URI")
-    if parsed.scheme == "file" and not (parsed.netloc or parsed.path.startswith("/")):
-        raise CatalogError(f"namespace {namespace!r} field source_uri must be an absolute URL/URI")
-    return uri
+    if uri != uri.strip() or any(character.isspace() for character in uri):
+        raise CatalogError(f"namespace {namespace!r} field source_uri must not contain whitespace")
+    try:
+        parsed = urlsplit(uri)
+        port = parsed.port
+    except ValueError as exc:
+        raise CatalogError(f"namespace {namespace!r} field source_uri is malformed: {exc}") from exc
+    if parsed.scheme in {"http", "https"}:
+        if not parsed.hostname or not parsed.netloc or parsed.username is not None or parsed.password is not None:
+            raise CatalogError(f"namespace {namespace!r} field source_uri must contain a valid HTTP(S) host")
+        if port is not None and port == 0:
+            raise CatalogError(f"namespace {namespace!r} field source_uri has an invalid port")
+        _validate_http_hostname(parsed.hostname, namespace=namespace)
+        return uri
+    if parsed.scheme == "file" and source_kind in {None, "document"}:
+        if (
+            not parsed.netloc
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+            or parsed.username is not None
+            or parsed.password is not None
+            or port is not None
+            or re.fullmatch(r"[A-Za-z0-9._~-]+", parsed.netloc) is None
+        ):
+            raise CatalogError(
+                f"namespace {namespace!r} field source_uri must be a supported file://<source-id> URI"
+            )
+        return uri
+    allowed = "HTTP(S)" if source_kind in {"website", "github_repo"} else "HTTP(S) or file"
+    raise CatalogError(
+        f"namespace {namespace!r} field source_uri uses unsupported scheme {parsed.scheme!r}; "
+        f"{source_kind or 'generated source'} requires {allowed}"
+    )
 
 
 def validate_vector(value: object, *, namespace: str) -> list[float]:
@@ -316,6 +427,10 @@ def validate_vector(value: object, *, namespace: str) -> list[float]:
 
 
 def parse_card(payload: object) -> NamespaceCard:
+    return _parse_card(payload, persisted=True)
+
+
+def _parse_card(payload: object, *, persisted: bool) -> NamespaceCard:
     if not isinstance(payload, dict):
         raise CatalogError("catalog cards entries must be JSON objects")
     _require_exact_fields(payload, CARD_FIELDS, label="catalog card")
@@ -333,8 +448,8 @@ def parse_card(payload: object) -> NamespaceCard:
     title = _require_string(payload["title"], field="title", namespace=namespace)
     if canonical_text(title) in {canonical_text(alias) for alias in aliases}:
         raise CatalogError(f"namespace {namespace!r} field aliases must not contain the normalized title")
-    source_kind = str(payload["source_kind"])
-    semantic_origin = str(payload["semantic_origin"])
+    source_kind = _require_string(payload["source_kind"], field="source_kind", namespace=namespace)
+    semantic_origin = _require_string(payload["semantic_origin"], field="semantic_origin", namespace=namespace)
     embedding_precision = str(payload["embedding_precision"])
     ranking_mode = str(payload["ranking_mode"])
     ranking_profile = str(payload["ranking_profile"])
@@ -350,15 +465,21 @@ def parse_card(payload: object) -> NamespaceCard:
     enabled = payload["enabled"]
     if not isinstance(enabled, bool):
         raise CatalogError(f"namespace {namespace!r} field enabled must be a boolean")
-    dimensions = payload["vector_dimensions"]
-    plan_schema = payload["plan_schema_version"]
-    ranking_pool = payload["ranking_pool"]
-    if isinstance(dimensions, bool) or dimensions != ROUTING_DIMENSIONS:
-        raise CatalogError(f"namespace {namespace!r} field vector_dimensions must equal {ROUTING_DIMENSIONS}")
-    if isinstance(plan_schema, bool) or plan_schema != PLAN_SCHEMA_VERSION:
-        raise CatalogError(f"namespace {namespace!r} field plan_schema_version must equal {PLAN_SCHEMA_VERSION}")
-    if isinstance(ranking_pool, bool) or not isinstance(ranking_pool, int) or ranking_pool <= 0:
-        raise CatalogError(f"namespace {namespace!r} field ranking_pool must be a positive integer")
+    dimensions = _require_exact_int(
+        payload["vector_dimensions"],
+        field="vector_dimensions",
+        namespace=namespace,
+        expected=ROUTING_DIMENSIONS,
+    )
+    plan_schema = _require_exact_int(
+        payload["plan_schema_version"],
+        field="plan_schema_version",
+        namespace=namespace,
+        expected=PLAN_SCHEMA_VERSION,
+    )
+    ranking_pool = _require_exact_int(
+        payload["ranking_pool"], field="ranking_pool", namespace=namespace, positive=True
+    )
     if payload["routing_model"] != ROUTING_MODEL or payload["routing_model_revision"] != ROUTING_MODEL_REVISION:
         raise CatalogError(f"namespace {namespace!r} has an incompatible routing model contract")
     vector = validate_vector(payload["vector"], namespace=namespace)
@@ -372,16 +493,25 @@ def parse_card(payload: object) -> NamespaceCard:
         raise CatalogError(f"namespace {namespace!r} field semantic_hash is stale or invalid")
     if payload["vector_hash"] != vector_hash(vector):
         raise CatalogError(f"namespace {namespace!r} field vector_hash is stale or invalid")
+    last_plan_id, last_apply_id = _validate_lineage(
+        semantic_origin=semantic_origin,
+        last_plan_id=payload["last_plan_id"],
+        last_apply_id=payload["last_apply_id"],
+        namespace=namespace,
+        persisted=persisted,
+    )
     card = NamespaceCard(
         namespace=namespace,
         enabled=enabled,
         created_at=_validate_utc(payload["created_at"], field="created_at", namespace=namespace),
         updated_at=_validate_utc(payload["updated_at"], field="updated_at", namespace=namespace),
         card_revision=_require_string(payload["card_revision"], field="card_revision", namespace=namespace),
-        last_plan_id=_require_optional_id(payload["last_plan_id"], field="last_plan_id", namespace=namespace),
-        last_apply_id=_require_optional_id(payload["last_apply_id"], field="last_apply_id", namespace=namespace),
+        last_plan_id=last_plan_id,
+        last_apply_id=last_apply_id,
         source_kind=source_kind,
-        source_uri=_validate_source_uri(payload["source_uri"], namespace=namespace),
+        source_uri=_validate_source_uri(
+            payload["source_uri"], namespace=namespace, source_kind=source_kind
+        ),
         site_id=_require_string(payload["site_id"], field="site_id", namespace=namespace),
         title=title,
         summary=str(payload["summary"]),
@@ -391,8 +521,8 @@ def parse_card(payload: object) -> NamespaceCard:
         region=_require_string(payload["region"], field="region", namespace=namespace),
         embedding_model=_require_string(payload["embedding_model"], field="embedding_model", namespace=namespace),
         embedding_precision=embedding_precision,
-        vector_dimensions=ROUTING_DIMENSIONS,
-        plan_schema_version=PLAN_SCHEMA_VERSION,
+        vector_dimensions=dimensions,
+        plan_schema_version=plan_schema,
         ranking_mode=ranking_mode,
         ranking_profile=ranking_profile,
         ranking_pool=ranking_pool,
@@ -412,8 +542,9 @@ def parse_catalog(payload: object) -> CatalogDocument:
     if not isinstance(payload, dict):
         raise CatalogError("catalog document must be a JSON object")
     _require_exact_fields(payload, DOCUMENT_FIELDS, label="catalog document")
-    if payload["schema_version"] != CATALOG_SCHEMA_VERSION or isinstance(payload["schema_version"], bool):
-        raise CatalogError(f"catalog field schema_version must equal {CATALOG_SCHEMA_VERSION}")
+    _require_exact_int(
+        payload["schema_version"], field="schema_version", expected=CATALOG_SCHEMA_VERSION
+    )
     cards_raw = payload["cards"]
     if not isinstance(cards_raw, list):
         raise CatalogError("catalog field cards must be an array")
@@ -534,13 +665,13 @@ def load_routing_embedder() -> RoutingEmbedder:
     return _SentenceTransformerRoutingEmbedder()
 
 
-def validate_card_fields(fields: CardFields) -> CardFields:
+def validate_card_fields(fields: CardFields, *, persisted: bool = True) -> CardFields:
     namespace = _require_string(fields.namespace, field="namespace")
     if not isinstance(fields.enabled, bool):
         raise CatalogError(f"namespace {namespace!r} field enabled must be a boolean")
     if fields.source_kind not in SOURCE_KINDS:
         raise CatalogError(f"namespace {namespace!r} field source_kind is unsupported")
-    _validate_source_uri(fields.source_uri, namespace=namespace)
+    _validate_source_uri(fields.source_uri, namespace=namespace, source_kind=fields.source_kind)
     _require_string(fields.site_id, field="site_id", namespace=namespace)
     title = _require_string(fields.title, field="title", namespace=namespace).strip()
     summary = _require_string(fields.summary, field="summary", namespace=namespace).strip()
@@ -554,14 +685,24 @@ def validate_card_fields(fields: CardFields) -> CardFields:
     _require_string(fields.embedding_model, field="embedding_model", namespace=namespace)
     if fields.embedding_precision not in EMBEDDING_PRECISIONS:
         raise CatalogError(f"namespace {namespace!r} field embedding_precision is unsupported")
-    if fields.plan_schema_version != PLAN_SCHEMA_VERSION or isinstance(fields.plan_schema_version, bool):
-        raise CatalogError(f"namespace {namespace!r} field plan_schema_version must equal {PLAN_SCHEMA_VERSION}")
+    _require_exact_int(
+        fields.plan_schema_version,
+        field="plan_schema_version",
+        namespace=namespace,
+        expected=PLAN_SCHEMA_VERSION,
+    )
     if fields.ranking_mode not in RANKING_MODES or fields.ranking_profile not in RANKING_PROFILES or fields.ranking_aggregation not in RANKING_AGGREGATIONS:
         raise CatalogError(f"namespace {namespace!r} has an unsupported ranking contract")
-    if isinstance(fields.ranking_pool, bool) or not isinstance(fields.ranking_pool, int) or fields.ranking_pool <= 0:
-        raise CatalogError(f"namespace {namespace!r} field ranking_pool must be a positive integer")
-    _require_optional_id(fields.last_plan_id, field="last_plan_id", namespace=namespace)
-    _require_optional_id(fields.last_apply_id, field="last_apply_id", namespace=namespace)
+    _require_exact_int(
+        fields.ranking_pool, field="ranking_pool", namespace=namespace, positive=True
+    )
+    _validate_lineage(
+        semantic_origin=fields.semantic_origin,
+        last_plan_id=fields.last_plan_id,
+        last_apply_id=fields.last_apply_id,
+        namespace=namespace,
+        persisted=persisted,
+    )
     return replace(fields, namespace=namespace, title=title, summary=summary, aliases=aliases, tags=tags)
 
 
@@ -572,9 +713,36 @@ def prepare_card(
     embedder: RoutingEmbedder | None = None,
     now: str | None = None,
 ) -> NamespaceCard:
-    """Build a fully validated card, reusing a compatible unchanged projection."""
+    """Build a persisted card, reusing a compatible unchanged projection."""
 
-    fields = validate_card_fields(fields)
+    return _prepare_card(
+        fields, existing=existing, embedder=embedder, now=now, persisted=True
+    )
+
+
+def prepare_prospective_card(
+    fields: CardFields,
+    *,
+    existing: NamespaceCard | None = None,
+    embedder: RoutingEmbedder | None = None,
+    now: str | None = None,
+) -> NamespaceCard:
+    """Build non-persistable apply-precompute data with plan but no apply ID."""
+
+    return _prepare_card(
+        fields, existing=existing, embedder=embedder, now=now, persisted=False
+    )
+
+
+def _prepare_card(
+    fields: CardFields,
+    *,
+    existing: NamespaceCard | None,
+    embedder: RoutingEmbedder | None,
+    now: str | None,
+    persisted: bool,
+) -> NamespaceCard:
+    fields = validate_card_fields(fields, persisted=persisted)
     timestamp = now or utc_now()
     semantic_hash = semantic_hash_for_fields(
         title=fields.title, summary=fields.summary, aliases=fields.aliases, tags=fields.tags
@@ -632,7 +800,7 @@ def prepare_card(
         vector_hash=vector_hash(vector),
     )
     card = replace(provisional, card_revision=card_revision(provisional))
-    return parse_card(card_to_dict(card, include_vector=True))
+    return _parse_card(card_to_dict(card, include_vector=True), persisted=persisted)
 
 
 def merge_system_card(existing: NamespaceCard | None, incoming: NamespaceCard) -> NamespaceCard:
@@ -726,11 +894,18 @@ def generated_semantics(
 ) -> GeneratedSemantics:
     """Derive deterministic generated semantics from verified plan/source metadata."""
 
-    if plan_schema_version != PLAN_SCHEMA_VERSION:
-        raise CatalogError(f"unsupported plan schema version {plan_schema_version!r}")
+    _require_exact_int(
+        plan_schema_version,
+        field="plan_schema_version",
+        namespace="generated-card",
+        expected=PLAN_SCHEMA_VERSION,
+    )
     uri = _validate_source_uri(base_url, namespace="generated-card")
     site = _require_string(site_id, field="site_id")
     metadata = list(source_metadata)
+    for item in metadata:
+        if "source_kind" in item and not isinstance(item["source_kind"], str):
+            raise CatalogError("verified source metadata field source_kind must be a string")
     kinds = {
         str(item["source_kind"]).strip()
         for item in metadata
