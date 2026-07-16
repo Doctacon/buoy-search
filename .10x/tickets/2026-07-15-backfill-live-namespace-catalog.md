@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: None
@@ -50,3 +50,7 @@ None. User ratified read-only remote inventory and local registration in the cur
 ## Progress and notes
 
 - 2026-07-15: Reproduced empty `.turbo-search/catalog.json`; inspected verified Oscilar DuckDB state and current plan. User selected read-only remote inventory over Oscilar-only or all-local backfill.
+
+- 2026-07-15: Read-only inventory returned four live IDs in `gcp-us-central1`. Pre-mutation match table `.10x/evidence/.storage/2026-07-15-live-namespace-catalog-backfill-match.json` proposes two registrations (Dagster benchmark and Oscilar), excludes two live IDs with local state but incomplete canonical compatibility provenance, and identifies 58 historical local-only IDs. No catalog mutation had occurred at this checkpoint.
+- 2026-07-15: Locally registered the two fully supported cards with the API key removed from each mutation process. Catalog revision is `cd77c5ce97dd7f8df82b191b9e534d0c5535c7fa5224ef81edcbacb7732b01e6`; both vectors validate at 384 dimensions and unit norm.
+- 2026-07-15: The exact Oscilar dry route succeeded locally with no credentials/API calls and selected `site-oscilar-com-v1` first, followed by the Dagster benchmark. Evidence: `.10x/evidence/2026-07-15-live-namespace-catalog-backfill.md`. Ticket remains active for independent review and closure.
