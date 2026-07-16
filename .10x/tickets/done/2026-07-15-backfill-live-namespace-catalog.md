@@ -1,4 +1,4 @@
-Status: active
+Status: done
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: None
@@ -54,3 +54,17 @@ None. User ratified read-only remote inventory and local registration in the cur
 - 2026-07-15: Read-only inventory returned four live IDs in `gcp-us-central1`. Pre-mutation match table `.10x/evidence/.storage/2026-07-15-live-namespace-catalog-backfill-match.json` proposes two registrations (Dagster benchmark and Oscilar), excludes two live IDs with local state but incomplete canonical compatibility provenance, and identifies 58 historical local-only IDs. No catalog mutation had occurred at this checkpoint.
 - 2026-07-15: Locally registered the two fully supported cards with the API key removed from each mutation process. Catalog revision is `cd77c5ce97dd7f8df82b191b9e534d0c5535c7fa5224ef81edcbacb7732b01e6`; both vectors validate at 384 dimensions and unit norm.
 - 2026-07-15: The exact Oscilar dry route succeeded locally with no credentials/API calls and selected `site-oscilar-com-v1` first, followed by the Dagster benchmark. Evidence: `.10x/evidence/2026-07-15-live-namespace-catalog-backfill.md`. Ticket remains active for independent review and closure.
+
+- 2026-07-15: Independent local-only review passed. Review: `.10x/reviews/2026-07-15-live-namespace-catalog-backfill-review.md`.
+
+## Closure mapping
+
+- Read-only inventory: four live IDs recorded without credentials.
+- Provenance match: two registered, two deliberately excluded, 58 historical local-only.
+- Canonical catalog: two enabled validated cards at revision `cd77c5ce97dd7f8df82b191b9e534d0c5535c7fa5224ef81edcbacb7732b01e6`.
+- User reproduction: exact dry route succeeds and ranks `site-oscilar-com-v1` first without credentials or remote calls.
+- Review: pass; remote audit-log limitation retained explicitly.
+
+## Retrospective
+
+Prospective registration is not operational migration. When a new local authority is introduced over pre-existing remote resources, delivery must either include a provenance-safe backfill or explicitly state that the catalog starts empty. The backfill preserved the stricter rule: live existence alone never supplies semantic or compatibility authority.
