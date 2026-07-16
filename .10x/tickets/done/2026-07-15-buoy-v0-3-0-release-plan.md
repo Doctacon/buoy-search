@@ -1,6 +1,6 @@
-Status: open
+Status: done
 Created: 2026-07-15
-Updated: 2026-07-15
+Updated: 2026-07-16
 Parent: None
 Depends-On: None
 
@@ -15,7 +15,7 @@ Release the integrated production semantic-routing work as GitHub-only Buoy v0.3
 1. `.10x/tickets/done/2026-07-15-prepare-buoy-v0-3-0.md`
 2. `.10x/tickets/done/2026-07-15-promote-develop-to-main-for-v0-3-0.md`
 3. `.10x/tickets/done/2026-07-15-create-buoy-v0-3-0-github-release.md`
-4. `.10x/tickets/2026-07-15-finalize-buoy-v0-3-0-changelog.md`
+4. `.10x/tickets/done/2026-07-15-finalize-buoy-v0-3-0-changelog.md`
 
 Children are strictly sequential. The parent is not executable.
 
@@ -49,3 +49,19 @@ Children are strictly sequential. The parent is not executable.
 - 2026-07-15: Main promotion completed through protected ancestry-sync PR #23 and merge-commit release PR #22. Main is `595d157`; release publication child is unblocked.
 
 - 2026-07-16: Annotated v0.3.0 and GitHub Release completed with verified assets/provenance and passing independent review. Changelog finalization child is unblocked.
+
+- 2026-07-16: Final changelog PR #26 passed review/checks and integrated to develop as `ef7b554`. All four children and aggregate acceptance criteria are technically satisfied; parent remains open pending final graph review and closure reconciliation.
+
+- 2026-07-16: Holistic closure review passed after all four children integrated: `.10x/reviews/2026-07-16-buoy-v0-3-0-release-closure-review.md`.
+
+## Closure mapping
+
+- Preparation: 0.3.0 metadata, complete pending changelog, retained aliases through 0.3, local/hosted validation, and independent review.
+- Promotion: protected ancestry-only PR #23 and merge-commit release PR #22 produced main `595d157177bd032c20cf6e6c0112ee6b43212a88` with required checks and reviews.
+- Publication: annotated tag object `21a8d122151711a863dfb63d356baebbddca8d45`, approval-gated run `29538957482`, Release `355388511`, exact wheel/sdist digests, and verified SLSA provenance.
+- Finalization: PR #26 integrated the authoritative release date/link and advanced the Unreleased comparison on develop.
+- Boundaries: no PyPI, protection weakening, force push, tag overwrite, source mutation outside governed PRs, or Turbopuffer operation.
+
+## Retrospective
+
+Key durable lessons are already captured in child records: derive changelogs from the full prior-tag range; test compatibility schedule text precisely; use a protected ancestry-only merge PR when update-branch cannot mutate a protected head; durably record harness reviews with their actual pre-merge chronology; distinguish tag push from environment-gated publication; and date temporal evidence from authoritative hosted events. The Node 24 action warning already has owner `.10x/tickets/2026-07-14-update-node24-github-actions.md`. No additional follow-up is required.
