@@ -233,6 +233,7 @@ def resolve_catalog_path(
     explicit_catalog: str | Path | None,
     *,
     environ: Mapping[str, str] | None = None,
+    state_root: Path | None = None,
 ) -> tuple[Path, str | None]:
     """Resolve CLI, environment, then implicit state-root catalog precedence."""
 
@@ -247,6 +248,8 @@ def resolve_catalog_path(
         if not value.strip():
             raise CatalogError(f"{CATALOG_ENV} must contain a non-whitespace path")
         return Path(value).expanduser(), None
+    if state_root is not None:
+        return Path(state_root) / "catalog.json", None
     try:
         state_root, warning = resolve_state_root(None)
     except AppliedStateError as exc:
@@ -385,7 +388,7 @@ def _validate_source_uri(
             raise CatalogError(f"namespace {namespace!r} field source_uri has an invalid port")
         _validate_http_hostname(parsed.hostname, namespace=namespace)
         return uri
-    if parsed.scheme == "file" and source_kind in {None, "document"}:
+    if parsed.scheme in {"file", "pdf"} and source_kind in {None, "document"}:
         if (
             not parsed.netloc
             or parsed.path not in {"", "/"}
@@ -397,10 +400,11 @@ def _validate_source_uri(
             or re.fullmatch(r"[A-Za-z0-9._~-]+", parsed.netloc) is None
         ):
             raise CatalogError(
-                f"namespace {namespace!r} field source_uri must be a supported file://<source-id> URI"
+                f"namespace {namespace!r} field source_uri must be a supported "
+                "file://<source-id> or pdf://<source-id> URI"
             )
         return uri
-    allowed = "HTTP(S)" if source_kind in {"website", "github_repo"} else "HTTP(S) or file"
+    allowed = "HTTP(S)" if source_kind in {"website", "github_repo"} else "HTTP(S), file, or pdf"
     raise CatalogError(
         f"namespace {namespace!r} field source_uri uses unsupported scheme {parsed.scheme!r}; "
         f"{source_kind or 'generated source'} requires {allowed}"
@@ -428,6 +432,12 @@ def validate_vector(value: object, *, namespace: str) -> list[float]:
 
 def parse_card(payload: object) -> NamespaceCard:
     return _parse_card(payload, persisted=True)
+
+
+def parse_prospective_card(payload: object) -> NamespaceCard:
+    """Validate an apply-precomputed card with plan but no committed apply ID."""
+
+    return _parse_card(payload, persisted=False)
 
 
 def _parse_card(payload: object, *, persisted: bool) -> NamespaceCard:
@@ -923,14 +933,17 @@ def generated_semantics(
             raise CatalogError("github_repo metadata contradicts the verified repository-root base_url")
         source_kind = "github_repo"
     elif raw_kind in {"pdf", "local_file"}:
-        if parsed.scheme != "file":
-            raise CatalogError(f"{raw_kind} metadata contradicts the verified non-file base_url")
+        expected_scheme = "pdf" if raw_kind == "pdf" else "file"
+        if parsed.scheme != expected_scheme:
+            raise CatalogError(
+                f"{raw_kind} metadata contradicts the verified non-{expected_scheme} base_url"
+            )
         source_kind = "document"
     elif github is not None:
         source_kind = "github_repo"
     elif parsed.scheme in {"http", "https"} and parsed.hostname:
         source_kind = "website"
-    elif parsed.scheme == "file" and (parsed.netloc or parsed.path.startswith("/")):
+    elif parsed.scheme in {"file", "pdf"} and parsed.netloc:
         source_kind = "document"
     else:
         raise CatalogError(f"unsupported verified source URI {uri!r}")

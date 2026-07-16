@@ -24,7 +24,7 @@ Apply MUST add `--region REGION` with the same override meaning as namespace dis
 
 These apply-resolved values MUST be included in preflight output, pending-artifact integrity, and the committed card. They are not falsely described as verified-plan fields.
 
-Source mapping MUST follow the complete table and contradiction rules in the catalog specification. Existing schema-v1 plans without source metadata use verified `base_url`: a valid `github.com/<owner>/<repo>` repository root becomes `github_repo` with full name from the URL; other HTTP(S) becomes `website`; and supported `file:` document plans become `document`. This preserves old-plan approved apply without guessing from namespace ID. An unsupported or contradictory URI remains an existing plan-verification error rather than a catalog-only reinterpretation.
+Source mapping MUST follow the complete table and contradiction rules in the catalog specification. Existing schema-v1 plans without source metadata use verified `base_url`: a valid `github.com/<owner>/<repo>` repository root becomes `github_repo` with full name from the URL; other HTTP(S) becomes `website`; and supported canonical `file://<source-id>` or current source-backed `pdf://<source-id>` document plans become `document`. A PDF filename comes only from verified `pdf_filename`, never the opaque URI. This preserves old-plan approved apply without guessing from namespace ID. An unsupported or contradictory URI remains an existing plan-verification error rather than a catalog-only reinterpretation.
 
 `catalog upsert` is the sole manual semantic-edit path. Plan/apply add no catalog-title/summary/alias/tag flags. Apply always uses preserved existing manual semantics or deterministic generated defaults.
 
@@ -62,7 +62,7 @@ Before reading `TURBOPUFFER_API_KEY`, constructing a Turbopuffer client, or writ
 - load the pinned local-only routing model;
 - reuse or compute its normalized card vector;
 - atomically create the pending registration artifact;
-- bind `pending_schema_version=1`, normalized absolute catalog path, normalized state root, exact applied-state database path, site ID, namespace, plan ID, prospective card, prior catalog/card revisions, apply-resolved region/ranking contract, `remote_apply_confirmed=false`, and a compact canonical payload hash;
+- bind `pending_schema_version=1`, normalized absolute catalog path, normalized state root, exact applied-state database path, site ID, namespace, plan ID, prospective card, prior catalog/card revisions, the exact prior applied plan/apply identity (or both null on first apply), apply-resolved region/ranking contract, `remote_apply_confirmed=false`, and a compact canonical payload hash;
 - exclude credentials, chunk content, query text, and secrets.
 
 A failure in this phase MUST abort with no remote or catalog mutation. The pending file MUST be atomically written and may remain for diagnosis; it MUST be marked `remote_apply_confirmed=false` and MUST NOT be reconcilable or automatically replaced.
@@ -95,7 +95,7 @@ The committed card MUST retain the successful `plan_id` and `apply_id`.
 
 ## Post-apply catalog commit failure
 
-A catalog lock, disk, conflict, or atomic-save failure after remote/apply-state success is a **partial success**, not a rollback of remote data.
+A pending-confirmation write, catalog lock, disk, conflict, or atomic-save failure after remote/applied-state success is a **partial success**, not a rollback of remote data. If pending confirmation itself fails, the still-valid unconfirmed artifact plus its prior applied-state identity MUST remain locally recoverable: reconciliation MAY promote it only when the exact bound applied-state database proves a new matching successful plan/apply identity distinct from the bound prior identity. This is not the indeterminate unconfirmed-remote-failure case.
 
 The command MUST:
 
@@ -115,12 +115,12 @@ It MUST NOT retry remote writes automatically.
 
 1. read no credentials and contact no remote service;
 2. normalize paths; require pending to be a regular non-symlink file directly under the bound resolved `catalog-pending` root; require supplied catalog path to equal the normalized target bound in the payload;
-3. validate pending schema/hash and require `remote_apply_confirmed=true`;
-4. acquire the bound namespace lock, then load applied state from the exact bound database path and require matching site ID, namespace, plan ID, and apply ID;
+3. validate pending schema/hash and require `remote_apply_confirmed=true`, except that a valid unconfirmed artifact MAY continue only for interrupted-confirmation recovery when step 4 proves a new matching applied-state success distinct from its bound prior identity;
+4. acquire the bound namespace lock, then load applied state from the exact bound database path and require matching site ID, namespace, plan ID, and apply ID; for the narrow interrupted-confirmation exception, derive the final apply ID only from that exact applied state;
 5. apply the same current manual-semantic/enabled preservation merge under the catalog lock;
 6. be idempotent when the exact card revision is already committed;
 7. remove only the validated pending artifact and only after successful/idempotent catalog completion;
-8. clearly reject stale, unconfirmed, mismatched, tampered, symlinked, out-of-root, or superseded pending state.
+8. clearly reject stale, indeterminate-unconfirmed, mismatched, tampered, symlinked, out-of-root, or superseded pending state.
 
 A successful reconciliation MUST report local-only completion and leave remote/applied state untouched.
 
@@ -177,7 +177,7 @@ Given pending card preparation succeeded but remote apply fails, then the catalo
 
 ### Local post-apply failure
 
-Given remote apply and applied state succeed but catalog save fails, then the command reports partial success, retains one confirmed pending artifact, gives the exact repair command, and performs no second remote write.
+Given remote apply and applied state succeed but pending confirmation or catalog save fails, then the command reports partial success, retains one recoverable pending artifact, gives the exact repair command, and performs no second remote write. A confirmation-write failure may leave the artifact unconfirmed only when its bound prior identity plus exact applied state safely prove the new success during reconciliation.
 
 ### Reconcile
 

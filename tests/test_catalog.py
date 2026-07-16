@@ -493,12 +493,12 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
         )
         self.assertEqual((website.source_kind, website.title, website.tags), ("website", "docs.example.com", ["website"]))
 
-        for raw_kind, filename_key, filename in (
-            ("pdf", "pdf_filename", "Research Notes.pdf"),
-            ("local_file", "file_filename", "Research Notes.csv"),
+        for raw_kind, filename_key, filename, base_url in (
+            ("pdf", "pdf_filename", "Research Notes.pdf", "pdf://opaque-source-id"),
+            ("local_file", "file_filename", "Research Notes.csv", "file://opaque-source-id"),
         ):
             document = generated_semantics(
-                base_url="file://opaque-source-id",
+                base_url=base_url,
                 site_id="stable-site-id",
                 plan_schema_version=1,
                 source_metadata=[{"source_kind": raw_kind, filename_key: filename}],
@@ -530,6 +530,8 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
             ("document", "ftp://example.com/file.pdf", "unsupported scheme"),
             ("document", "file://", "supported file"),
             ("document", "file://source/path", "supported file"),
+            ("document", "pdf://", "supported file"),
+            ("document", "pdf://source/path", "supported file"),
         )
         for source_kind, source_uri, message in invalid:
             with self.subTest(source_uri=source_uri), self.assertRaisesRegex(CatalogError, message):
@@ -542,6 +544,7 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
             ("website", "https://docs.example.com:8443/path"),
             ("document", "https://example.com/document.pdf"),
             ("document", "file://stable-source-id"),
+            ("document", "pdf://stable-source-id"),
         ):
             with self.subTest(valid=source_uri):
                 card = prepare_card(
@@ -554,10 +557,11 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
         cases = [
             ({"base_url": "https://example.com", "source_metadata": [{"source_kind": "github_repo"}]}, "contradicts"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": "pdf"}, {"source_kind": "local_file"}]}, "contradictory source_kind"),
+            ({"base_url": "file://source", "source_metadata": [{"source_kind": "pdf", "pdf_filename": "a.pdf"}]}, "non-pdf"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": "video"}]}, "unsupported"),
             ({"base_url": "https://github.com/a/b", "source_metadata": [{"source_kind": "github_repo", "repo_full_name": "a/c"}]}, "contradicts"),
-            ({"base_url": "file://source", "source_metadata": [{"source_kind": "pdf", "pdf_filename": "a.pdf"}, {"source_kind": "pdf", "pdf_filename": "b.pdf"}]}, "contradictory pdf_filename"),
-            ({"base_url": "file://source", "source_metadata": [{"source_kind": "pdf"}]}, "requires one consistent.*pdf_filename"),
+            ({"base_url": "pdf://source", "source_metadata": [{"source_kind": "pdf", "pdf_filename": "a.pdf"}, {"source_kind": "pdf", "pdf_filename": "b.pdf"}]}, "contradictory pdf_filename"),
+            ({"base_url": "pdf://source", "source_metadata": [{"source_kind": "pdf"}]}, "requires one consistent.*pdf_filename"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": "local_file"}]}, "requires one consistent.*file_filename"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": 1}]}, "source_kind must be a string"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": None}]}, "source_kind must be a string"),
