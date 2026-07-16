@@ -11,7 +11,7 @@ Verdict: pass
 Independent adversarial review of the replacement for the cancelled five-stage synthetic routing pilot:
 
 - `.10x/specs/representative-semantic-namespace-routing-experiment.md`
-- `.10x/tickets/2026-07-15-run-representative-semantic-routing-experiment.md`
+- `.10x/tickets/done/2026-07-15-run-representative-semantic-routing-experiment.md`
 - superseded synthetic specs and cancelled synthetic tickets
 - the terminal research parent and repaired record references
 

@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-15
 Updated: 2026-07-15
-Relates-To: .10x/tickets/2026-07-15-run-representative-semantic-routing-experiment.md, .10x/specs/representative-semantic-namespace-routing-experiment.md
+Relates-To: .10x/tickets/done/2026-07-15-run-representative-semantic-routing-experiment.md, .10x/specs/representative-semantic-namespace-routing-experiment.md
 
 # Representative Semantic Routing Experiment
 
