@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-07-15
 Updated: 2026-07-15
-Parent: .10x/tickets/2026-07-15-production-semantic-routing-plan.md
+Parent: .10x/tickets/done/2026-07-15-production-semantic-routing-plan.md
 Depends-On: None
 
 # Build Production Local Namespace Catalog

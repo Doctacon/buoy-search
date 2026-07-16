@@ -1,7 +1,7 @@
-Status: blocked
+Status: done
 Created: 2026-07-15
 Updated: 2026-07-15
-Parent: .10x/tickets/2026-07-15-production-semantic-routing-plan.md
+Parent: .10x/tickets/done/2026-07-15-production-semantic-routing-plan.md
 Depends-On: .10x/tickets/done/2026-07-15-integrate-approved-apply-catalog-registration.md
 
 # Add Automatic Production Namespace Routing
@@ -56,8 +56,23 @@ Evidence must prove argument and fail-closed boundaries, eligibility-before-scor
 
 ## Blockers
 
-Blocked until `.10x/tickets/done/2026-07-15-integrate-approved-apply-catalog-registration.md` is reviewed, closed, and integrated into `develop`.
+None. Dependency `.10x/tickets/done/2026-07-15-integrate-approved-apply-catalog-registration.md` is reviewed, closed, and integrated at develop commit `ac6a3ca`.
 
 ## Progress and notes
 
 - 2026-07-15: Opened as the final sequential child; no implementation occurred.
+- 2026-07-15: Marked active after dependency integration at develop commit `ac6a3ca`; implementation started on `work/add-automatic-production-namespace-routing`.
+- 2026-07-15: Implemented opt-in automatic routing with bounded CLI/catalog-path semantics, enabled/runtime compatibility gating before exact lexical and persisted-vector semantic scoring, equal `RRF_K=60` hybrid fusion, local-only routed preview, route-ordered existing multi-namespace live handoff, per-card ranking plus field/global overrides, routed output metadata/redaction, and fail-closed stage attribution. Added focused fake/sentinel coverage and retrieval documentation. Focused tests passed (124), full suite passed (362), compilation and `git diff --check` passed. Evidence: `.10x/evidence/2026-07-15-automatic-production-namespace-routing-implementation.md`. Ticket remains active pending independent review.
+- 2026-07-15: Applied only the two minor review fixes: restored explicit retrieval's missing-namespace-before-empty-query error precedence while retaining auto-route query validation, and added credential-read sentinels for missing/corrupt catalog and missing route-model live failures. Focused tests passed (125), full suite passed (363), compilation and `git diff --check` passed. Evidence updated; ticket remains active pending review.
+
+- 2026-07-15: Minor compatibility/sentinel findings were corrected in `ab2d89f`; final and holistic reviews passed. Review: `.10x/reviews/2026-07-15-automatic-production-semantic-routing-review.md`.
+
+## Closure mapping
+
+- Activation, eligibility, algorithms, dry/live safety, route handoff, ranking overrides, output, and failures map to focused tests/evidence.
+- 125 focused and 363 full-suite tests, compilation, and diff checks passed.
+- No excluded remote catalog/ACL/taxonomy/graph/telemetry behavior was added.
+
+## Retrospective
+
+Opt-in routing can preserve legacy behavior only when argument error precedence and credential-read boundaries are tested directly. Those regressions now have focused sentinels. Live quality remains user-judged by explicit design.

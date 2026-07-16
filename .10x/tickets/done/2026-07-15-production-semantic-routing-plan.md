@@ -1,4 +1,4 @@
-Status: open
+Status: done
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: None
@@ -50,7 +50,7 @@ The user intends to judge quality through frequent live personal use. This autho
 
 1. `.10x/tickets/done/2026-07-15-build-production-local-namespace-catalog.md`
 2. `.10x/tickets/done/2026-07-15-integrate-approved-apply-catalog-registration.md`
-3. `.10x/tickets/2026-07-15-add-automatic-production-namespace-routing.md`
+3. `.10x/tickets/done/2026-07-15-add-automatic-production-namespace-routing.md`
 
 The sequence is intentionally linear. All three touch CLI/state contracts, and later children must build on the integrated reviewed API rather than duplicate it across parallel worktrees.
 
@@ -84,3 +84,17 @@ None for the first child after this specification set passes independent shaping
 - 2026-07-15: Local catalog child completed with passing independent review; implementation commits `f8a89dd` and `e13d3e1`. Apply registration remains blocked until this branch integrates into `develop`.
 
 - 2026-07-15: Approved apply catalog registration child completed with passing independent review; commits `0ea4571` and `e7a8170`. Automatic routing remains blocked until integration.
+
+- 2026-07-15: Automatic production routing completed in `e823aba` and `ab2d89f`; holistic review passed and confirmed all aggregate acceptance criteria.
+
+## Closure mapping
+
+- Local catalog child: done, independently reviewed, integrated via PR #15.
+- Approved apply registration child: done, independently reviewed, integrated via PR #16.
+- Automatic routing child: done with final holistic pass review in this branch.
+- Catalog authority, persisted vectors, apply staging/recovery, opt-in local preview, live top-three routing, explicit fallback, tests, docs, evidence, and review are coherent.
+- No remote catalog, ACL groups, taxonomy, graph, telemetry, or automatic-default activation was introduced.
+
+## Retrospective
+
+Production delivery required strict persisted types/lineage, source-kind-aware URI handling, namespace-lock lifetime across local/remote phases, truthful partial-success state, identity revalidation before recovery deletion, and explicit legacy CLI/credential regression tests. These lessons are encoded in active specs and tests. No additional follow-up is opened automatically; the user explicitly chose live personal use as the quality judgment path.
