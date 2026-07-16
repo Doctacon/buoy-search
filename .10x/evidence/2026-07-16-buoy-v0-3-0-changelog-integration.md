@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-16
 Updated: 2026-07-16
-Relates-To: .10x/tickets/2026-07-15-finalize-buoy-v0-3-0-changelog.md, .10x/tickets/2026-07-15-buoy-v0-3-0-release-plan.md
+Relates-To: .10x/tickets/done/2026-07-15-finalize-buoy-v0-3-0-changelog.md, .10x/tickets/done/2026-07-15-buoy-v0-3-0-release-plan.md
 
 # Buoy v0.3.0 Changelog Integration
 
