@@ -1,4 +1,4 @@
-Status: blocked
+Status: active
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-buoy-v0-3-0-release-plan.md
@@ -39,9 +39,10 @@ Pre/post commit graph, PR/check URLs, merge method/parents, main push CI, diff s
 
 ## Blockers
 
-GitHub rejected the exact ratified update-branch request for release PR #22 with HTTP 422 because protected `develop` requires changes through a pull request and expects all three required checks. Remote refs did not move. An alternate ancestry-preserving, protection-compliant mechanism must be ratified before execution; direct push, rebase, squash, or branch-protection weakening remain prohibited.
+None for sync-PR preparation. The user explicitly ratified this protection-compliant replacement mechanism: create `release/v0.3.0-sync` from exact remote develop `1441c142dae2f501fd8d7306ab3bf1a9db1532d2`, merge exact remote main `1fa99431de85b9de435250f273919bf2d247d1fc` into it with a merge commit, and open a passing PR from that branch to `develop`. This phase stops before merging either the sync PR or release PR #22. The prior failed update-branch evidence remains authoritative history.
 
 ## Progress and notes
 
 - 2026-07-15: Promotion pre-merge execution started from release-prepared develop `1441c14`; no main merge is authorized in this phase.
 - 2026-07-15: Preflight passed and release PR #22 was opened at exact head `1441c142dae2f501fd8d7306ab3bf1a9db1532d2` against exact main `1fa99431de85b9de435250f273919bf2d247d1fc`. The expected-head-bound update request failed HTTP 422 without moving either ref. Execution stopped per contract. Evidence: `.10x/evidence/2026-07-15-buoy-v0-3-0-promotion-update-branch-blocker.md`.
+- 2026-07-15: User explicitly ratified a dedicated protected sync-PR mechanism. Fresh remote preflight confirmed the required exact refs and no existing sync branch/PR; execution resumed only through sync PR readiness, not merge.
