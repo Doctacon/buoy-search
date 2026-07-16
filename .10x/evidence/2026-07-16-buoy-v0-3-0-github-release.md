@@ -1,6 +1,6 @@
 Status: recorded
-Created: 2026-07-15
-Updated: 2026-07-15
+Created: 2026-07-16
+Updated: 2026-07-16
 Relates-To: .10x/tickets/2026-07-15-create-buoy-v0-3-0-github-release.md, .10x/tickets/2026-07-15-buoy-v0-3-0-release-plan.md
 
 # Buoy v0.3.0 GitHub Release
@@ -48,7 +48,7 @@ Remote main remained `595d157...`; no main/develop/protection mutation was perfo
 5. Waited for validate/build success and exactly one pending environment deployment; rechecked Release absence and approval eligibility; approved only the exact run/commit.
 6. Waited for terminal workflow success; downloaded and hashed assets; inspected package contents/metadata and isolated install behavior; strictly verified provenance; rechecked immutable prior history and no-PyPI state.
 
-Machine-readable observations are in `.10x/evidence/.storage/2026-07-15-buoy-v0-3-0-github-release.json`.
+Machine-readable observations are in `.10x/evidence/.storage/2026-07-16-buoy-v0-3-0-github-release.json`.
 
 ## What this supports
 

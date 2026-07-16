@@ -1,6 +1,6 @@
 Status: active
 Created: 2026-07-15
-Updated: 2026-07-15
+Updated: 2026-07-16
 Parent: .10x/tickets/2026-07-15-buoy-v0-3-0-release-plan.md
 Depends-On: .10x/tickets/done/2026-07-15-promote-develop-to-main-for-v0-3-0.md
 
@@ -44,8 +44,10 @@ None. Main promotion completed and passed review.
 
 ## Progress and notes
 
-- 2026-07-15: Strict preflight passed at exact reviewed main `595d157177bd032c20cf6e6c0112ee6b43212a88`: project/module/lock are 0.3.0; main push CI run `29537732717` passed; promotion evidence agrees; v0.2.0/v0.2.1 tag objects and v0.2.1 Release are preserved; v0.3.0 local/remote tag, Release, and workflow run are absent; PyPI returned 404; the `release` environment requires `Doctacon` review with self-review allowed; exact-main tag/assets dry checks and wheel/sdist metadata/content inspection passed. No external mutation had occurred at this checkpoint.
+- 2026-07-16: Strict preflight passed at exact reviewed main `595d157177bd032c20cf6e6c0112ee6b43212a88`: project/module/lock are 0.3.0; main push CI run `29537732717` passed; promotion evidence agrees; v0.2.0/v0.2.1 tag objects and v0.2.1 Release are preserved; v0.3.0 local/remote tag, Release, and workflow run are absent; PyPI returned 404; the `release` environment requires `Doctacon` review with self-review allowed; exact-main tag/assets dry checks and wheel/sdist metadata/content inspection passed. No external mutation had occurred at this checkpoint.
 
-- 2026-07-15: Created/pushed exact annotated tag object `21a8d122151711a863dfb63d356baebbddca8d45`, verified its peel to reviewed main, and observed the single exact Release run `29538957482`. Validation/build passed before the run waited on exactly one `release` deployment; v0.3.0 Release was absent at that boundary.
-- 2026-07-15: Approved only expected environment `18151168858` for exact run/commit after eligibility revalidation. Deployment `5481277630`, publication job `87756932412`, and the workflow completed successfully.
-- 2026-07-15: Release `355388511` contains exactly the verified 0.3.0 wheel/sdist with matching downloaded/API digests and strict SLSA provenance. Isolated install behavior, prior immutable history, one-run uniqueness, no PyPI, and no Turbopuffer/branch/protection mutation passed. Evidence: `.10x/evidence/2026-07-15-buoy-v0-3-0-github-release.md`. Ticket remains active pending independent review.
+- 2026-07-16: Created/pushed exact annotated tag object `21a8d122151711a863dfb63d356baebbddca8d45`, verified its peel to reviewed main, and observed the single exact Release run `29538957482`. Validation/build passed before the run waited on exactly one `release` deployment; v0.3.0 Release was absent at that boundary.
+- 2026-07-16: Approved only expected environment `18151168858` for exact run/commit after eligibility revalidation. Deployment `5481277630`, publication job `87756932412`, and the workflow completed successfully.
+- 2026-07-16: Release `355388511` contains exactly the verified 0.3.0 wheel/sdist with matching downloaded/API digests and strict SLSA provenance. Isolated install behavior, prior immutable history, one-run uniqueness, no PyPI, and no Turbopuffer/branch/protection mutation passed. Evidence: `.10x/evidence/2026-07-16-buoy-v0-3-0-github-release.md`. Ticket remains active pending independent review.
+
+- 2026-07-16: Corrected release chronology after review: preflight, tag push, hosted workflow approval/publication, verification, evidence recording, and commit occurred on July 16. Renamed temporal evidence and raw storage to `2026-07-16-*` and repaired references. Ticket creation and prior July 15 history remain unchanged; substantive IDs, hosted timestamps, digests, and claims are unchanged. Ticket remains active pending re-review.
