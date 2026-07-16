@@ -1,4 +1,4 @@
-Status: open
+Status: done
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: None
@@ -89,3 +89,24 @@ None.
 ## Progress and notes
 
 - 2026-07-15: Opened after the user accepted the smaller representative-experiment path. This ticket replaces the cancelled five-stage synthetic pilot and is the only executable implementation owner for the first routing-value slice.
+- 2026-07-15: Implemented and ran the bounded evaluator in commit `a15bc686a645d1081f78272058a8da02751ff479`. The guarded cached-model run evaluated all 90 questions across 13 cards. Aggregate MRR / recall@1 / recall@3 / recall@5 were lexical `0.864815 / 0.822222 / 0.911111 / 0.911111`, semantic `0.913246 / 0.877778 / 0.933333 / 0.944444`, and hybrid RRF `0.933153 / 0.900000 / 0.955556 / 0.955556`. Focused tests (14), full suite (288), and `git diff --check` passed. Reproducible inputs, guards, model manifest, commands, side-effect confirmation, and limitations are recorded in `.10x/evidence/2026-07-15-representative-semantic-routing-experiment.md`. Ticket remains active pending the explicitly separate independent adversarial review and metric/provenance inspection; it is not closed or moved.
+- 2026-07-15: Independent review found that the initial semantic/hybrid artifacts did not enforce the specified route fan-out, used hard-coded zero counters instead of factual guard completion, under-covered escape APIs, and omitted source-revealing bias. Corrective commit `d4bef7873c0f281aa1b4d5cc693464234ecf44fa` applies only the accepted fixes and regenerates the pinned guarded run. Every recorded ranking is now top-five before scoring. Corrected MRR / recall@1 / recall@3 / recall@5 / unranked are lexical `0.864815 / 0.822222 / 0.911111 / 0.911111 / 8`, semantic `0.906481 / 0.877778 / 0.933333 / 0.944444 / 5`, and hybrid RRF `0.927778 / 0.900000 / 0.955556 / 0.955556 / 4`; the earlier semantic/hybrid MRR and zero-unranked values are superseded. The artifacts record `79/90` questions with an explicit home title/alias and 11 descriptor-free, cross-home-ambiguous cases. Guards now cover socket sends, process launch/spawn, and additional path mutation; hard-coded counters were replaced with exact coverage, credential/module checks, successful no-violation completion, and equal before/after model manifests. Focused tests (18), full suite (292), independent metric recalculation, and `git diff --check` passed. Ticket remains active and unclosed pending independent re-review.
+
+- 2026-07-15: Two fresh independent re-reviewers passed the corrected implementation. They independently reproduced aggregate and per-repository metrics, verified top-five storage/scoring, inspected hardened guards and benchmark-bias reporting, and found no blocker. Durable review: `.10x/reviews/2026-07-15-representative-semantic-routing-experiment-review.md`.
+
+## Closure mapping
+
+- The bounded evaluator, cards, tracked plan/result/report, and focused tests are committed under the specified experimental boundary.
+- All 13 mapped datasets and 90 questions are present; card/input validation and composite case identity are verified.
+- Oracle, lexical, semantic, and hybrid behavior map to focused tests and independent result recalculation.
+- Pinned offline model identity, input/model manifests, guard configuration/completion, and no-production-change limits are recorded in `.10x/evidence/2026-07-15-representative-semantic-routing-experiment.md`.
+- Eighteen focused and 292 full-suite tests passed; `git diff --check` passed.
+- Initial fan-out and evidence-overclaim findings were corrected and explicitly superseded in evidence rather than hidden.
+- Independent final review verdict is pass with only bounded residual risks.
+- The active specification still matches the implemented route-only experiment and explicitly excludes production routing and graph work.
+
+## Retrospective
+
+Three reusable lessons were extracted to `.10x/knowledge/semantic-routing-evaluation-lessons.md`: apply route limits before every rank-derived metric, distinguish configured guards from observed activity, and quantify source-name exposure before interpreting semantic-routing results.
+
+No production or benchmark follow-up is opened automatically. The result has no ratified promotion threshold, 79/90 questions reveal the home source, alternatives are unlabeled, and no product integration seam is approved. Any human-reviewed benchmark or production-routing slice requires new user ratification rather than widening this completed experiment.

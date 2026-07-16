@@ -69,7 +69,7 @@ Every child must:
 
 ## Blockers
 
-None for the four completed research investigations. The user ratified the representative routing experiment on 2026-07-15, and `.10x/tickets/2026-07-15-run-representative-semantic-routing-experiment.md` now owns that bounded implementation. Production integration, tag semantics, and graph work remain outside that ticket and require later evidence and ratification.
+None for the four completed research investigations. The user ratified the representative routing experiment on 2026-07-15, and `.10x/tickets/done/2026-07-15-run-representative-semantic-routing-experiment.md` now owns that bounded implementation. Production integration, tag semantics, and graph work remain outside that ticket and require later evidence and ratification.
 
 ## Progress and notes
 
@@ -80,7 +80,7 @@ None for the four completed research investigations. The user ratified the repre
 - 2026-07-15: The multi-hop/global retrieval child research completed after a final pass review; its ticket is `.10x/tickets/done/2026-07-15-research-data-vault-multi-hop-global-retrieval.md` and its research record is `.10x/research/2026-07-15-data-vault-multi-hop-global-retrieval.md`. Aggregate architecture synthesis and implementation remain blocked until all four findings are available, reconciled, and user-ratified.
 - 2026-07-15: User corrected the workstream premise: Data Vault was only an analogy for concepts and relationships. Renamed this active parent plan, repaired graph references, and adopted `.10x/decisions/data-vault-is-analogy-not-architecture.md`. No Data Vault implementation, schema, warehouse, or loading process is in scope.
 - 2026-07-15: User approved the synthesized next phase: semantic namespace cards, a controlled taxonomy, exact/semantic/hybrid offline routing, current RRF as downstream control, and evidence before graph work. Created the now-superseded focused specs and the now-cancelled non-executable plan `.10x/tickets/cancelled/2026-07-15-semantic-routing-offline-pilot-plan.md`. Implementation was intentionally deferred from that specification-authoring turn.
-- 2026-07-15: Holistic review found the five-stage synthetic plan too framework-heavy to establish product value. The user accepted the recommended smaller path. Superseded the three synthetic pilot specs, cancelled the parent and five unimplemented children, activated `.10x/specs/representative-semantic-namespace-routing-experiment.md`, and opened the single executable owner `.10x/tickets/2026-07-15-run-representative-semantic-routing-experiment.md`. No experiment implementation occurred in this shaping turn.
+- 2026-07-15: Holistic review found the five-stage synthetic plan too framework-heavy to establish product value. The user accepted the recommended smaller path. Superseded the three synthetic pilot specs, cancelled the parent and five unimplemented children, activated `.10x/specs/representative-semantic-namespace-routing-experiment.md`, and opened the single executable owner `.10x/tickets/done/2026-07-15-run-representative-semantic-routing-experiment.md`. No experiment implementation occurred in this shaping turn.
 
 
 ## Closure mapping
@@ -89,7 +89,7 @@ None for the four completed research investigations. The user ratified the repre
 - The namespace, tagging, concept-graph, and multi-hop findings exist as focused research records.
 - `.10x/decisions/data-vault-is-analogy-not-architecture.md` reconciles the principal cross-track terminology conflict.
 - `.10x/reviews/2026-07-15-holistic-semantic-routing-workstream-review.md` provides the aggregate synthesis and rejects premature graph and synthetic-framework implementation.
-- The user ratified only the subsequent bounded representative experiment, now owned independently by `.10x/tickets/2026-07-15-run-representative-semantic-routing-experiment.md`; it is not a child or unfinished outcome of this research plan.
+- The user ratified only the subsequent bounded representative experiment, now owned independently by `.10x/tickets/done/2026-07-15-run-representative-semantic-routing-experiment.md`; it is not a child or unfinished outcome of this research plan.
 
 ## Retrospective
 
