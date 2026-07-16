@@ -444,6 +444,35 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
         self.assertEqual((merged.last_plan_id, merged.last_apply_id), ("plan-new", "apply-new"))
         self.assertEqual(merged.created_at, existing.created_at)
 
+    def test_concurrent_generated_disable_is_preserved_during_system_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "catalog.json"
+            current = make_card(
+                enabled=False,
+                semantic_origin="generated",
+                title="Current generated",
+                aliases=[],
+                last_plan_id="plan-current",
+                last_apply_id="apply-current",
+            )
+            incoming = make_card(
+                enabled=True,
+                semantic_origin="generated",
+                title="Refreshed generated",
+                summary="Refreshed.",
+                aliases=[],
+                last_plan_id="plan-new",
+                last_apply_id="apply-new",
+                now="2026-07-15T15:00:00+00:00",
+            )
+            save_catalog(path, [current])
+            _document, committed, changed = commit_system_card(path, incoming)
+
+        self.assertTrue(changed)
+        self.assertFalse(committed.enabled)
+        self.assertEqual(committed.title, incoming.title)
+        self.assertEqual((committed.last_plan_id, committed.last_apply_id), ("plan-new", "apply-new"))
+
     def test_commit_api_validates_merges_and_is_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "catalog.json"
@@ -493,12 +522,12 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
         )
         self.assertEqual((website.source_kind, website.title, website.tags), ("website", "docs.example.com", ["website"]))
 
-        for raw_kind, filename_key, filename in (
-            ("pdf", "pdf_filename", "Research Notes.pdf"),
-            ("local_file", "file_filename", "Research Notes.csv"),
+        for raw_kind, filename_key, filename, base_url in (
+            ("pdf", "pdf_filename", "Research Notes.pdf", "pdf://opaque-source-id"),
+            ("local_file", "file_filename", "Research Notes.csv", "file://opaque-source-id"),
         ):
             document = generated_semantics(
-                base_url="file://opaque-source-id",
+                base_url=base_url,
                 site_id="stable-site-id",
                 plan_schema_version=1,
                 source_metadata=[{"source_kind": raw_kind, filename_key: filename}],
@@ -530,6 +559,8 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
             ("document", "ftp://example.com/file.pdf", "unsupported scheme"),
             ("document", "file://", "supported file"),
             ("document", "file://source/path", "supported file"),
+            ("document", "pdf://", "supported file"),
+            ("document", "pdf://source/path", "supported file"),
         )
         for source_kind, source_uri, message in invalid:
             with self.subTest(source_uri=source_uri), self.assertRaisesRegex(CatalogError, message):
@@ -542,6 +573,7 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
             ("website", "https://docs.example.com:8443/path"),
             ("document", "https://example.com/document.pdf"),
             ("document", "file://stable-source-id"),
+            ("document", "pdf://stable-source-id"),
         ):
             with self.subTest(valid=source_uri):
                 card = prepare_card(
@@ -554,10 +586,11 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
         cases = [
             ({"base_url": "https://example.com", "source_metadata": [{"source_kind": "github_repo"}]}, "contradicts"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": "pdf"}, {"source_kind": "local_file"}]}, "contradictory source_kind"),
+            ({"base_url": "file://source", "source_metadata": [{"source_kind": "pdf", "pdf_filename": "a.pdf"}]}, "non-pdf"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": "video"}]}, "unsupported"),
             ({"base_url": "https://github.com/a/b", "source_metadata": [{"source_kind": "github_repo", "repo_full_name": "a/c"}]}, "contradicts"),
-            ({"base_url": "file://source", "source_metadata": [{"source_kind": "pdf", "pdf_filename": "a.pdf"}, {"source_kind": "pdf", "pdf_filename": "b.pdf"}]}, "contradictory pdf_filename"),
-            ({"base_url": "file://source", "source_metadata": [{"source_kind": "pdf"}]}, "requires one consistent.*pdf_filename"),
+            ({"base_url": "pdf://source", "source_metadata": [{"source_kind": "pdf", "pdf_filename": "a.pdf"}, {"source_kind": "pdf", "pdf_filename": "b.pdf"}]}, "contradictory pdf_filename"),
+            ({"base_url": "pdf://source", "source_metadata": [{"source_kind": "pdf"}]}, "requires one consistent.*pdf_filename"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": "local_file"}]}, "requires one consistent.*file_filename"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": 1}]}, "source_kind must be a string"),
             ({"base_url": "file://source", "source_metadata": [{"source_kind": None}]}, "source_kind must be a string"),

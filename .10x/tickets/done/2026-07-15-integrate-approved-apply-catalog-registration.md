@@ -1,4 +1,4 @@
-Status: blocked
+Status: done
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-production-semantic-routing-plan.md
@@ -55,8 +55,24 @@ Evidence must map each phase and failure scenario to tests, show credential/remo
 
 ## Blockers
 
-Blocked until `.10x/tickets/done/2026-07-15-build-production-local-namespace-catalog.md` is reviewed, closed, and integrated into `develop`.
+None. Dependency `.10x/tickets/done/2026-07-15-build-production-local-namespace-catalog.md` is reviewed, closed, and integrated at develop commit `9dcdecb`.
 
 ## Progress and notes
 
 - 2026-07-15: Opened as the second sequential child; no implementation occurred.
+- 2026-07-15: Marked active after dependency integration at develop commit `9dcdecb`; implementation started on `work/integrate-approved-apply-catalog-registration`.
+- 2026-07-15: Implemented apply/plan catalog previews, apply `--region`/`--catalog`, namespace-lock lifetime and under-lock diff refresh, integrity-bound pending precompute/collision handling, post-state confirmation/catalog commit, truthful partial success, local reconcile/approved abandonment, manual/disabled preservation, and schema-v1 compatibility. Source inspection exposed current supported PDF plans using canonical `pdf://<source-id>`; the governing specs were narrowly corrected to preserve that source-backed compatibility without deriving filenames from opaque IDs.
+- 2026-07-15: Added fake/sentinel coverage including lock ordering/lifetime, no early credential/remote work, confirmed/unconfirmed collision behavior, secret/chunk exclusion, remote and catalog failures, confirmation-write failure recovery from exact applied-state identity, no duplicate remote writes, reconcile idempotency, abandon preview/approval, tamper/symlink/out-of-root rejection, manual/disabled preservation, and legacy plan/source behavior. Focused tests passed (127), full suite passed (340), compilation and `git diff --check` passed. Evidence: `.10x/evidence/2026-07-15-approved-apply-catalog-registration-implementation.md`. Ticket remains active pending independent review.
+- 2026-07-15: Applied only independent-review fixes: truthful catalog-success/pending-cleanup partial output and idempotent cleanup, enabled-state preservation for concurrent generated disables, post-lock and pre-unlink pending identity revalidation for reconcile/abandon, no-follow canonical pending-root creation, and missing-credential pending/abandon coverage. Focused tests passed (133), full suite passed (346), compilation and `git diff --check` passed. Evidence record updated; ticket remains active and unclosed.
+
+- 2026-07-15: Corrective commit `e7a8170` resolved all review findings; two fresh re-reviewers passed. Review: `.10x/reviews/2026-07-15-approved-apply-catalog-registration-review.md`.
+
+## Closure mapping
+
+- Apply lock/pending/remote/state/catalog phases, previews, partial success, reconcile/abandon, source compatibility, manual preservation, and CLI output map to focused tests and evidence.
+- 133 focused and 346 full-suite tests, compilation, and diff checks passed.
+- No automatic routing or excluded architecture was added.
+
+## Retrospective
+
+Post-commit cleanup must report committed state truthfully, and recovery artifacts require identity revalidation immediately before deletion. These invariants are now captured in the active spec and regression tests. Automatic routing remains owned by the final child.

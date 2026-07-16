@@ -2,7 +2,7 @@ Status: blocked
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-production-semantic-routing-plan.md
-Depends-On: .10x/tickets/2026-07-15-integrate-approved-apply-catalog-registration.md
+Depends-On: .10x/tickets/done/2026-07-15-integrate-approved-apply-catalog-registration.md
 
 # Add Automatic Production Namespace Routing
 
@@ -56,7 +56,7 @@ Evidence must prove argument and fail-closed boundaries, eligibility-before-scor
 
 ## Blockers
 
-Blocked until `.10x/tickets/2026-07-15-integrate-approved-apply-catalog-registration.md` is reviewed, closed, and integrated into `develop`.
+Blocked until `.10x/tickets/done/2026-07-15-integrate-approved-apply-catalog-registration.md` is reviewed, closed, and integrated into `develop`.
 
 ## Progress and notes
 

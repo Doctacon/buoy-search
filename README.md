@@ -26,7 +26,7 @@ uv run buoy plan https://example.com/
 # 2. Verify the plan and preview its diff. Still local-only.
 uv run buoy apply
 
-# 3. Approve the reviewed diff and write it to turbopuffer.
+# 3. Approve the reviewed diff, write it to turbopuffer, and register its local catalog card.
 export TURBOPUFFER_API_KEY="..."
 uv run buoy apply --approve
 

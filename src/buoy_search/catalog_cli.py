@@ -20,6 +20,11 @@ from buoy_search.catalog import (
     prepare_card,
     resolve_catalog_path,
 )
+from buoy_search.catalog_pending import (
+    PendingCatalogError,
+    abandon_pending,
+    reconcile_pending,
+)
 
 
 def configure_catalog_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -81,6 +86,19 @@ def configure_catalog_parser(subparsers: argparse._SubParsersAction[argparse.Arg
     remove.add_argument("--approve", action="store_true", help="Approve removal from local catalog only.")
     _add_common(remove)
     remove.set_defaults(func=_run_remove)
+
+    reconcile = commands.add_parser("reconcile", help="commit one confirmed local pending apply registration")
+    reconcile.add_argument("--pending", type=Path, required=True)
+    reconcile.add_argument("--catalog", type=Path, required=True)
+    reconcile.add_argument("--json", action="store_true", help="Print JSON output.")
+    reconcile.set_defaults(func=_run_reconcile)
+
+    abandon = commands.add_parser("abandon-pending", help="preview or approve removal of unconfirmed pending state")
+    abandon.add_argument("--pending", type=Path, required=True)
+    abandon.add_argument("--catalog", type=Path, required=True)
+    abandon.add_argument("--approve", action="store_true")
+    abandon.add_argument("--json", action="store_true", help="Print JSON output.")
+    abandon.set_defaults(func=_run_abandon_pending)
 
 
 def _add_common(parser: argparse.ArgumentParser) -> None:
@@ -294,6 +312,49 @@ def _run_toggle(args: argparse.Namespace) -> int:
         text_lines=[
             f"Namespace {card.namespace!r} is {'enabled' if card.enabled else 'disabled'} in local catalog {path} "
             f"({'updated' if changed else 'unchanged'})."
+        ],
+    )
+    return 0
+
+
+def _run_reconcile(args: argparse.Namespace) -> int:
+    try:
+        document, card, changed = reconcile_pending(args.pending, args.catalog)
+    except (PendingCatalogError, CatalogError, OSError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    payload = {
+        **_base_payload("catalog reconcile", args.catalog.resolve(strict=False), document),
+        "namespace": card.namespace,
+        "pending_path": str(args.pending),
+        "mutation_status": "committed" if changed else "already-committed",
+        "local_only": True,
+        "card": card_to_dict(card),
+    }
+    _emit(
+        payload,
+        json_output=args.json,
+        text_lines=[
+            f"Reconciled local namespace card {card.namespace!r} in {args.catalog.resolve(strict=False)}.",
+            "No credentials were read and no remote service was contacted.",
+        ],
+    )
+    return 0
+
+
+def _run_abandon_pending(args: argparse.Namespace) -> int:
+    try:
+        payload = abandon_pending(args.pending, args.catalog, approve=args.approve)
+    except (PendingCatalogError, CatalogError, OSError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    _emit(
+        payload,
+        json_output=args.json,
+        text_lines=[
+            f"{'Abandoned' if args.approve else 'Preview: abandon'} unconfirmed pending registration {args.pending}.",
+            str(payload["warning"]),
+            "No credentials were read and no remote service was contacted.",
         ],
     )
     return 0
