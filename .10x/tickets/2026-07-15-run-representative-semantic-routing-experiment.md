@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: None
@@ -89,3 +89,4 @@ None.
 ## Progress and notes
 
 - 2026-07-15: Opened after the user accepted the smaller representative-experiment path. This ticket replaces the cancelled five-stage synthetic pilot and is the only executable implementation owner for the first routing-value slice.
+- 2026-07-15: Implemented and ran the bounded evaluator in commit `a15bc686a645d1081f78272058a8da02751ff479`. The guarded cached-model run evaluated all 90 questions across 13 cards. Aggregate MRR / recall@1 / recall@3 / recall@5 were lexical `0.864815 / 0.822222 / 0.911111 / 0.911111`, semantic `0.913246 / 0.877778 / 0.933333 / 0.944444`, and hybrid RRF `0.933153 / 0.900000 / 0.955556 / 0.955556`. Focused tests (14), full suite (288), and `git diff --check` passed. Reproducible inputs, guards, model manifest, commands, side-effect confirmation, and limitations are recorded in `.10x/evidence/2026-07-15-representative-semantic-routing-experiment.md`. Ticket remains active pending the explicitly separate independent adversarial review and metric/provenance inspection; it is not closed or moved.
