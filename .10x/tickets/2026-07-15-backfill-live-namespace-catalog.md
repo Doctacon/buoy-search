@@ -34,8 +34,8 @@ The user selected a read-only live Turbopuffer namespace inventory as the existe
 - The read-only live inventory is captured with namespace IDs but no credentials.
 - Every registered card has exact live namespace existence plus locally verified source/applied compatibility provenance.
 - Unsupported/unmatched entries are reported and not registered.
-- `.turbo-search/catalog.json` contains the approved compatible cards with normalized persisted vectors.
-- `uv run buoy retrieve "what is the purpose of oscilar?" --auto-route --dry-run` succeeds and selects `site-oscilar-com-v1` when eligible.
+- The new default `.buoy/catalog.json` contains the approved compatible cards with normalized persisted vectors; the legacy `.turbo-search` root is absent after the user-authorized migration.
+- `uv run buoy retrieve "what is the purpose of oscilar?" --auto-route --dry-run` succeeds without a legacy-root warning and selects `site-oscilar-com-v1` when eligible.
 - No remote write path is invoked.
 
 ## Evidence expectations
@@ -61,9 +61,10 @@ None. User ratified read-only remote inventory and local registration in the cur
 
 - Read-only inventory: four live IDs recorded without credentials.
 - Provenance match: two registered, two deliberately excluded, 58 historical local-only.
-- Canonical catalog: two enabled validated cards at revision `cd77c5ce97dd7f8df82b191b9e534d0c5535c7fa5224ef81edcbacb7732b01e6`.
-- User reproduction: exact dry route succeeds and ranks `site-oscilar-com-v1` first without credentials or remote calls.
-- Review: pass; remote audit-log limitation retained explicitly.
+- Canonical catalog: two enabled validated cards under `.buoy/catalog.json` at revision `cd77c5ce97dd7f8df82b191b9e534d0c5535c7fa5224ef81edcbacb7732b01e6`; catalog bytes and hashes were preserved through migration.
+- Legacy cleanup: the explicitly disposable 513 MB applied-state tree, old catalog/lock, and empty `.turbo-search` root were removed only after validating the new catalog; no pending recovery files existed.
+- User reproduction: exact default dry route succeeds without a legacy warning and ranks `site-oscilar-com-v1` first without credentials or remote calls.
+- Reviews: backfill and state-root migration pass; remote audit-log and historical deletion-observation limits retained explicitly.
 
 ## Retrospective
 
