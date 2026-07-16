@@ -1,4 +1,4 @@
-Status: active
+Status: blocked
 Created: 2026-07-15
 Updated: 2026-07-15
 Parent: .10x/tickets/2026-07-15-buoy-v0-3-0-release-plan.md
@@ -39,8 +39,9 @@ Pre/post commit graph, PR/check URLs, merge method/parents, main push CI, diff s
 
 ## Blockers
 
-None. Release preparation completed and passed hosted checks.
+GitHub rejected the exact ratified update-branch request for release PR #22 with HTTP 422 because protected `develop` requires changes through a pull request and expects all three required checks. Remote refs did not move. An alternate ancestry-preserving, protection-compliant mechanism must be ratified before execution; direct push, rebase, squash, or branch-protection weakening remain prohibited.
 
 ## Progress and notes
 
 - 2026-07-15: Promotion pre-merge execution started from release-prepared develop `1441c14`; no main merge is authorized in this phase.
+- 2026-07-15: Preflight passed and release PR #22 was opened at exact head `1441c142dae2f501fd8d7306ab3bf1a9db1532d2` against exact main `1fa99431de85b9de435250f273919bf2d247d1fc`. The expected-head-bound update request failed HTTP 422 without moving either ref. Execution stopped per contract. Evidence: `.10x/evidence/2026-07-15-buoy-v0-3-0-promotion-update-branch-blocker.md`.
