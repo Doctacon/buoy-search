@@ -113,7 +113,7 @@ uv run buoy apply
 
 By default, apply selects the newest plan under `artifacts/site-crawls/`. Use `--plan <path>` when multiple plans exist.
 
-Preflight verifies schema, namespace, manifest/chunk agreement, embedding-text hashes, artifact integrity, compatibility with local state, and reports remote catalog state as unknown until approved. Its text identifies the automatically selected plan path and source, artifact hash, namespace and region, verified embedding model and precision, first-apply state, upsert/embedding/unchanged/stale counts, an explicit `retain N` or `delete N` stale-row intent, and whether catalog registration will create, refresh, or preserve a manual card.
+Preflight verifies schema, namespace, manifest/chunk agreement, embedding-text hashes, artifact integrity, and compatibility with local state. Because it does not contact Turbopuffer, remote catalog state and the resulting registration action remain unknown until approved. Its text identifies the automatically selected plan path and source, artifact hash, namespace and region, verified embedding model and precision, first-apply state, upsert/embedding/unchanged/stale counts, and an explicit `retain N` or `delete N` stale-row intent.
 
 Use `--region REGION` to override `TURBOPUFFER_REGION` and bind that region into the registered retrieval contract. The remote catalog namespace is fixed as `buoy-routing-catalog-v1`; local catalog path options and `BUOY_CATALOG_PATH` are not supported.
 

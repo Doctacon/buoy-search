@@ -1871,7 +1871,10 @@ def print_retrieval_text(
                     )
     if payload.get("dry_run"):
         if isinstance(routing, dict):
-            print("Retrieval plan (dry-run; local route model only; no credentials or turbopuffer API calls):")
+            print(
+                "Retrieval plan (authenticated remote preview; credentials required; "
+                "read-only namespace-list/catalog-query API calls occurred; no content retrieval):"
+            )
         else:
             print("Retrieval plan (dry-run; no credentials, embeddings, or turbopuffer API calls):")
         print(f"  query: {payload['query']}")

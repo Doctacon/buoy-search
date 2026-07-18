@@ -114,7 +114,9 @@ class RoutedRetrievalResult:
     routing: RoutingSelection
 
     def to_dict(self) -> dict[str, object]:
-        return {**self.result.to_dict(), "routing": self.routing.to_dict()}
+        routing = self.routing.to_dict()
+        routing["content_retrieval_occurred"] = True
+        return {**self.result.to_dict(), "content_retrieval_occurred": True, "routing": routing}
 
 
 def eligible_catalog_cards(

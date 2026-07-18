@@ -6,6 +6,7 @@ import json
 import math
 import os
 from pathlib import Path
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -366,6 +367,7 @@ class AutomaticRoutingCliTests(unittest.TestCase):
         self.assertEqual(routing["catalog_namespace"], REMOTE_CATALOG_NAMESPACE)
         self.assertTrue(routing["credentials_required"])
         self.assertTrue(routing["read_only_api_calls_occurred"])
+        self.assertFalse(payload["content_retrieval_occurred"])
         self.assertFalse(routing["content_retrieval_occurred"])
         self.assertEqual(
             routing["remote_counts"],
@@ -402,6 +404,67 @@ class AutomaticRoutingCliTests(unittest.TestCase):
         self.assertNotIn('"vector": [', stdout)
         self.assertNotIn("vector_hash", stdout)
         self.assertNotIn("tpuf_", stdout)
+
+    def test_default_preview_text_reports_authenticated_reads_and_no_content_retrieval(self) -> None:
+        client, _resource, embedder = self.automatic_fixture()
+        result, stdout, stderr = self.run_automatic(
+            ["retrieve", "chosen phrase"], client=client, embedder=embedder
+        )
+
+        self.assertEqual((result, stderr), (0, ""))
+        self.assertIn("credentials required", stdout)
+        self.assertIn("read-only namespace-list/catalog-query API calls occurred", stdout)
+        self.assertIn("no content retrieval", stdout)
+        self.assertNotIn("no credentials or turbopuffer API calls", stdout)
+
+    def test_live_routed_success_marks_content_retrieval_and_failure_emits_no_partial_output(self) -> None:
+        live_payload = {
+            "command": "retrieve",
+            "dry_run": False,
+            "credentials_required": True,
+            "turbopuffer_api_calls": True,
+            "api_calls_occurred": True,
+            "content_retrieval_occurred": True,
+            "query": "chosen phrase",
+            "region": "gcp-us-central1",
+            "namespaces": ["b-lexical", "a-semantic", "c-semantic"],
+            "embedding_model": ROUTING_MODEL,
+            "embedding_precision": "float32",
+            "top_k": 5,
+            "candidates": 200,
+            "fusion": "cross_namespace_rrf",
+            "namespace_results": [],
+            "hits": [],
+        }
+        retriever = SimpleNamespace(
+            retrieve=lambda _query, _options: SimpleNamespace(to_dict=lambda: live_payload)
+        )
+        client, _resource, embedder = self.automatic_fixture()
+        with patch("buoy_search.cli.MultiNamespaceRetriever.from_configs", return_value=retriever):
+            result, stdout, stderr = self.run_automatic(
+                ["retrieve", "chosen phrase", "--live", "--json"],
+                client=client,
+                embedder=embedder,
+            )
+
+        self.assertEqual((result, stderr), (0, ""))
+        payload = json.loads(stdout)
+        self.assertTrue(payload["content_retrieval_occurred"])
+        self.assertTrue(payload["routing"]["content_retrieval_occurred"])
+
+        failing = SimpleNamespace(
+            retrieve=lambda _query, _options: (_ for _ in ()).throw(RuntimeError("boom"))
+        )
+        client, _resource, embedder = self.automatic_fixture()
+        with patch("buoy_search.cli.MultiNamespaceRetriever.from_configs", return_value=failing):
+            result, stdout, stderr = self.run_automatic(
+                ["retrieve", "chosen phrase", "--live", "--json"],
+                client=client,
+                embedder=embedder,
+            )
+        self.assertEqual((result, stdout), (2, ""))
+        self.assertIn("Namespace retrieval failed", stderr)
+        self.assertNotIn("content_retrieval_occurred", stderr)
 
     def test_zero_eligible_snapshot_fails_actionably_before_model_or_content(self) -> None:
         live = [REMOTE_CATALOG_NAMESPACE, "missing"]
