@@ -4,6 +4,7 @@ import copy
 from dataclasses import replace
 import os
 from types import SimpleNamespace
+import traceback
 import unittest
 from unittest.mock import patch
 
@@ -49,6 +50,14 @@ UNIT_VECTOR = [1.0] + [0.0] * (ROUTING_DIMENSIONS - 1)
 SECOND_UNIT_VECTOR = [0.0, 1.0] + [0.0] * (ROUTING_DIMENSIONS - 2)
 REGION = "gcp-us-central1"
 MODEL = "BAAI/bge-small-en-v1.5"
+
+
+def formatted_remote_failure(call) -> str:  # noqa: ANN001 - focused traceback sentinel.
+    try:
+        call()
+    except RemoteCatalogError as exc:
+        return "".join(traceback.format_exception(exc))
+    raise AssertionError("expected RemoteCatalogError")
 
 
 class FixedEmbedder:
@@ -917,6 +926,76 @@ class RecoveryAndErrorTests(unittest.TestCase):
             rendered = str(failure.exception)
             for forbidden in ("tpuf_TOKEN", "vector", "credential", "1.0", "body"):
                 self.assertNotIn(forbidden, rendered)
+
+    def test_formatted_provider_tracebacks_never_chain_raw_factory_list_query_or_write_payloads(self) -> None:
+        secret_key = "tpuf_RAW"
+        raw = f"{secret_key} credential body={{'vector':[0.1,0.2], 'token':'secret'}}"
+
+        class ProviderFailure(Exception):
+            status_code = 403
+
+        class FailingTP:
+            def __init__(self, **kwargs: object) -> None:
+                raise ProviderFailure(raw)
+
+        with patch.dict("sys.modules", {"turbopuffer": SimpleNamespace(Turbopuffer=FailingTP)}):
+            factory_trace = formatted_remote_failure(
+                lambda: create_client(api_key=secret_key, region=REGION)
+            )
+
+        class ListClient:
+            def namespaces(self, **kwargs: object) -> object:
+                raise ProviderFailure(raw)
+
+        list_trace = formatted_remote_failure(
+            lambda: read_remote_catalog(
+                ListClient(),  # type: ignore[arg-type]
+                region=REGION,
+                compatibility=CompatibilityContract(REGION, MODEL, "float32"),
+            )
+        )
+
+        class QueryFailureResource(QueryResource):
+            def query(self, **kwargs: object) -> object:
+                raise ProviderFailure(raw)
+
+        query_trace = formatted_remote_failure(
+            lambda: read_remote_catalog(
+                FakeClient(
+                    [NamespacePage([REMOTE_CATALOG_NAMESPACE, "site-example-v1"])],
+                    QueryFailureResource([make_card()]),
+                ),
+                region=REGION,
+                compatibility=CompatibilityContract(REGION, MODEL, "float32"),
+            )
+        )
+
+        class WriteFailureResource(QueryResource):
+            def write(self, **kwargs: object) -> object:
+                raise ProviderFailure(raw)
+
+        write_trace = formatted_remote_failure(
+            lambda: create_remote_cards(WriteFailureResource([]), [make_card()], region=REGION)
+        )
+
+        for rendered, phase in (
+            (factory_trace, "client construction"),
+            (list_trace, "namespace listing"),
+            (query_trace, "card page query"),
+            (write_trace, "conditional card create"),
+        ):
+            with self.subTest(phase=phase):
+                self.assertIn(phase, rendered)
+                self.assertIn("ProviderFailure, status=403", rendered)
+                self.assertNotIn("The above exception", rendered)
+                self.assertNotIn("During handling", rendered)
+                for forbidden in (
+                    "tpuf_RAW",
+                    "credential body",
+                    "'vector':[0.1,0.2]",
+                    "'token':'secret'",
+                ):
+                    self.assertNotIn(forbidden, rendered)
 
     def test_explicit_client_adapter_does_not_read_environment(self) -> None:
         calls: list[dict[str, object]] = []

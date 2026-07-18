@@ -17,10 +17,10 @@ Added inert `src/buoy_search/remote_catalog.py` without importing it into CLI/ap
 - absent/empty/partial/exact/conflict migration classification and partial-race detection;
 - safe manual/enabled rebase with unchanged-projection verification or injected local recomputation, first-apply manual-card race validation, and two-read exact-revision accept-remote validation with no clock ordering;
 - 10,000-page bounds, repeated cursor/signature and duplicate detection with SDK-shaped pages;
-- provider failures reduced to phase plus safe class/status only, never raw token/vector/body payloads;
+- provider failures reduced to phase plus safe class/status only, with suppressed exception context so neither messages nor formatted tracebacks expose raw token/vector/body payloads;
 - generic zero-eligible management snapshots plus actionable routing-facing `require_eligible` failure.
 
-`tests/test_remote_catalog.py` adds 22 injected-fake tests. Existing active card parsing/vector/hash/generated semantics remain reused and covered by the pre-existing catalog suite.
+`tests/test_remote_catalog.py` adds 23 injected-fake tests. Existing active card parsing/vector/hash/generated semantics remain reused and covered by the pre-existing catalog suite.
 
 ## Validation
 
@@ -28,7 +28,7 @@ Commands from the task worktree:
 
 ```text
 uv run --python 3.13 python -m unittest tests.test_remote_catalog -q
-Ran 22 tests ... OK
+Ran 23 tests ... OK
 
 uv run python -m unittest tests.test_catalog tests.test_catalog_pending tests.test_automatic_routing -q
 Ran 59 tests ... OK
@@ -49,7 +49,7 @@ uv build --out-dir /tmp/buoy-remote-backend-dist-final
 built wheel and sdist; wheel contains buoy_search/remote_catalog.py
 ```
 
-Before review repair, both supported-Python full matrices passed 382 tests and emitted only the existing temporary plan-cleanup warning. After the narrowly scoped review repair, the 22-test remote backend suite and 59-test catalog/pending/routing compatibility suite passed, followed by compile, build, reference, and diff checks. Per handoff, the unchanged broader matrices were not rerun.
+Before review repair, both supported-Python full matrices passed 382 tests and emitted only the existing temporary plan-cleanup warning. After the narrowly scoped review repairs, the 23-test remote backend suite and 59-test catalog/pending/routing compatibility suite passed, followed by compile, build, reference, and diff checks. The final traceback-only repair reran the 23 focused tests plus compile/diff. Per handoff, the unchanged broader matrices were not rerun.
 
 ## Scope and side-effect evidence
 

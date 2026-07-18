@@ -188,7 +188,7 @@ def create_client(*, api_key: str, region: str) -> RemoteClient:
     try:
         return turbopuffer.Turbopuffer(api_key=api_key, region=region)
     except Exception as exc:  # pragma: no cover - constructor is inert in SDK 2.4.
-        raise _remote_error("client construction", exc, secrets=(api_key,)) from exc
+        raise _remote_error("client construction", exc, secrets=(api_key,)) from None
 
 
 def remote_card_id(namespace: str) -> str:
@@ -991,4 +991,4 @@ def _call(phase: str, function: Callable[..., T], *args: object, **kwargs: objec
     except RemoteCatalogError:
         raise
     except Exception as exc:
-        raise _remote_error(phase, exc) from exc
+        raise _remote_error(phase, exc) from None
