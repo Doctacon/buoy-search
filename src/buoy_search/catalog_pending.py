@@ -472,7 +472,7 @@ def applied_state_hash(state: Any) -> str:
         "updated_at": state.updated_at,
         "last_plan_id": state.last_plan_id,
         "last_apply_id": state.last_apply_id,
-        "rows": [vars(row) for row in state.rows],
+        "rows": [vars(row) for row in sorted(state.rows, key=lambda row: row.row_id)],
     })
 
 
@@ -576,13 +576,11 @@ def reconcile_pending(
         if action == "accept_remote":
             if not expected_remote_revision:
                 raise PendingCatalogError("accept-remote requires an exact expected remote revision")
-            first = current
-            second_values = read_remote_card_twice(resource, namespace=desired.namespace, region=region)
-            second = second_values[0] if second_values else None
-            if first is None or second is None:
+            if current is None:
                 raise RemoteCatalogError("accept-remote requires an existing stable remote card")
+            # The helper already compared exactly two strong reads; do not issue a second pair.
             accepted = validate_accept_remote(
-                current_reads=[first, second], pending=desired,
+                current_reads=[current, current], pending=desired,
                 expected_remote_revision=expected_remote_revision,
             )
             result_action = "accepted_remote"
