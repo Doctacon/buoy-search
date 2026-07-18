@@ -11,6 +11,7 @@ from dataclasses import dataclass, field, fields, replace
 import hashlib
 import math
 import re
+import struct
 from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence, TypeVar
 
 from buoy_search.catalog import (
@@ -239,6 +240,25 @@ def card_from_remote_row(row: object, *, region: str) -> NamespaceCard:
         if missing:
             detail.append(f"missing={missing}")
         raise RemoteCatalogError(f"remote card row fields are invalid ({'; '.join(detail)})")
+    vector = payload["vector"]
+    if isinstance(vector, list):
+        canonical_vector: list[float] = []
+        for index, item in enumerate(vector):
+            if isinstance(item, bool) or not isinstance(item, (int, float)):
+                raise RemoteCatalogError(
+                    f"remote card field vector[{index}] must be a finite float32 number"
+                )
+            try:
+                number = float(item)
+                if not math.isfinite(number):
+                    raise ValueError
+                number = struct.unpack("!f", struct.pack("!f", number))[0]
+            except (OverflowError, struct.error, ValueError):
+                raise RemoteCatalogError(
+                    f"remote card field vector[{index}] must be a finite float32 number"
+                ) from None
+            canonical_vector.append(number)
+        payload["vector"] = canonical_vector
     try:
         card = parse_card(payload)
     except CatalogError as exc:

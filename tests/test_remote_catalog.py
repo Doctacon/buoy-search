@@ -461,6 +461,50 @@ class RemoteSchemaAndCardTests(unittest.TestCase):
         with self.assertRaisesRegex(RemoteCatalogError, "missing=\\['title'\\]"):
             card_from_remote_row(provider_row, region=REGION)
 
+    def test_provider_float_decimal_in_same_float32_bucket_restores_exact_card(self) -> None:
+        card = make_card("site-oscilar-com-v1")
+        row = card_to_remote_row(card)
+        provider_vector = list(card.vector)
+        provider_vector[0] = 1.00000001
+        row["vector"] = provider_vector
+
+        restored = card_from_remote_row(ProviderRow(row), region=REGION)
+
+        self.assertEqual(restored.vector, card.vector)
+        self.assertEqual(restored.vector_hash, vector_hash(card.vector))
+        self.assertEqual(restored.card_revision, card_revision(card))
+        self.assertEqual(restored, card)
+
+    def test_provider_float_decimal_in_adjacent_float32_bucket_rejects_stale_hash(self) -> None:
+        card = make_card("site-oscilar-com-v1")
+        row = card_to_remote_row(card)
+        provider_vector = list(card.vector)
+        provider_vector[0] = 0.99999994
+        row["vector"] = provider_vector
+
+        with self.assertRaisesRegex(RemoteCatalogError, "vector_hash is stale or invalid"):
+            card_from_remote_row(ProviderRow(row), region=REGION)
+
+    def test_provider_vector_rejects_nonfinite_overflow_and_type_errors(self) -> None:
+        card = make_card("site-oscilar-com-v1")
+        for value in (float("nan"), float("inf"), float("-inf"), 3.5e38, "1.0", True):
+            row = card_to_remote_row(card)
+            provider_vector = list(card.vector)
+            provider_vector[0] = value  # type: ignore[assignment]
+            row["vector"] = provider_vector
+            with self.subTest(value=value), self.assertRaisesRegex(
+                RemoteCatalogError, "vector\\[0\\] must be a finite float32 number"
+            ):
+                card_from_remote_row(ProviderRow(row), region=REGION)
+
+    def test_provider_exact_float32_vector_is_unchanged(self) -> None:
+        card = make_card("site-oscilar-com-v1")
+
+        restored = card_from_remote_row(ProviderRow(card_to_remote_row(card)), region=REGION)
+
+        self.assertEqual(restored.vector, card.vector)
+        self.assertEqual(restored, card)
+
     def test_verification_retry_reads_provider_rows_with_omitted_nulls(self) -> None:
         first = make_card("site-oscilar-com-v1")
         second = make_card("site-turbopuffer-com-v1")
