@@ -9,24 +9,26 @@ Relates-To: .10x/tickets/2026-07-18-build-remote-routing-backend.md, .10x/specs/
 
 Added inert `src/buoy_search/remote_catalog.py` without importing it into CLI/apply/retrieve/local catalog paths. It provides:
 
-- exact 28-attribute remote schema plus implicit string ID normalization;
+- exact independent 29-attribute remote schema plus implicit string ID normalization and application nullability checks;
 - deterministic 64-byte hash IDs and provider-neutral complete card row round-trip;
 - injected SDK protocols and an explicit-value client adapter that never reads environment;
 - two complete auto-paginated namespace-list passes, metadata validation, two strong ordered card passes at 100 rows, advancing-ID protection, snapshot stability, billing redaction, intersection classification, and exact count precedence;
 - conditional create/update/delete with exact affected IDs and two strong verification reads;
 - absent/empty/partial/exact/conflict migration classification and partial-race detection;
-- safe manual/enabled rebase, first-apply manual-card race validation, and exact-revision accept-remote validation with no clock ordering;
-- bounded phase errors and credential redaction.
+- safe manual/enabled rebase with unchanged-projection verification or injected local recomputation, first-apply manual-card race validation, and two-read exact-revision accept-remote validation with no clock ordering;
+- 10,000-page bounds, repeated cursor/signature and duplicate detection with SDK-shaped pages;
+- provider failures reduced to phase plus safe class/status only, never raw token/vector/body payloads;
+- generic zero-eligible management snapshots plus actionable routing-facing `require_eligible` failure.
 
-`tests/test_remote_catalog.py` adds 18 injected-fake tests. Existing active card parsing/vector/hash/generated semantics remain reused and covered by the pre-existing catalog suite.
+`tests/test_remote_catalog.py` adds 22 injected-fake tests. Existing active card parsing/vector/hash/generated semantics remain reused and covered by the pre-existing catalog suite.
 
 ## Validation
 
 Commands from the task worktree:
 
 ```text
-uv run python -m unittest tests.test_remote_catalog -q
-Ran 18 tests ... OK
+uv run --python 3.13 python -m unittest tests.test_remote_catalog -q
+Ran 22 tests ... OK
 
 uv run python -m unittest tests.test_catalog tests.test_catalog_pending tests.test_automatic_routing -q
 Ran 59 tests ... OK
@@ -47,7 +49,7 @@ uv build --out-dir /tmp/buoy-remote-backend-dist-final
 built wheel and sdist; wheel contains buoy_search/remote_catalog.py
 ```
 
-The full suite emitted only the existing temporary plan-cleanup warning and passed.
+Before review repair, both supported-Python full matrices passed 382 tests and emitted only the existing temporary plan-cleanup warning. After the narrowly scoped review repair, the 22-test remote backend suite and 59-test catalog/pending/routing compatibility suite passed, followed by compile, build, reference, and diff checks. Per handoff, the unchanged broader matrices were not rerun.
 
 ## Scope and side-effect evidence
 
@@ -57,7 +59,7 @@ No test constructs a real client except a patched fake module; no API key is rea
 
 ## What this supports
 
-This supports every backend ticket acceptance criterion except hosted CI and independent review, which remain closure gates after commit/PR. It does not support public cutover or live provider behavior; those remain owned by the blocked atomic-cutover child.
+This supports every backend ticket acceptance criterion except hosted CI and final independent re-review, which remain closure gates after commit/PR. It does not support public cutover or live provider behavior; those remain owned by the blocked atomic-cutover child.
 
 ## Limits
 

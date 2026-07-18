@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from dataclasses import replace
 import os
 from types import SimpleNamespace
@@ -13,10 +14,12 @@ from buoy_search.catalog import (
     card_revision,
     card_to_dict,
     prepare_card,
+    vector_hash,
 )
 from buoy_search.remote_catalog import (
     CARD_PAGE_SIZE,
     DISTANCE_METRIC,
+    MAX_PAGES_PER_PASS,
     NAMESPACE_PAGE_SIZE,
     REMOTE_CARD_ATTRIBUTES,
     REMOTE_CATALOG_NAMESPACE,
@@ -34,6 +37,7 @@ from buoy_search.remote_catalog import (
     normalize_remote_schema,
     read_remote_catalog,
     rebase_remote_card,
+    require_eligible,
     redact_remote_error,
     remote_card_id,
     update_remote_card,
@@ -42,13 +46,19 @@ from buoy_search.remote_catalog import (
 )
 
 UNIT_VECTOR = [1.0] + [0.0] * (ROUTING_DIMENSIONS - 1)
+SECOND_UNIT_VECTOR = [0.0, 1.0] + [0.0] * (ROUTING_DIMENSIONS - 2)
 REGION = "gcp-us-central1"
 MODEL = "BAAI/bge-small-en-v1.5"
 
 
 class FixedEmbedder:
+    def __init__(self, vector: list[float] | None = None) -> None:
+        self.vector = vector or list(UNIT_VECTOR)
+        self.calls: list[list[str]] = []
+
     def encode(self, texts):  # noqa: ANN001
-        return [list(UNIT_VECTOR) for _ in texts]
+        self.calls.append(list(texts))
+        return [list(self.vector) for _ in texts]
 
 
 def make_card(namespace: str = "site-example-v1", **overrides: object) -> NamespaceCard:
@@ -93,26 +103,68 @@ def make_card(namespace: str = "site-example-v1", **overrides: object) -> Namesp
     return card
 
 
+EXPECTED_REMOTE_SCHEMA: dict[str, object] = {
+    "vector": {"type": "[384]f32", "filterable": False, "ann": {"distance_metric": "cosine_distance"}},
+    "namespace": {"type": "string", "filterable": True},
+    "enabled": {"type": "bool", "filterable": True},
+    "created_at": {"type": "string", "filterable": False},
+    "updated_at": {"type": "string", "filterable": False},
+    "card_revision": {"type": "string", "filterable": True},
+    "last_plan_id": {"type": "string", "filterable": False},
+    "last_apply_id": {"type": "string", "filterable": False},
+    "source_kind": {"type": "string", "filterable": False},
+    "source_uri": {"type": "string", "filterable": False},
+    "site_id": {"type": "string", "filterable": False},
+    "title": {"type": "string", "filterable": False},
+    "summary": {"type": "string", "filterable": False},
+    "aliases": {"type": "[]string", "filterable": False},
+    "tags": {"type": "[]string", "filterable": False},
+    "semantic_origin": {"type": "string", "filterable": False},
+    "region": {"type": "string", "filterable": True},
+    "embedding_model": {"type": "string", "filterable": False},
+    "embedding_precision": {"type": "string", "filterable": True},
+    "vector_dimensions": {"type": "uint", "filterable": False},
+    "plan_schema_version": {"type": "uint", "filterable": False},
+    "ranking_mode": {"type": "string", "filterable": False},
+    "ranking_profile": {"type": "string", "filterable": False},
+    "ranking_pool": {"type": "uint", "filterable": False},
+    "ranking_aggregation": {"type": "string", "filterable": False},
+    "routing_model": {"type": "string", "filterable": False},
+    "routing_model_revision": {"type": "string", "filterable": False},
+    "semantic_hash": {"type": "string", "filterable": False},
+    "vector_hash": {"type": "string", "filterable": False},
+}
+
+
 def metadata_schema(*, ann_true: bool = False) -> dict[str, object]:
     schema: dict[str, object] = {"id": {"type": "string"}}
-    for name, config in REMOTE_CATALOG_SCHEMA.items():
-        value = dict(config)
-        if value.get("filterable") is True:
-            value.pop("filterable")
-        if name == "vector" and ann_true:
-            value["ann"] = True
-        schema[name] = value
+    schema.update(copy.deepcopy(EXPECTED_REMOTE_SCHEMA))
+    for config in schema.values():
+        if isinstance(config, dict) and config.get("filterable") is True:
+            config.pop("filterable")
+    if ann_true:
+        schema["vector"]["ann"] = True  # type: ignore[index]
     return {"schema": schema}
 
 
 class NamespacePage:
-    def __init__(self, ids: list[str], next_page: "NamespacePage | None" = None) -> None:
+    def __init__(
+        self,
+        ids: list[str],
+        next_page: "NamespacePage | None" = None,
+        *,
+        next_cursor: str | None = None,
+    ) -> None:
         self.namespaces = [SimpleNamespace(id=value) for value in ids]
         self._next = next_page
+        self.next_cursor = next_cursor
         self.next_calls = 0
 
     def has_next_page(self) -> bool:
         return self._next is not None
+
+    def next_page_info(self) -> dict[str, str]:
+        return {"cursor": self.next_cursor} if self.next_cursor else {}
 
     def get_next_page(self):  # noqa: ANN201
         self.next_calls += 1
@@ -236,8 +288,12 @@ class StatefulResource(QueryResource):
 
 
 class RemoteSchemaAndCardTests(unittest.TestCase):
-    def test_schema_golden_is_exact_and_normalizes_server_defaults(self) -> None:
-        self.assertEqual(len(REMOTE_CATALOG_SCHEMA), len(REMOTE_CARD_ATTRIBUTES))
+    def test_schema_golden_is_complete_independent_and_normalizes_server_defaults(self) -> None:
+        self.assertEqual(len(EXPECTED_REMOTE_SCHEMA), 29)
+        self.assertEqual(len(REMOTE_CATALOG_SCHEMA), 29)
+        self.assertEqual(len(REMOTE_CARD_ATTRIBUTES), 29)
+        self.assertEqual(set(EXPECTED_REMOTE_SCHEMA), set(REMOTE_CARD_ATTRIBUTES))
+        self.assertEqual(REMOTE_CATALOG_SCHEMA, EXPECTED_REMOTE_SCHEMA)
         self.assertEqual(
             REMOTE_CATALOG_SCHEMA["vector"],
             {
@@ -264,6 +320,24 @@ class RemoteSchemaAndCardTests(unittest.TestCase):
         for payload, message in bad_cases:
             with self.subTest(message=message), self.assertRaisesRegex(RemoteCatalogError, message):
                 validate_remote_schema(payload)
+
+    def test_remote_row_enforces_application_nullability_independently_of_schema(self) -> None:
+        card = make_card("site-oscilar-com-v1")
+        row = card_to_remote_row(card)
+        self.assertIsNone(row["last_plan_id"])
+        self.assertIsNone(row["last_apply_id"])
+        self.assertEqual(card_from_remote_row(row, region=REGION), card)
+        for field in REMOTE_CARD_ATTRIBUTES:
+            if field in {"last_plan_id", "last_apply_id"}:
+                continue
+            invalid = dict(row)
+            invalid[field] = None
+            with self.subTest(field=field), self.assertRaises(RemoteCatalogError):
+                card_from_remote_row(invalid, region=REGION)
+        half_lineage = dict(row)
+        half_lineage["last_plan_id"] = "plan-only"
+        with self.assertRaisesRegex(RemoteCatalogError, "both IDs null or both non-empty"):
+            card_from_remote_row(half_lineage, region=REGION)
 
     def test_remote_id_and_card_row_round_trip_are_provider_neutral(self) -> None:
         card = make_card("site-oscilar-com-v1")
@@ -413,13 +487,74 @@ class RemoteReadTests(unittest.TestCase):
             [NamespacePage([REMOTE_CATALOG_NAMESPACE, card.namespace, card.namespace])],
             QueryResource([card]),
         )
-        with self.assertRaisesRegex(RemoteCatalogError, "duplicate"):
+        with self.assertRaisesRegex(RemoteCatalogError, "repeated ID"):
             read_remote_catalog(duplicate_client, region=REGION, compatibility=self.compatibility())
 
         empty_next = NamespacePage([], NamespacePage([REMOTE_CATALOG_NAMESPACE]))
         nonadvance_client = FakeClient([empty_next], QueryResource([card]))
         with self.assertRaisesRegex(RemoteCatalogError, "did not advance"):
             read_remote_catalog(nonadvance_client, region=REGION, compatibility=self.compatibility())
+
+    def test_pagination_repeated_cursor_and_page_bounds_fail_closed(self) -> None:
+        card = make_card()
+        repeated_cursor = FakeClient(
+            [
+                NamespacePage(
+                    [REMOTE_CATALOG_NAMESPACE],
+                    NamespacePage([card.namespace], next_cursor="same"),
+                    next_cursor="same",
+                )
+            ],
+            QueryResource([card]),
+        )
+        with self.assertRaisesRegex(RemoteCatalogError, "cursor/signature"):
+            read_remote_catalog(repeated_cursor, region=REGION, compatibility=self.compatibility())
+
+        three_pages = NamespacePage(
+            [REMOTE_CATALOG_NAMESPACE],
+            NamespacePage([card.namespace], NamespacePage(["site-third-v1"], next_cursor="c3"), next_cursor="c2"),
+            next_cursor="c1",
+        )
+        with patch("buoy_search.remote_catalog.MAX_PAGES_PER_PASS", 2):
+            with self.assertRaisesRegex(RemoteCatalogError, "exceeded 2 pages"):
+                read_remote_catalog(FakeClient([three_pages], QueryResource([card])), region=REGION, compatibility=self.compatibility())
+
+        cards = [make_card(f"site-{index:03d}-v1") for index in range(101)]
+        ids = [REMOTE_CATALOG_NAMESPACE, *(item.namespace for item in cards)]
+        with patch("buoy_search.remote_catalog.MAX_PAGES_PER_PASS", 1):
+            with self.assertRaisesRegex(RemoteCatalogError, "card query exceeded 1 pages"):
+                read_remote_catalog(
+                    FakeClient([NamespacePage(ids)], QueryResource(cards)),
+                    region=REGION,
+                    compatibility=self.compatibility(),
+                )
+
+    def test_generic_zero_eligible_snapshot_is_diagnostic_but_routing_requirement_fails(self) -> None:
+        snapshot = classify_remote_catalog(
+            live_namespace_ids=[REMOTE_CATALOG_NAMESPACE, "site-missing-v1"],
+            cards=[],
+            compatibility=self.compatibility(),
+        )
+        self.assertEqual(snapshot.counts.eligible_count, 0)
+        self.assertEqual(snapshot.missing_card_ids, ("site-missing-v1",))
+        with self.assertRaisesRegex(RemoteCatalogError, "buoy catalog list --all"):
+            require_eligible(snapshot)
+
+        resource = QueryResource([])
+        read_snapshot = read_remote_catalog(
+            FakeClient(
+                [
+                    NamespacePage([REMOTE_CATALOG_NAMESPACE, "site-missing-v1"]),
+                    NamespacePage([REMOTE_CATALOG_NAMESPACE, "site-missing-v1"]),
+                ],
+                resource,
+            ),
+            region=REGION,
+            compatibility=self.compatibility(),
+        )
+        self.assertEqual(read_snapshot.counts.eligible_count, 0)
+        with self.assertRaisesRegex(RemoteCatalogError, "no eligible live remote namespace cards"):
+            require_eligible(read_snapshot)
 
     def test_classification_precedence_stale_missing_disabled_incompatible_eligible(self) -> None:
         eligible = make_card("site-eligible-v1")
@@ -446,6 +581,38 @@ class RemoteReadTests(unittest.TestCase):
 
 
 class MutationAndMigrationTests(unittest.TestCase):
+    def test_mutations_prevalidate_region_reserved_target_duplicates_and_revision(self) -> None:
+        card = make_card()
+        wrong_region = make_card(region="gcp-us-east4")
+        reserved = make_card(REMOTE_CATALOG_NAMESPACE)
+        resource = StatefulResource([card])
+        for cards, message in (
+            ([wrong_region], "does not match resolved region"),
+            ([reserved], "reserved routing catalog"),
+            ([card, card], "duplicate target namespace"),
+        ):
+            with self.subTest(message=message), self.assertRaisesRegex(RemoteCatalogError, message):
+                create_remote_cards(resource, cards, region=REGION)
+        self.assertEqual(resource.write_calls, [])
+
+        with self.assertRaisesRegex(RemoteCatalogError, "does not match resolved region"):
+            update_remote_card(
+                resource,
+                wrong_region,
+                expected_revision=card.card_revision,
+                region=REGION,
+            )
+        with self.assertRaisesRegex(RemoteCatalogError, "non-empty string"):
+            update_remote_card(resource, card, expected_revision="", region=REGION)
+        with self.assertRaisesRegex(RemoteCatalogError, "reserved routing catalog"):
+            delete_remote_card(
+                resource,
+                namespace=REMOTE_CATALOG_NAMESPACE,
+                expected_revision=card.card_revision,
+                region=REGION,
+            )
+        self.assertEqual(resource.write_calls, [])
+
     def test_create_is_conditional_exact_verified_and_idempotent(self) -> None:
         card = make_card()
         resource = StatefulResource([])
@@ -591,11 +758,14 @@ class RecoveryAndErrorTests(unittest.TestCase):
             ranking_pool=30,
             now="2026-07-18T14:00:00+00:00",
         )
-        rebased = rebase_remote_card(base=base, current=current, pending=pending)
+        embedder = FixedEmbedder(SECOND_UNIT_VECTOR)
+        rebased = rebase_remote_card(base=base, current=current, pending=pending, embedder=embedder)
         self.assertFalse(rebased.enabled)
         self.assertEqual((rebased.title, rebased.summary), (current.title, current.summary))
         self.assertEqual((rebased.last_plan_id, rebased.last_apply_id), ("plan-new", "apply-new"))
         self.assertEqual(rebased.ranking_pool, 30)
+        self.assertEqual(rebased.vector, SECOND_UNIT_VECTOR)
+        self.assertEqual(len(embedder.calls), 1)
 
         unsafe = replace(current, region="gcp-us-east4", card_revision="pending")
         unsafe = replace(unsafe, card_revision=card_revision(unsafe))
@@ -606,6 +776,29 @@ class RecoveryAndErrorTests(unittest.TestCase):
         with self.assertRaisesRegex(RemoteCatalogError, "created_at"):
             rebase_remote_card(base=base, current=changed_creation, pending=pending)
 
+        tampered = replace(
+            base,
+            enabled=False,
+            updated_at="2026-07-18T13:00:00+00:00",
+            vector=SECOND_UNIT_VECTOR,
+            vector_hash=vector_hash(SECOND_UNIT_VECTOR),
+            card_revision="pending",
+        )
+        tampered = replace(tampered, card_revision=card_revision(tampered))
+        with self.assertRaisesRegex(RemoteCatalogError, "projection differs from base"):
+            rebase_remote_card(base=base, current=tampered, pending=pending)
+
+        enabled_only = replace(
+            base,
+            enabled=False,
+            updated_at="2026-07-18T13:00:00+00:00",
+            card_revision="pending",
+        )
+        enabled_only = replace(enabled_only, card_revision=card_revision(enabled_only))
+        unchanged = rebase_remote_card(base=base, current=enabled_only, pending=pending)
+        self.assertFalse(unchanged.enabled)
+        self.assertEqual(unchanged.vector, base.vector)
+
     def test_first_apply_manual_race_requires_exact_system_contract_and_null_lineage(self) -> None:
         current = make_card(title="Human", aliases=["human alias"])
         pending = make_card(
@@ -615,9 +808,14 @@ class RecoveryAndErrorTests(unittest.TestCase):
             last_plan_id="plan-new",
             last_apply_id="apply-new",
         )
-        rebased = rebase_remote_card(base=None, current=current, pending=pending)
+        embedder = FixedEmbedder(SECOND_UNIT_VECTOR)
+        rebased = rebase_remote_card(base=None, current=current, pending=pending, embedder=embedder)
         self.assertEqual(rebased.title, "Human")
         self.assertEqual(rebased.last_apply_id, "apply-new")
+        self.assertEqual(rebased.vector, SECOND_UNIT_VECTOR)
+        self.assertEqual(len(embedder.calls), 1)
+        with self.assertRaisesRegex(RemoteCatalogError, "injected routing embedder"):
+            rebase_remote_card(base=None, current=current, pending=pending)
         mismatch = make_card(title="Human", aliases=["human alias"], ranking_pool=30)
         with self.assertRaisesRegex(RemoteCatalogError, "ranking_pool differs"):
             rebase_remote_card(base=None, current=mismatch, pending=pending)
@@ -629,36 +827,54 @@ class RecoveryAndErrorTests(unittest.TestCase):
         pending = make_card(last_plan_id="plan-z", last_apply_id="apply_2099_future")
         current = make_card(last_plan_id="plan-a", last_apply_id="apply_2000_past")
         accepted = validate_accept_remote(
-            current=current,
+            current_reads=[current, current],
             pending=pending,
             expected_remote_revision=current.card_revision,
         )
         self.assertEqual(accepted, current)
         with self.assertRaisesRegex(RemoteCatalogError, "operator-supplied"):
             validate_accept_remote(
-                current=current,
+                current_reads=[current, current],
                 pending=pending,
                 expected_remote_revision="0" * 64,
             )
         no_lineage = make_card()
         with self.assertRaisesRegex(RemoteCatalogError, "complete apply lineage"):
             validate_accept_remote(
-                current=no_lineage,
+                current_reads=[no_lineage, no_lineage],
                 pending=pending,
                 expected_remote_revision=no_lineage.card_revision,
             )
         same = make_card(last_plan_id="plan-z", last_apply_id="apply_2099_future")
         with self.assertRaisesRegex(RemoteCatalogError, "different apply lineage"):
             validate_accept_remote(
-                current=same,
+                current_reads=[same, same],
                 pending=pending,
                 expected_remote_revision=same.card_revision,
+            )
+        changed = make_card(
+            title="Changed between reads",
+            aliases=[],
+            last_plan_id="plan-a",
+            last_apply_id="apply_2000_past",
+        )
+        with self.assertRaisesRegex(RemoteCatalogError, "changed between strong reads"):
+            validate_accept_remote(
+                current_reads=[current, changed],
+                pending=pending,
+                expected_remote_revision=current.card_revision,
+            )
+        with self.assertRaisesRegex(RemoteCatalogError, "exactly two"):
+            validate_accept_remote(
+                current_reads=[current],
+                pending=pending,
+                expected_remote_revision=current.card_revision,
             )
 
     def test_errors_are_single_call_bounded_and_redacted(self) -> None:
         secret = "tpuf_ABC123SECRET"
         self.assertNotIn(secret, redact_remote_error(f"Authorization: Bearer {secret}"))
-        self.assertIn("<redacted>", redact_remote_error(f"Authorization: Bearer {secret}"))
+        self.assertEqual(redact_remote_error(f"Authorization: Bearer {secret}"), "<redacted provider payload>")
 
         class FailingClient:
             def __init__(self) -> None:
@@ -677,6 +893,30 @@ class RecoveryAndErrorTests(unittest.TestCase):
             )
         self.assertEqual(client.calls, 1)
         self.assertNotIn(secret, str(raised.exception))
+        self.assertNotIn("Authorization", str(raised.exception))
+
+        class PermissionFailure(Exception):
+            status_code = 403
+
+        dangerous = "tpuf_TOKEN body={'vector':[1.0,2.0], 'secret':'credential'}"
+        for error, expected in (
+            (PermissionFailure(dangerous), "PermissionFailure, status=403"),
+            (TimeoutError(dangerous), "TimeoutError, timeout"),
+            (RuntimeError(dangerous), "RuntimeError"),
+        ):
+            class ErrorClient:
+                def namespaces(self, **kwargs: object) -> object:
+                    raise error
+
+            with self.subTest(error=error), self.assertRaisesRegex(RemoteCatalogError, expected) as failure:
+                read_remote_catalog(
+                    ErrorClient(),  # type: ignore[arg-type]
+                    region=REGION,
+                    compatibility=CompatibilityContract(REGION, MODEL, "float32"),
+                )
+            rendered = str(failure.exception)
+            for forbidden in ("tpuf_TOKEN", "vector", "credential", "1.0", "body"):
+                self.assertNotIn(forbidden, rendered)
 
     def test_explicit_client_adapter_does_not_read_environment(self) -> None:
         calls: list[dict[str, object]] = []
@@ -699,7 +939,7 @@ class RecoveryAndErrorTests(unittest.TestCase):
                 raise RuntimeError(f"bad explicit-secret-key in {kwargs}")
 
         with patch.dict("sys.modules", {"turbopuffer": SimpleNamespace(Turbopuffer=FailingTP)}):
-            with self.assertRaisesRegex(RemoteCatalogError, "<redacted>") as raised:
+            with self.assertRaisesRegex(RemoteCatalogError, "RuntimeError") as raised:
                 create_client(api_key="explicit-secret-key", region=REGION)
         self.assertNotIn("explicit-secret-key", str(raised.exception))
 

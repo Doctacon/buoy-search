@@ -14,19 +14,23 @@ import re
 from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence, TypeVar
 
 from buoy_search.catalog import (
+    CardFields,
     CatalogError,
     NamespaceCard,
     ROUTING_DIMENSIONS,
+    RoutingEmbedder,
     card_revision,
     card_to_dict,
     catalog_revision,
     merge_system_card,
     parse_card,
+    prepare_card,
 )
 
 REMOTE_CATALOG_NAMESPACE = "buoy-routing-catalog-v1"
 NAMESPACE_PAGE_SIZE = 1000
 CARD_PAGE_SIZE = 100
+MAX_PAGES_PER_PASS = 10_000
 DISTANCE_METRIC = "cosine_distance"
 STRONG_CONSISTENCY = {"level": "strong"}
 REMOTE_CARD_ATTRIBUTES = tuple(field.name for field in fields(NamespaceCard))
@@ -188,8 +192,7 @@ def create_client(*, api_key: str, region: str) -> RemoteClient:
 
 
 def remote_card_id(namespace: str) -> str:
-    if not isinstance(namespace, str) or not namespace.strip():
-        raise RemoteCatalogError("target namespace must be a non-empty string")
+    _validate_target_namespace(namespace, allow_reserved=True)
     digest = hashlib.sha256(namespace.encode("utf-8")).hexdigest()
     return f"bc_{digest[:61]}"
 
@@ -224,6 +227,7 @@ def card_from_remote_row(row: object, *, region: str) -> NamespaceCard:
         raise RemoteCatalogError(
             f"remote card ID mismatch for namespace {card.namespace!r}: expected {expected_id!r}"
         )
+    _validate_target_namespace(card.namespace, allow_reserved=False)
     if card.region != region:
         raise RemoteCatalogError(
             f"remote card {card.namespace!r} region {card.region!r} does not match catalog region {region!r}"
@@ -331,6 +335,17 @@ def read_remote_catalog(
     )
 
 
+def require_eligible(snapshot: RemoteCatalogSnapshot) -> RemoteCatalogSnapshot:
+    """Require at least one card for routing while preserving generic management reads."""
+
+    if snapshot.counts.eligible_count == 0:
+        raise RemoteCatalogError(
+            "no eligible live remote namespace cards; run `buoy catalog list --all` to inspect "
+            "missing, stale, disabled, and incompatible cards"
+        )
+    return snapshot
+
+
 def classify_remote_catalog(
     *,
     live_namespace_ids: Sequence[str],
@@ -345,6 +360,8 @@ def classify_remote_catalog(
     card_ids = [card.namespace for card in ordered_cards]
     if len(card_ids) != len(set(card_ids)):
         raise RemoteCatalogError("remote catalog contains duplicate target namespaces")
+    for card in ordered_cards:
+        _validate_target_namespace(card.namespace, allow_reserved=False)
     _validate_card_id_collisions(ordered_cards)
     content_live = set(listed) - {REMOTE_CATALOG_NAMESPACE}
     card_by_namespace = {card.namespace: card for card in ordered_cards}
@@ -395,7 +412,7 @@ def create_remote_cards(
     ordered = tuple(sorted((parse_card(card_to_dict(card, include_vector=True)) for card in cards), key=lambda c: c.namespace))
     if not ordered:
         raise RemoteCatalogError("remote card create requires at least one card")
-    _validate_card_id_collisions(ordered)
+    _validate_mutation_cards(ordered, region=region)
     rows = [card_to_remote_row(card) for card in ordered]
     response = _call(
         "conditional card create",
@@ -433,6 +450,9 @@ def update_remote_card(
     region: str,
 ) -> MutationResult:
     parsed = parse_card(card_to_dict(card, include_vector=True))
+    _validate_mutation_cards((parsed,), region=region)
+    if not isinstance(expected_revision, str) or not expected_revision:
+        raise RemoteCatalogError("expected card revision must be a non-empty string")
     expected_id = remote_card_id(parsed.namespace)
     response = _call(
         "conditional card update",
@@ -461,6 +481,11 @@ def delete_remote_card(
     expected_revision: str,
     region: str,
 ) -> MutationResult:
+    _validate_target_namespace(namespace, allow_reserved=False)
+    if not isinstance(region, str) or not region:
+        raise RemoteCatalogError("resolved region must be a non-empty string")
+    if not isinstance(expected_revision, str) or not expected_revision:
+        raise RemoteCatalogError("expected card revision must be a non-empty string")
     expected_id = remote_card_id(namespace)
     response = _call(
         "conditional card delete",
@@ -529,11 +554,13 @@ def rebase_remote_card(
     base: NamespaceCard | None,
     current: NamespaceCard,
     pending: NamespaceCard,
+    embedder: RoutingEmbedder | None = None,
 ) -> NamespaceCard:
     current = parse_card(card_to_dict(current, include_vector=True))
     pending = parse_card(card_to_dict(pending, include_vector=True))
     if current.namespace != pending.namespace:
         raise RemoteCatalogError("cannot rebase different target namespaces")
+    recompute_projection = base is None
     if base is None:
         if current.semantic_origin != "manual" or current.last_plan_id is not None or current.last_apply_id is not None:
             raise RemoteCatalogError("first-apply rebase requires a lineage-free manual remote card")
@@ -554,47 +581,115 @@ def rebase_remote_card(
             raise RemoteCatalogError(
                 f"remote card has unsafe concurrent field changes: {sorted(changed - allowed)}"
             )
-        if changed & _REBASE_SEMANTIC_FIELDS and current.semantic_origin != "manual":
+        semantic_changed = any(
+            getattr(base, field) != getattr(current, field)
+            for field in _REBASE_SEMANTIC_FIELDS
+        )
+        if semantic_changed and current.semantic_origin != "manual":
             raise RemoteCatalogError("concurrent semantic changes are rebase-safe only for manual cards")
-    return merge_system_card(current, pending)
+        if semantic_changed:
+            recompute_projection = True
+        elif not _same_projection(base, current):
+            raise RemoteCatalogError(
+                "remote semantic fields are unchanged but semantic/vector projection differs from base"
+            )
+    if not recompute_projection:
+        return merge_system_card(current, pending)
+    if embedder is None:
+        raise RemoteCatalogError("safe rebase with manual semantics requires an injected routing embedder")
+    fields = CardFields(
+        namespace=pending.namespace,
+        enabled=current.enabled,
+        source_kind=pending.source_kind,
+        source_uri=pending.source_uri,
+        site_id=pending.site_id,
+        title=current.title,
+        summary=current.summary,
+        aliases=list(current.aliases),
+        tags=list(current.tags),
+        semantic_origin="manual",
+        region=pending.region,
+        embedding_model=pending.embedding_model,
+        embedding_precision=pending.embedding_precision,
+        plan_schema_version=pending.plan_schema_version,
+        ranking_mode=pending.ranking_mode,
+        ranking_profile=pending.ranking_profile,
+        ranking_pool=pending.ranking_pool,
+        ranking_aggregation=pending.ranking_aggregation,
+        last_plan_id=pending.last_plan_id,
+        last_apply_id=pending.last_apply_id,
+    )
+    try:
+        rebased = prepare_card(fields, embedder=embedder, now=pending.updated_at)
+    except CatalogError as exc:
+        raise RemoteCatalogError(f"safe rebase projection failed: {exc}") from exc
+    rebased = replace(rebased, created_at=current.created_at, card_revision="pending")
+    return replace(rebased, card_revision=card_revision(rebased))
 
 
 def validate_accept_remote(
     *,
-    current: NamespaceCard,
+    current_reads: Sequence[NamespaceCard],
     pending: NamespaceCard,
     expected_remote_revision: str,
 ) -> NamespaceCard:
-    current = parse_card(card_to_dict(current, include_vector=True))
+    if len(current_reads) != 2:
+        raise RemoteCatalogError("accept-remote requires exactly two strong remote card reads")
+    first = parse_card(card_to_dict(current_reads[0], include_vector=True))
+    second = parse_card(card_to_dict(current_reads[1], include_vector=True))
+    if card_to_dict(first, include_vector=True) != card_to_dict(second, include_vector=True):
+        raise RemoteCatalogError("accept-remote remote card changed between strong reads")
     pending = parse_card(card_to_dict(pending, include_vector=True))
-    if current.namespace != pending.namespace:
+    if first.namespace != pending.namespace:
         raise RemoteCatalogError("accepted remote card targets a different namespace")
-    if current.card_revision != expected_remote_revision:
+    if first.card_revision != expected_remote_revision:
         raise RemoteCatalogError("accepted remote revision does not match the operator-supplied revision")
-    if current.last_plan_id is None or current.last_apply_id is None:
+    if first.last_plan_id is None or first.last_apply_id is None:
         raise RemoteCatalogError("accepted remote card must have complete apply lineage")
-    if (current.last_plan_id, current.last_apply_id) == (pending.last_plan_id, pending.last_apply_id):
+    if (first.last_plan_id, first.last_apply_id) == (pending.last_plan_id, pending.last_apply_id):
         raise RemoteCatalogError("accepted remote card must have different apply lineage from pending")
-    return current
+    return first
 
 
 def redact_remote_error(value: object) -> str:
-    message = str(value) or value.__class__.__name__
-    message = re.sub(r"tpuf_[A-Za-z0-9._-]+", "<redacted>", message)
-    message = re.sub(r"(?i)bearer\s+[^\s,;]+", "Bearer <redacted>", message)
-    message = re.sub(
-        r"(?i)(authorization\s*[:=]\s*)([^\s,;]+)",
-        lambda match: f"{match.group(1)}<redacted>",
-        message,
-    )
-    return message[:500]
+    """Return a bounded class/status summary without inspecting provider payload text."""
+
+    if isinstance(value, BaseException):
+        return _safe_exception_summary(value)
+    return "<redacted provider payload>"
+
+
+def _namespace_page_cursor(page: object) -> str | None:
+    cursor: object = None
+    if isinstance(page, Mapping):
+        cursor = page.get("next_cursor")
+    elif hasattr(page, "next_cursor"):
+        cursor = getattr(page, "next_cursor")
+    if cursor is None:
+        info = getattr(page, "next_page_info", None)
+        if callable(info):
+            value = _plain(info())
+            if isinstance(value, dict):
+                cursor = value.get("cursor") or value.get("next_cursor")
+    if cursor is None:
+        return None
+    if not isinstance(cursor, str) or not cursor:
+        raise RemoteCatalogError("namespace listing returned an invalid page cursor")
+    return cursor
 
 
 def _list_namespaces(client: RemoteClient) -> tuple[tuple[str, ...], int]:
     page = _call("namespace listing", client.namespaces, page_size=NAMESPACE_PAGE_SIZE)
     pages = 0
     values: list[str] = []
+    seen_ids: set[str] = set()
+    seen_signatures: set[tuple[tuple[str, ...], str | None]] = set()
+    seen_cursors: set[str] = set()
     while True:
+        if pages >= MAX_PAGES_PER_PASS:
+            raise RemoteCatalogError(
+                f"namespace listing exceeded {MAX_PAGES_PER_PASS} pages in one pass"
+            )
         pages += 1
         if hasattr(page, "namespaces"):
             items = getattr(page, "namespaces")
@@ -612,7 +707,19 @@ def _list_namespaces(client: RemoteClient) -> tuple[tuple[str, ...], int]:
             value = plain.get("id") if isinstance(plain, dict) else None
             if not isinstance(value, str) or not value:
                 raise RemoteCatalogError("namespace listing returned an invalid ID")
+            if value in seen_ids:
+                raise RemoteCatalogError(f"namespace listing repeated ID {value!r} during pagination")
+            seen_ids.add(value)
             values.append(value)
+        cursor = _namespace_page_cursor(page)
+        signature = (tuple(values[-len(batch):]) if batch else (), cursor)
+        if signature in seen_signatures:
+            raise RemoteCatalogError("namespace listing repeated a page cursor/signature")
+        seen_signatures.add(signature)
+        if cursor is not None:
+            if cursor in seen_cursors:
+                raise RemoteCatalogError("namespace listing repeated a page cursor/signature")
+            seen_cursors.add(cursor)
         has_next = getattr(page, "has_next_page", None)
         if not callable(has_next) or not has_next():
             break
@@ -622,8 +729,6 @@ def _list_namespaces(client: RemoteClient) -> tuple[tuple[str, ...], int]:
         if not callable(getter):
             raise RemoteCatalogError("namespace listing advertised a next page without a getter")
         page = _call("namespace listing pagination", getter)
-    if len(values) != len(set(values)):
-        raise RemoteCatalogError("remote namespace listing contains duplicate IDs")
     return tuple(sorted(values)), pages
 
 
@@ -637,7 +742,12 @@ def _read_card_pass(
     last_id: str | None = None
     pages = 0
     billing: list[dict[str, object]] = []
+    seen_page_signatures: set[tuple[str, ...]] = set()
     while True:
+        if pages >= MAX_PAGES_PER_PASS:
+            raise RemoteCatalogError(
+                f"remote card query exceeded {MAX_PAGES_PER_PASS} pages in one pass"
+            )
         kwargs: dict[str, object] = {
             "rank_by": ("id", "asc"),
             "top_k": CARD_PAGE_SIZE,
@@ -665,6 +775,10 @@ def _read_card_pass(
                 raise RemoteCatalogError("remote card pagination repeated a row ID")
             seen_row_ids.add(row_id)
             cards.append(card_from_remote_row(row, region=region))
+        page_signature = tuple(page_ids)
+        if page_signature in seen_page_signatures:
+            raise RemoteCatalogError("remote card pagination repeated a page signature")
+        seen_page_signatures.add(page_signature)
         if page_ids != sorted(page_ids) or any(
             page_ids[index] <= page_ids[index - 1] for index in range(1, len(page_ids))
         ):
@@ -737,6 +851,14 @@ def _compatible(card: NamespaceCard, compatibility: CompatibilityContract) -> bo
     )
 
 
+def _same_projection(first: NamespaceCard, second: NamespaceCard) -> bool:
+    return (
+        first.semantic_hash == second.semantic_hash
+        and first.vector_hash == second.vector_hash
+        and first.vector == second.vector
+    )
+
+
 def _system_contract_fields() -> tuple[str, ...]:
     return (
         "namespace",
@@ -761,6 +883,30 @@ def _same_cards(actual: Sequence[NamespaceCard], expected: Sequence[NamespaceCar
     return [card_to_dict(card, include_vector=True) for card in actual] == [
         card_to_dict(card, include_vector=True) for card in expected
     ]
+
+
+def _validate_target_namespace(namespace: object, *, allow_reserved: bool) -> str:
+    if not isinstance(namespace, str) or re.fullmatch(r"[A-Za-z0-9-_.]{1,128}", namespace) is None:
+        raise RemoteCatalogError("target namespace must match [A-Za-z0-9-_.]{1,128}")
+    if not allow_reserved and namespace == REMOTE_CATALOG_NAMESPACE:
+        raise RemoteCatalogError("reserved routing catalog namespace cannot be a target card")
+    return namespace
+
+
+def _validate_mutation_cards(cards: Sequence[NamespaceCard], *, region: str) -> None:
+    if not isinstance(region, str) or not region:
+        raise RemoteCatalogError("resolved region must be a non-empty string")
+    namespaces: set[str] = set()
+    for card in cards:
+        _validate_target_namespace(card.namespace, allow_reserved=False)
+        if card.namespace in namespaces:
+            raise RemoteCatalogError(f"duplicate target namespace {card.namespace!r} in mutation")
+        namespaces.add(card.namespace)
+        if card.region != region:
+            raise RemoteCatalogError(
+                f"card {card.namespace!r} region {card.region!r} does not match resolved region {region!r}"
+            )
+    _validate_card_id_collisions(cards)
 
 
 def _validate_card_id_collisions(cards: Sequence[NamespaceCard]) -> None:
@@ -796,8 +942,8 @@ def _safe_billing(value: object) -> dict[str, object]:
         return {"summary": redact_remote_error(value)}
     safe: dict[str, object] = {}
     for key, item in plain.items():
-        if isinstance(key, str) and isinstance(item, (str, int, float, bool, type(None))):
-            safe[key[:80]] = item if not isinstance(item, str) else redact_remote_error(item)
+        if isinstance(key, str) and isinstance(item, (int, float, bool, type(None))):
+            safe[key[:80]] = item
     return safe
 
 
@@ -819,17 +965,24 @@ def _plain(value: object) -> object:
     return value
 
 
+def _safe_exception_summary(exc: BaseException) -> str:
+    class_name = re.sub(r"[^A-Za-z0-9_.-]", "_", exc.__class__.__name__)[:80]
+    status = getattr(exc, "status_code", None)
+    status_text = f", status={status}" if type(status) is int else ""
+    category = ", timeout" if isinstance(exc, TimeoutError) or "timeout" in class_name.casefold() else ""
+    return f"{class_name}{status_text}{category}"
+
+
 def _remote_error(
     phase: str,
     exc: BaseException,
     *,
     secrets: Sequence[str] = (),
 ) -> RemoteCatalogError:
-    message = redact_remote_error(exc)
-    for secret in secrets:
-        if secret:
-            message = message.replace(secret, "<redacted>")
-    return RemoteCatalogError(f"remote routing catalog {phase} failed: {message}")
+    del secrets  # Provider exception payloads are never inspected, so secret values are unnecessary.
+    return RemoteCatalogError(
+        f"remote routing catalog {phase} failed ({_safe_exception_summary(exc)})"
+    )
 
 
 def _call(phase: str, function: Callable[..., T], *args: object, **kwargs: object) -> T:
