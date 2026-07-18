@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-18
 Updated: 2026-07-18
 Parent: .10x/tickets/2026-07-18-remote-semantic-routing-plan.md
@@ -51,3 +51,6 @@ Golden schema/cards, exact captured fake requests/responses, pagination stabilit
 None.
 
 ## Progress and notes
+
+- 2026-07-18: Execution started on `work/build-remote-routing-backend`; active specs, research, current local catalog/card implementation, installed SDK 2.4.0 contracts, and existing tests inspected. Public behavior and live operations remain excluded.
+- 2026-07-18: Implemented inert remote backend and 18 focused fake tests covering exact schema/IDs/rows, stable pagination/intersection/counts/billing, conditional mutations/migration races, recovery validation, and redacted errors. Python 3.11 and 3.13 full suites each passed 382 tests; focused compatibility passed 59; build/compile/diff checks passed. Evidence: `.10x/evidence/2026-07-18-remote-routing-backend-implementation.md`. Ticket remains active pending independent review and hosted checks.
