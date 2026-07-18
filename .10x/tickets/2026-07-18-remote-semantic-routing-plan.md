@@ -24,7 +24,7 @@ The backend child is intentionally inert. The cutover child is one cohesive auth
 - A mutation freeze prevents divergence from seed through post-integration verification.
 - Exactly two validated cards are seeded; five listed IDs classify as one control plane, four content-live, two eligible carded targets, and two missing-card exclusions.
 - Automatic preview works from unrelated directories using credentials/region and remote authority; explicit CLI namespace remains the local dry-preview/manual bypass.
-- Confirmed apply conflicts have approved safe-rebase and strictly-newer accept-remote recovery without content replay.
+- Confirmed apply conflicts have approved safe-rebase and exact operator-accepted stable remote revision recovery without content replay or clock-based ordering.
 - Exact bound `.buoy/catalog.json` is deleted only after integrated remote verification; no other local state changes.
 - No content namespace query/write/delete occurs during migration/cutover verification.
 - Focused/full/hosted validation, durable evidence, and independent reviews pass.

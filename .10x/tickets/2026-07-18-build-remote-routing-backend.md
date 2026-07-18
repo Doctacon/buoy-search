@@ -15,7 +15,7 @@ Implement only the inert backend primitives in `.10x/specs/remote-turbopuffer-ro
 - injected-client namespace listing, metadata normalization, two-pass strong paginated reads, stable snapshot/intersection counts;
 - exact conditional create/update/delete and re-read verification;
 - migration-state classifier;
-- safe-rebase and strictly-newer apply-identity validation helpers;
+- safe-rebase and exact operator-accepted stable remote revision validation helpers without clock-based ordering;
 - permission/API/timeout/billing diagnostics and vector redaction.
 
 Do not connect these primitives to public catalog CLI, apply, or retrieval. Do not create a public temporary migration command. Existing local behavior remains byte-for-byte where practical.
