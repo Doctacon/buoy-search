@@ -26,7 +26,7 @@ Do not connect these primitives to public catalog CLI, apply, or retrieval. Do n
 - Request-shape fakes prove page size 100, strong consistency, ID filters/order, vectors, two-pass card stability, two identical auto-paginated namespace-list passes at page size 1000, and bounded non-advancing protections.
 - Mutations prove exact conditions/affected IDs/re-read, including delete conflicts and partial migration races.
 - Count precedence and five-ID/two-card fixture match the spec.
-- Recovery helpers distinguish rebase-safe manual/enabled edits, unsafe system changes, and strictly newer parseable apply identities.
+- Recovery helpers distinguish rebase-safe manual/enabled edits, unsafe system changes, and exact operator-accepted stable remote revisions without using wall-clock causality.
 - SDK error/timeout/429 diagnostics and billing counts are bounded/redacted.
 - No public CLI/help/docs behavior changes, local catalog IO changes, credentials, live calls, or remote writes.
 - Focused/full/hosted checks, evidence, and independent review pass.
