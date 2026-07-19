@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-18
 Updated: 2026-07-18
-Relates-To: .10x/tickets/2026-07-18-remove-legacy-json-applied-state.md, .10x/decisions/duckdb-only-applied-state-hard-cutover.md, .10x/specs/compact-duckdb-applied-state.md
+Relates-To: .10x/tickets/done/2026-07-18-remove-legacy-json-applied-state.md, .10x/decisions/duckdb-only-applied-state-hard-cutover.md, .10x/specs/compact-duckdb-applied-state.md
 
 # DuckDB-Only Applied-State Hard Cutover Validation
 
@@ -57,6 +57,17 @@ gh pr checks 36 --watch --interval 10
 
 This supports the ticket's hard-cutover, inert-file, first-apply, DuckDB-authority, fail-closed, lock, content/state sequencing, pending-recovery, documentation, focused/full Python, distribution-build, and hosted-check acceptance claims. Pull request `#36` passed both versioned test jobs and the dependent distribution build in Actions run `29691090597`. Independent review remains a separate required gate and this evidence does not close the ticket.
 
+## Parent-observed invalid-DuckDB fail-closed probe
+
+After independent review, the parent ran a temporary-directory Python 3.13 probe through the public `load_applied_state` path. One existing `state.duckdb` contained invalid bytes; another contained invalid bytes and mode `000`. Both raised `AppliedStateError` rather than returning first-apply state:
+
+```text
+corrupt=fail_closed:AppliedStateError:could not load DuckDB applied state: ... not a valid DuckDB database file
+unreadable=fail_closed:AppliedStateError:could not load DuckDB applied state: ... Permission denied
+```
+
+The probe restored permissions in `finally`, used no project state path, and made no credential or remote call. Together with committed schema-version and identity-mismatch regressions, this covers the specification's corrupt, unreadable, schema-incompatible, and identity-invalid fail-closed classes.
+
 ## Limits
 
-All remote content and catalog behavior used injected fakes; no live Turbopuffer operation, credential use, release, interactive apply confirmation, independent review, or merge occurred.
+All remote content and catalog behavior used injected fakes; no live Turbopuffer operation, credential use, release, interactive apply confirmation, or merge occurred.
