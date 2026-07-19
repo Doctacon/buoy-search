@@ -46,4 +46,5 @@ Deleting ignored `artifacts/`, `.buoy/`, credentials, remote namespaces, local/r
 
 - 2026-07-18: User authorized the recommended cleanup sequence. Removed 28 clean worktrees tied to merged PRs, preserved both dirty/unmerged worktrees, and recovered approximately 13.4 GB.
 - 2026-07-18: Independent shaping review passed with no blockers. Review: `.10x/reviews/2026-07-18-repository-cleanup-shaping-review.md`.
+- 2026-07-18: Thistle/Qdrant triage integrated at `f9fd5b3` with preservation/disposition review pass. After exact HEAD/status-manifest revalidation, removed the retired dirty worktree and local `thistle-site-test` branch under the merged deletion manifest. No external provider/container or unrelated repository state was touched. Evidence: `.10x/evidence/2026-07-18-thistle-worktree-deletion.md`.
 - 2026-07-18: User superseded the earlier dedup-reconciliation direction: retire exact-chunk dedup, preserve it only as historical non-authority, and salvage only the exact-host behavior from the dirty implementation.
