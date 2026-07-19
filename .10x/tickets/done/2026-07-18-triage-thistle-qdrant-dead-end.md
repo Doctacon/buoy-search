@@ -1,4 +1,4 @@
-Status: active
+Status: done
 Created: 2026-07-18
 Updated: 2026-07-18
 Parent: .10x/tickets/2026-07-18-repository-cleanup-plan.md
@@ -34,7 +34,7 @@ Path/commit inventory, current-vs-branch behavior matrix, record provenance map,
 
 ## Blockers
 
-Independent review and merge of this preservation PR are required before the deletion manifest becomes effective. No product-semantics blocker remains: the user explicitly retired deduplication and authorized exact-host salvage.
+None. The deletion manifest becomes effective only after this preservation PR merges.
 
 ## Explicit exclusions
 
@@ -55,4 +55,18 @@ Porting the Qdrant backend; running Thistle/Mercury crawls; deleting Qdrant volu
 - 2026-07-18: Applied final user ratification: removed the drafted current dedup spec, cancelled/no-actioned its port, and retained the old implementation/spec/evidence/review only as historical path/hash provenance.
 - 2026-07-18: Kept sitemap resource-limit and MarkItDown normalization owners because current source plus prior ratified records prove those gaps. Discarded speculative compact-plan and namespace-deletion drafts because no current measurement/request proves a need.
 - 2026-07-18: Cancelled the two Qdrant smoke tickets only after their results and hashes were preserved. Produced an exact post-merge deletion manifest without touching the dirty worktree or external state.
-- 2026-07-18: Record-only branch is ready for independent review. Ticket remains active and deletion remains forbidden until the preservation PR merges.
+- 2026-07-18: Record-only branch became ready for independent review; deletion remained forbidden pending review and merge.
+- 2026-07-18: Independent review passed at commit `32b0d6e` with exact Thistle HEAD/status/content hashes unchanged. Review: `.10x/reviews/2026-07-18-thistle-qdrant-dead-end-disposition-review.md`.
+
+## Closure mapping
+
+- Complete dirty/unique-commit inventory: storage manifests and evidence counts/hashes.
+- Durable preservation and authority classification: disposition research, active safety/robustness specs and tickets, cancelled historical Qdrant/dedup tickets.
+- Exact-host current gap: current-source comparison, active focused spec, and bounded repair owner.
+- Dedup retirement: explicit user decision, cancelled no-action ticket, and absence of active/draft implementation authority.
+- Qdrant ticket retirement: preserved outcomes/provenance before cancellation.
+- Deletion safety: exact post-merge manifest, excluded external state, and independent pass review.
+
+## Retrospective
+
+A dirty dead-end branch can contain both obsolete architecture and valuable product-neutral findings. Classifying every path before deletion preserved crawl safety and normalization contracts without importing Qdrant or dedup complexity. Future provider cutovers should separate behavioral evidence from provider-specific implementation earlier so retirement does not require forensic recovery.

@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-18
 Updated: 2026-07-18
-Relates-To: .10x/tickets/2026-07-18-triage-thistle-qdrant-dead-end.md, .10x/tickets/cancelled/2026-07-18-reconcile-website-exact-chunk-deduplication.md
+Relates-To: .10x/tickets/done/2026-07-18-triage-thistle-qdrant-dead-end.md, .10x/tickets/cancelled/2026-07-18-reconcile-website-exact-chunk-deduplication.md
 
 # Thistle/Qdrant Dead-End Triage Evidence
 
