@@ -1,4 +1,4 @@
-Status: open
+Status: blocked
 Created: 2026-07-18
 Updated: 2026-07-19
 Parent: .10x/tickets/2026-07-18-repository-cleanup-plan.md
@@ -32,7 +32,7 @@ Source/record inventory with exact paths, compatibility matrix, conflict analysi
 
 ## Blockers
 
-None. Direct-command implementation and stale-record review are complete.
+User ratification is required before any active removal contract or executable ticket is created. The exact confirm-or-correct checkpoint is recorded in `.10x/research/2026-07-19-v0-4-compatibility-removal-inventory.md`: whether 0.4.0 removes exactly the installed `turbo-search` command and two `TURBO_SEARCH_EMBEDDING_*` fallbacks, rejects old-variable presence before side effects, retains all other inventoried compatibility, and requires clean-install plus 0.3-to-0.4 upgrade validation.
 
 ## Explicit exclusions
 
@@ -45,7 +45,13 @@ Implementing removals; changing version numbers; publishing a release; deleting 
 - `.10x/decisions/buoy-product-identity-and-compatibility-v0-3.md`
 - `.10x/specs/buoy-local-compatibility.md`
 - `.10x/tickets/done/2026-07-18-direct-command-defaults-plan.md`
+- `.10x/research/2026-07-19-v0-4-compatibility-removal-inventory.md`
+- `.10x/specs/buoy-v0-4-console-alias-removal.md`
+- `.10x/specs/buoy-v0-4-environment-alias-removal.md`
 
 ## Progress and notes
 
 - 2026-07-19: Dependency `.10x/tickets/done/2026-07-18-review-stale-ticket-statuses.md` completed; this shaping ticket is unblocked. No compatibility shaping was performed by the closure-review task.
+- 2026-07-19: Inspected active deprecation/removal authority and current implementation across source, parser/help, package metadata, user docs, changelog, tests, operational skill, decisions, specifications, release mechanics, and integrated direct-command behavior. The only explicit 0.4 schedule covers `turbo-search`, `TURBO_SEARCH_EMBEDDING_MODEL`, and `TURBO_SEARCH_EMBEDDING_PRECISION`. Inventory: `.10x/research/2026-07-19-v0-4-compatibility-removal-inventory.md`.
+- 2026-07-19: Classified `.turbo-search` state-root fallback, old-plan behavior, retrieve `--auto-route`/`--live`/`--plan`, plan positional/`--base-url` source compatibility, and `catalog migrate-local` as retained compatibility with no 0.4 removal authority. Confirmed the direct-command defaults require those retrieve flags to remain accepted and found one independently stale retrieval statement in the active skill reference; no behavior or skill was changed.
+- 2026-07-19: Added two focused draft-only, blocked specifications for console and environment aliases. No active specification, executable ticket, removal, version change, publication, state/data operation, or remote operation occurred. The ticket is blocked on the recorded user checkpoint, including the execution-critical choice between rejecting removed environment variables and silently ignoring them.
