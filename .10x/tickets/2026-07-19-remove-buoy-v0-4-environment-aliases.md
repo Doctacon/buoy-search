@@ -52,3 +52,5 @@ Console-script/`legacy_main` changes; version/tag/publication work; changes to c
 ## Progress and notes
 
 - 2026-07-19: Opened from the ratified active environment-removal specification. No implementation performed.
+- 2026-07-19: Implemented the exact pre-dispatch presence gate in the primary and autoresearch entry points, removed config fallback/warning/conflict selection, added exhaustive command/help/version/matrix/no-dispatch coverage, and updated focused migration/changelog/active-spec references. Local Python 3.11 and 3.13 suites each pass 422 tests; focused tests and temporary wheel/sdist construction/inspection pass. Evidence: `.10x/evidence/2026-07-19-remove-buoy-v0-4-environment-aliases.md`.
+- 2026-07-19: Candidate version metadata remains intentionally unchanged because the parent plan assigns it to the console-alias sibling; aggregate reconciliation must produce coherent 0.4.0 metadata. Ticket remains active pending independent child review, hosted PR checks, and aggregate review; no merge authorized.
