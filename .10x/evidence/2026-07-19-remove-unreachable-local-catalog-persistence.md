@@ -127,6 +127,18 @@ An initial `python -m pytest` attempt was not a validation failure: the locked p
 - Card/schema/parser/generated-semantics/routing/remote/pending behavior is preserved by identical retained AST plus focused and full tests.
 - The branch performed no Buoy live operation, no Turbopuffer operation, no live crawl, no user catalog/data deletion, and no file deletion outside the obsolete source test bodies. All remote behavior tests used injected clients; only the explicitly required Git fetch/push/PR workflow contacts Git hosting.
 
+## Hosted checks
+
+Pull request [#43](https://github.com/Doctacon/buoy-search/pull/43) ran GitHub Actions workflow `CI`, run `29700312134`, against implementation commit `c13bbcc`:
+
+```text
+Python 3.11 — pass (44s)
+Python 3.13 — pass (1m3s)
+Build distributions — pass (10s)
+```
+
+The subsequent record-only commit adds this hosted observation and ticket progress; it does not change source or tests. Current-head hosted status is reported separately at handoff so the record update does not recursively claim its own checks.
+
 ## Limits
 
-This is implementation evidence, not independent review and not ticket closure. Hosted CI is evaluated on the pull request after push and is not claimed by this pre-push record.
+This is implementation evidence, not independent review and not ticket closure.
