@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-06-28
 Updated: 2026-06-28
-Depends-On: .10x/evidence/2026-06-28-repo-oversize-metadata-live-eval.md, .10x/tickets/2026-06-28-repo-searchable-path-symbol-metadata.md
+Depends-On: .10x/evidence/2026-06-28-repo-oversize-metadata-live-eval.md, .10x/tickets/done/2026-06-28-repo-searchable-path-symbol-metadata.md
 
 # Repo Search Metadata Cross-Repo Validation
 
