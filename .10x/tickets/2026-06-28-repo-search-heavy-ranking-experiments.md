@@ -1,6 +1,6 @@
 Status: active
 Created: 2026-06-28
-Updated: 2026-07-02
+Updated: 2026-07-19
 Depends-On: .10x/evidence/2026-06-28-repo-search-file-ranking-promotion-validation.md, .10x/research/2026-06-28-repo-search-precision-state-of-art.md
 
 # Repo Search Heavy Ranking Experiments
@@ -25,8 +25,9 @@ Evaluate the heavier remaining precision hypotheses after the default file-level
 
 ## Blockers
 
-- None for retrieval-only ranking experiments.
-- Larger cross-repo labels remain recommended before learning-to-rank or embedding-model default promotion.
+- Closure is unsupported: the named code-aware embedding, syntax-aware/symbol-breadcrumb chunking, and learning-to-rank scope has neither completion evidence nor an explicit no-action decision.
+- The latest `80.316` routed-profile result remains an evaluation-time per-repo mapping, not an implemented automatic selector or explicit production profile.
+- Larger, preferably reviewed cross-repo labels remain required before learning-to-rank or embedding-model default promotion.
 
 ## References
 
@@ -75,3 +76,8 @@ Evaluate the heavier remaining precision hypotheses after the default file-level
 - 2026-07-01: Continued hypotheses toward the user's next `+2.0` distributed target. Tested source-stem boosts, path-component boosts, generic test demotion, Rust crate-root routing, query-matched `_internal` exemption, conventional `core.py`/`models.py`/`utils.py` routing, `__init__.py` demotion, and `docs/source/` demotion. Promoted the passing combined conventional entrypoint routing set. Live 13-repo evals improved average score `72.762 -> 74.874` (`+2.112`), P@5 `0.452 -> 0.478`, positive gains on 10 repos, no score/P@5 regressions, largest gain share 35.2%. Evidence: `.10x/evidence/2026-07-01-repo-conventional-entrypoint-routing-validation.md`.
 - 2026-07-01: Continued hypotheses toward the user's next `+2.0` target with explicit permission to create new namespaces. Tested candidate-depth configs, expanded file-card namespaces, existing metadata/file-card/oversize-card namespaces, oversize-source namespaces, and aggregation routing. The passing portfolio improved average score `74.874 -> 77.761` (`+2.887`) and P@5 `0.478 -> 0.500`, with positive gains on all 13 repos, no score/P@5 regressions, and largest gain share 21.2%. This is a portfolio/routing candidate, not a universal default. Evidence: `.10x/evidence/2026-07-01-repo-portfolio-routing-validation.md`.
 - 2026-07-02: Continued hypotheses toward another `+2.0` target from the `77.761` portfolio baseline. Tested production-source boosts, path-overlap boosts, filename-stem boosts, nested-test demotion, snapshot demotion, Rust crate-root boosts, and routed combinations. Universal variants caused regressions and were rejected. The passing routed-profile portfolio improved average score `77.761 -> 80.316` (`+2.555`) and P@5 `0.500 -> 0.517`, with positive gains on 11 repos, no score/P@5 regressions, and largest gain share 31.3%. No new namespaces were required for the passing result. Evidence: `.10x/evidence/2026-07-02-repo-routed-profile-portfolio-validation.md`.
+- 2026-07-19: Closure review confirmed that the extensive completed experiments are well evidenced and current promoted defaults remain coherent with `.10x/decisions/namespace-ranking-defaults.md` and `.10x/decisions/repo-ranking-promotion-policy.md`. Closure is nevertheless unsupported because named heavy hypotheses remain unevaluated and the latest routed portfolio is not productized. The ticket remains active; no completed experiment was reclassified as failed implementation. Review: `.10x/reviews/2026-07-19-stale-ticket-status-closure-review.md`.
+
+## Closure note
+
+Existing evidence supports isolation from defaults, open-source/local-only model use, new-namespace/no-delete safety, baseline comparisons, tests for source changes, live retrieval validation, promoted no-regression ranking subsets, and explicit rejection of regressions. It does not support terminal disposition of the umbrella scope. Closure requires either bounded evidence for the remaining named hypotheses and routed-selector/profile work, or an explicit durable no-action decision that narrows/cancels those outcomes, followed by retrospective extraction.

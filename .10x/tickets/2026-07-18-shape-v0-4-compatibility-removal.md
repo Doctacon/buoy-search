@@ -1,8 +1,8 @@
-Status: blocked
+Status: open
 Created: 2026-07-18
-Updated: 2026-07-18
+Updated: 2026-07-19
 Parent: .10x/tickets/2026-07-18-repository-cleanup-plan.md
-Depends-On: .10x/tickets/2026-07-18-review-stale-ticket-statuses.md
+Depends-On: .10x/tickets/done/2026-07-18-review-stale-ticket-statuses.md
 
 # Shape Buoy 0.4 Compatibility Removal
 
@@ -32,7 +32,7 @@ Source/record inventory with exact paths, compatibility matrix, conflict analysi
 
 ## Blockers
 
-Direct-command implementation and stale-record review must complete first so this work shapes against current authority.
+None. Direct-command implementation and stale-record review are complete.
 
 ## Explicit exclusions
 
@@ -47,3 +47,5 @@ Implementing removals; changing version numbers; publishing a release; deleting 
 - `.10x/tickets/done/2026-07-18-direct-command-defaults-plan.md`
 
 ## Progress and notes
+
+- 2026-07-19: Dependency `.10x/tickets/done/2026-07-18-review-stale-ticket-statuses.md` completed; this shaping ticket is unblocked. No compatibility shaping was performed by the closure-review task.

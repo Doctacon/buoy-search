@@ -1,6 +1,6 @@
 Status: done
 Created: 2026-07-18
-Updated: 2026-07-18
+Updated: 2026-07-19
 
 # Repository Dead-End Inventory
 
@@ -59,14 +59,15 @@ Conclusion: remove only the unreachable cluster and its obsolete persistence tes
 
 ### Record graph debris
 
-Twenty terminal ticket files remain at `.10x/tickets/` rather than their terminal directories: 19 `done` and one `cancelled`. This is mechanical placement/reference debt.
+At inventory time, twenty terminal ticket files remained at `.10x/tickets/` rather than their terminal directories: 19 `done` and one `cancelled`. This was mechanical placement/reference debt. Terminal placement was normalized by `.10x/tickets/done/2026-07-18-normalize-terminal-ticket-placement.md`.
 
-Several tickets appear status-stale and require closure review rather than automatic closure:
+The inventory also identified tickets requiring closure review rather than automatic closure. That review completed at `.10x/tickets/done/2026-07-18-review-stale-ticket-statuses.md` with aggregate review `.10x/reviews/2026-07-19-stale-ticket-status-closure-review.md`:
 
-- `.10x/tickets/2026-07-13-float16-embedding-inference.md` and `.10x/tickets/2026-07-14-single-pass-plan-and-stage-timing.md` describe implemented behavior present in commit `aa6110d` and have evidence; both remain `active` only for independent review/closure coherence.
-- `.10x/tickets/2026-06-28-cross-corpus-validation-basket.md`, `.10x/tickets/2026-06-28-repo-oversize-source-indexing.md`, `.10x/tickets/2026-06-28-website-capped-aggregation-default-review.md`, and `.10x/tickets/2026-06-28-repo-searchable-path-symbol-metadata.md` contain completed experiments and no-promotion conclusions but remain open/active.
-- `.10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md` records a long sequence of completed/promoted/rejected hypotheses and reached named targets but remains active.
-- `.10x/tickets/2026-07-14-conditional-website-replanning.md` is a legitimate failed measurement gate and may warrant cancellation/no-action closure rather than indefinite blocked status.
+- `.10x/tickets/done/2026-07-13-float16-embedding-inference.md` and `.10x/tickets/done/2026-07-14-single-pass-plan-and-stage-timing.md` closed after evidence, current material tests/source, and spec-drift review supported every criterion.
+- `.10x/tickets/done/2026-06-28-cross-corpus-validation-basket.md`, `.10x/tickets/done/2026-06-28-website-capped-aggregation-default-review.md`, and `.10x/tickets/done/2026-06-28-repo-searchable-path-symbol-metadata.md` closed as completed bounded experiments.
+- `.10x/tickets/cancelled/2026-06-28-repo-oversize-source-indexing.md` was cancelled with no action because global promotion was rejected and `done` criteria were incomplete.
+- `.10x/tickets/cancelled/2026-07-14-conditional-website-replanning.md` was cancelled with no action after the independently reviewed authoritative-validator gate failed.
+- `.10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md` remains active with exact missing terminal support for named heavy hypotheses and routed-selector/profile work.
 
 `.10x/tickets/2026-07-15-reconcile-retrieval-tag-output.md` is not dead: it owns current source/documentation drift requiring a product decision. `.10x/tickets/2026-07-14-update-node24-github-actions.md` is also live maintenance, not dead-end cleanup.
 
@@ -92,6 +93,6 @@ At inspection time the main worktree contained roughly 4.5 GB under ignored `art
 1. The clean merged worktrees were the largest certain cleanup and are now removed.
 2. The Thistle/Qdrant worktree is a dead provider direction containing salvageable product-neutral work; triage precedes deletion.
 3. The local-catalog persistence cluster is bounded, source-proven dead code suitable for removal after the direct-command plan integrates.
-4. Record placement and stale statuses need mechanical normalization plus closure review, not blanket deletion.
+4. Record placement and stale-status review completed through evidence-backed terminal dispositions while preserving the unsupported heavy-ranking scope under its active owner.
 5. Compatibility removal belongs to a focused 0.4 shaping decision, not opportunistic cleanup.
 6. Ignored artifacts require provenance-aware review and remain excluded.
