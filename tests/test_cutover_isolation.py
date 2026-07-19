@@ -33,7 +33,7 @@ class CutoverIsolationTests(unittest.TestCase):
             side_effect=AssertionError("real SDK factory used"),
         ):
             result, stdout, stderr = self.run_cli(
-                ["retrieve", "query", "--namespace", "site-explicit-v1", "--json"],
+                ["retrieve", "query", "--namespace", "site-explicit-v1", "--dry-run", "--json"],
                 env={"TURBOPUFFER_API_KEY": "invalid-sentinel", "TURBOPUFFER_NAMESPACE": "ignored"},
             )
         self.assertEqual(result, 0, stderr)
@@ -64,7 +64,7 @@ class CutoverIsolationTests(unittest.TestCase):
             "buoy_search.cli.load_routing_embedder", return_value=FixedEmbedder()
         ):
             result, stdout, stderr = self.run_cli(
-                ["retrieve", "fake route", "--json"],
+                ["retrieve", "fake route", "--dry-run", "--json"],
                 env={"TURBOPUFFER_API_KEY": "invalid-sentinel", "TURBOPUFFER_REGION": card.region},
             )
         self.assertEqual(result, 0, stderr)

@@ -30,7 +30,7 @@ TURBOPUFFER_API_KEY
 TURBOPUFFER_REGION
 ```
 
-`TURBOPUFFER_NAMESPACE` is ignored by retrieval after the remote-catalog cutover. Use repeatable CLI `--namespace` for the sole explicit routing bypass; with no CLI namespace, authenticated remote routing is the default. Legacy `--auto-route` remains accepted as a compatibility no-op. Local catalog path options and `BUOY_CATALOG_PATH` are removed.
+`TURBOPUFFER_NAMESPACE` is ignored by retrieval after the remote-catalog cutover. Use repeatable CLI `--namespace` for the sole explicit routing bypass; with no CLI namespace, authenticated remote routing is the default. Plain automatic and explicit retrieval now execute live. Scripts that relied on plain retrieval as a preview must add `--dry-run` (or compatibility alias `--plan`); existing `--live` scripts continue to execute live because the flag remains an accepted no-op. `--live` conflicts with preview flags. Legacy `--auto-route` remains accepted as a compatibility no-op. Local catalog path options and `BUOY_CATALOG_PATH` are removed.
 
 ## Local state
 

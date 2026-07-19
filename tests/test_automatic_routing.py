@@ -269,8 +269,8 @@ class AutomaticRoutingCliTests(unittest.TestCase):
         ):
             return run_cli(args, env={"TURBOPUFFER_API_KEY": self.API_KEY})
 
-    def test_default_requires_key_before_client_and_environment_namespace_is_ignored(self) -> None:
-        for extra in ([], ["--auto-route"], ["--live"]):
+    def test_all_automatic_modes_require_key_before_client_and_ignore_environment_namespace(self) -> None:
+        for extra in ([], ["--auto-route"], ["--live"], ["--dry-run"], ["--plan"]):
             with self.subTest(extra=extra), patch(
                 "buoy_search.cli.REMOTE_CATALOG_CLIENT_FACTORY",
                 side_effect=AssertionError("client constructed without key"),
@@ -286,45 +286,49 @@ class AutomaticRoutingCliTests(unittest.TestCase):
             self.assertIn("TURBOPUFFER_API_KEY", stderr)
             self.assertNotIn("must-be-ignored", stderr)
 
-    def test_explicit_repeatable_namespace_preview_bypasses_key_client_remote_and_route_model(self) -> None:
-        environment = CredentialReadSentinel({"TURBOPUFFER_NAMESPACE": "ignored"})
-        with patch(
-            "buoy_search.cli.REMOTE_CATALOG_CLIENT_FACTORY",
-            side_effect=AssertionError("remote client constructed"),
-        ), patch(
-            "buoy_search.cli.read_remote_catalog", side_effect=AssertionError("remote catalog read")
-        ), patch(
-            "buoy_search.cli.load_routing_embedder", side_effect=AssertionError("route model loaded")
-        ), patch(
-            "buoy_search.remote_catalog.create_client",
-            side_effect=AssertionError("real SDK/network client used"),
-        ):
-            result, stdout, stderr = run_cli(
-                [
-                    "retrieve", "query", "--namespace", "explicit-one",
-                    "--namespace", "explicit-two", "--json",
-                ],
-                environment=environment,
-            )
-        self.assertEqual((result, stderr), (0, ""))
-        payload = json.loads(stdout)
+    def test_explicit_preview_aliases_bypass_key_client_remote_and_route_model(self) -> None:
+        payloads = []
+        for preview_flag in ("--dry-run", "--plan"):
+            environment = CredentialReadSentinel({"TURBOPUFFER_NAMESPACE": "ignored"})
+            with self.subTest(preview_flag=preview_flag), patch(
+                "buoy_search.cli.REMOTE_CATALOG_CLIENT_FACTORY",
+                side_effect=AssertionError("remote client constructed"),
+            ), patch(
+                "buoy_search.cli.read_remote_catalog", side_effect=AssertionError("remote catalog read")
+            ), patch(
+                "buoy_search.cli.load_routing_embedder", side_effect=AssertionError("route model loaded")
+            ), patch(
+                "buoy_search.remote_catalog.create_client",
+                side_effect=AssertionError("real SDK/network client used"),
+            ):
+                result, stdout, stderr = run_cli(
+                    [
+                        "retrieve", "query", "--namespace", "explicit-one",
+                        "--namespace", "explicit-two", preview_flag, "--json",
+                    ],
+                    environment=environment,
+                )
+            self.assertEqual((result, stderr), (0, ""))
+            payloads.append(json.loads(stdout))
+        self.assertEqual(payloads[0], payloads[1])
+        payload = payloads[0]
         self.assertEqual(payload["namespaces"], ["explicit-one", "explicit-two"])
         self.assertFalse(payload["credentials_required"])
         self.assertFalse(payload["turbopuffer_api_calls"])
         self.assertNotIn("routing", payload)
 
-    def test_auto_route_is_identical_noop_and_parser_limit_is_bounded(self) -> None:
+    def test_preview_aliases_and_auto_route_are_identical_and_parser_limit_is_bounded(self) -> None:
         payloads = []
-        for compatibility_flag in ([], ["--auto-route"]):
+        for extra in (["--dry-run"], ["--plan"], ["--auto-route", "--dry-run"]):
             client, _resource, embedder = self.automatic_fixture()
             result, stdout, stderr = self.run_automatic(
-                ["retrieve", "chosen phrase", *compatibility_flag, "--json"],
+                ["retrieve", "chosen phrase", *extra, "--json"],
                 client=client,
                 embedder=embedder,
             )
             self.assertEqual((result, stderr), (0, ""))
             payloads.append(json.loads(stdout))
-        self.assertEqual(payloads[0], payloads[1])
+        self.assertEqual(payloads, [payloads[0]] * len(payloads))
 
         parser = build_parser()
         for value in ("0", "11"):
@@ -335,7 +339,7 @@ class AutomaticRoutingCliTests(unittest.TestCase):
             10,
         )
 
-    def test_default_preview_performs_two_stable_list_and_strong_card_passes_then_routes_top_three(self) -> None:
+    def test_preview_performs_two_stable_list_and_strong_card_passes_then_routes_top_three(self) -> None:
         client, resource, embedder = self.automatic_fixture()
         before_cards = list(resource.cards)
         with patch(
@@ -343,7 +347,7 @@ class AutomaticRoutingCliTests(unittest.TestCase):
             side_effect=AssertionError("content retriever constructed during preview"),
         ):
             result, stdout, stderr = self.run_automatic(
-                ["retrieve", "chosen phrase", "--json"], client=client, embedder=embedder
+                ["retrieve", "chosen phrase", "--dry-run", "--json"], client=client, embedder=embedder
             )
         self.assertEqual((result, stderr), (0, ""))
         payload = json.loads(stdout)
@@ -405,10 +409,10 @@ class AutomaticRoutingCliTests(unittest.TestCase):
         self.assertNotIn("vector_hash", stdout)
         self.assertNotIn("tpuf_", stdout)
 
-    def test_default_preview_text_reports_authenticated_reads_and_no_content_retrieval(self) -> None:
+    def test_preview_text_reports_authenticated_reads_and_no_content_retrieval(self) -> None:
         client, _resource, embedder = self.automatic_fixture()
         result, stdout, stderr = self.run_automatic(
-            ["retrieve", "chosen phrase"], client=client, embedder=embedder
+            ["retrieve", "chosen phrase", "--dry-run"], client=client, embedder=embedder
         )
 
         self.assertEqual((result, stderr), (0, ""))
@@ -417,7 +421,7 @@ class AutomaticRoutingCliTests(unittest.TestCase):
         self.assertIn("no content retrieval", stdout)
         self.assertNotIn("no credentials or turbopuffer API calls", stdout)
 
-    def test_live_routed_success_marks_content_retrieval_and_failure_emits_no_partial_output(self) -> None:
+    def test_plain_and_compatibility_live_route_identically_and_fail_all_or_nothing(self) -> None:
         live_payload = {
             "command": "retrieve",
             "dry_run": False,
@@ -436,19 +440,39 @@ class AutomaticRoutingCliTests(unittest.TestCase):
             "namespace_results": [],
             "hits": [],
         }
-        retriever = SimpleNamespace(
-            retrieve=lambda _query, _options: SimpleNamespace(to_dict=lambda: live_payload)
-        )
-        client, _resource, embedder = self.automatic_fixture()
-        with patch("buoy_search.cli.MultiNamespaceRetriever.from_configs", return_value=retriever):
-            result, stdout, stderr = self.run_automatic(
-                ["retrieve", "chosen phrase", "--live", "--json"],
-                client=client,
-                embedder=embedder,
+        outputs = []
+        for extra in ([], ["--live"]):
+            calls = []
+            retriever = SimpleNamespace(
+                retrieve=lambda query, options: (
+                    calls.append((query, options)),
+                    SimpleNamespace(to_dict=lambda: live_payload),
+                )[1]
             )
-
-        self.assertEqual((result, stderr), (0, ""))
-        payload = json.loads(stdout)
+            client, resource, embedder = self.automatic_fixture()
+            with self.subTest(extra=extra), patch(
+                "buoy_search.cli.MultiNamespaceRetriever.from_configs", return_value=retriever
+            ) as from_configs:
+                result, stdout, stderr = self.run_automatic(
+                    ["retrieve", "chosen phrase", *extra, "--json"],
+                    client=client,
+                    embedder=embedder,
+                )
+            self.assertEqual((result, stderr), (0, ""))
+            self.assertEqual(client.namespaces_calls, [{"page_size": 1000}] * 2)
+            self.assertEqual(client.namespace_calls, [REMOTE_CATALOG_NAMESPACE])
+            self.assertEqual(resource.metadata_calls, 1)
+            self.assertEqual(len(resource.query_calls), 2)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][0], "chosen phrase")
+            configs = from_configs.call_args.args[0]
+            self.assertEqual(
+                [config.namespace for config in configs],
+                ["b-lexical", "a-semantic", "c-semantic"],
+            )
+            outputs.append(stdout)
+        self.assertEqual(outputs[0], outputs[1])
+        payload = json.loads(outputs[0])
         self.assertTrue(payload["content_retrieval_occurred"])
         self.assertTrue(payload["routing"]["content_retrieval_occurred"])
 
@@ -458,13 +482,56 @@ class AutomaticRoutingCliTests(unittest.TestCase):
         client, _resource, embedder = self.automatic_fixture()
         with patch("buoy_search.cli.MultiNamespaceRetriever.from_configs", return_value=failing):
             result, stdout, stderr = self.run_automatic(
-                ["retrieve", "chosen phrase", "--live", "--json"],
+                ["retrieve", "chosen phrase", "--json"],
                 client=client,
                 embedder=embedder,
             )
         self.assertEqual((result, stdout), (2, ""))
         self.assertIn("Namespace retrieval failed", stderr)
         self.assertNotIn("content_retrieval_occurred", stderr)
+
+    def test_live_preview_conflicts_and_whitespace_fail_before_config_credentials_or_api(self) -> None:
+        for preview_flag in ("--dry-run", "--plan"):
+            with self.subTest(preview_flag=preview_flag), patch(
+                "buoy_search.cli.config_from_args", side_effect=AssertionError("config loaded")
+            ):
+                result, stdout, stderr = run_cli(
+                    [
+                        "retrieve", "   ", "--live", preview_flag,
+                        "--auto-route", "--namespace", "explicit", "--json",
+                    ],
+                    environment=CredentialReadSentinel(),
+                )
+            self.assertEqual((result, stdout), (2, ""))
+            self.assertIn("Choose either --live or --dry-run/--plan", stderr)
+
+        with patch(
+            "buoy_search.cli.config_from_args", side_effect=AssertionError("config loaded")
+        ), patch(
+            "buoy_search.cli.REMOTE_CATALOG_CLIENT_FACTORY",
+            side_effect=AssertionError("remote client constructed"),
+        ):
+            result, stdout, stderr = run_cli(
+                ["retrieve", "   ", "--json"], environment=CredentialReadSentinel()
+            )
+        self.assertEqual((result, stdout), (2, ""))
+        self.assertIn("non-empty query", stderr)
+
+    def test_explicit_automatic_options_conflict_before_namespace_or_query_validation(self) -> None:
+        cases = (
+            (["--auto-route"], "--auto-route and --namespace are mutually exclusive"),
+            (["--route-top-k", "2"], "--route-top-k is valid only for automatic retrieval"),
+        )
+        for extra, expected in cases:
+            with self.subTest(extra=extra), patch(
+                "buoy_search.cli.config_from_args", side_effect=AssertionError("config loaded")
+            ):
+                result, stdout, stderr = run_cli(
+                    ["retrieve", "   ", "--namespace", "   ", *extra, "--json"],
+                    environment=CredentialReadSentinel(),
+                )
+            self.assertEqual((result, stdout), (2, ""))
+            self.assertIn(expected, stderr)
 
     def test_zero_eligible_snapshot_fails_actionably_before_model_or_content(self) -> None:
         live = [REMOTE_CATALOG_NAMESPACE, "missing"]

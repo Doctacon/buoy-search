@@ -2,7 +2,7 @@
 
 Without CLI `--namespace`, retrieval uses authenticated automatic remote routing by default. Buoy lists live Turbopuffer namespaces, reads the fixed remote catalog `buoy-routing-catalog-v1`, intersects valid cards with live content namespaces, and routes only across eligible cards. `TURBOPUFFER_NAMESPACE` is ignored for retrieval.
 
-Repeatable CLI `--namespace` is the sole bypass: it skips namespace discovery, remote catalog reads, and routing-model work. An explicit namespace preview remains credential-free and local. Live content search additionally requires `--live` and `TURBOPUFFER_API_KEY`.
+Repeatable CLI `--namespace` is the sole bypass: it skips namespace discovery, remote catalog reads, and routing-model work. Plain automatic and explicit retrieval are live and require `TURBOPUFFER_API_KEY`. Use `--dry-run` or compatibility alias `--plan` for preview; explicit namespace preview remains credential-free and local. Compatibility flag `--live` remains accepted as a no-op and conflicts with preview flags.
 
 ## Discover namespace IDs
 
@@ -20,10 +20,10 @@ Use `--region` to override `TURBOPUFFER_REGION`, and `--json` for structured out
 export TURBOPUFFER_API_KEY="..."
 uv run buoy retrieve "How is this feature implemented?"
 uv run buoy retrieve "How is this feature implemented?" --route-top-k 2
-uv run buoy retrieve "How is this feature implemented?" --route-top-k 2 --live
+uv run buoy retrieve "How is this feature implemented?" --route-top-k 2 --dry-run
 ```
 
-The first two commands are read-only remote previews and make no content-namespace queries. `--auto-route` remains accepted as a compatibility no-op: automatic routing is already the default when no CLI namespace is supplied. It is contradictory with `--namespace`. `--route-top-k` works directly in automatic mode (default 3, maximum 10).
+The first two commands route and query selected content namespaces. The third is a read-only remote preview and makes no content-namespace queries. `--auto-route` remains accepted as a compatibility no-op: automatic routing is already the default when no CLI namespace is supplied. It is contradictory with `--namespace`. `--route-top-k` works directly in automatic mode (default 3, maximum 10).
 
 Automatic preview requires credentials and makes read-only namespace-list and remote-catalog calls. Output identifies the catalog namespace and snapshot revision, live/card/eligible/missing/stale/incompatible counts, selected card scores, and each retrieval plan. Cards provide their own region/model/precision and ranking contracts; invalid schema, unstable reads, missing permissions, or zero eligible cards fail closed. Namespace IDs never become fallback descriptions.
 
@@ -33,7 +33,7 @@ The router combines normalized exact title/alias/tag phrase matching with cosine
 
 ```bash
 # Local, credential-free plan: no namespace listing, catalog call, or model load.
-uv run buoy retrieve "How does this feature work?" --namespace site-example-com-v1
+uv run buoy retrieve "How does this feature work?" --namespace site-example-com-v1 --dry-run
 
 # Explicit live query; repeat --namespace as needed.
 export TURBOPUFFER_API_KEY="..."
@@ -41,7 +41,7 @@ uv run buoy retrieve \
   "How does this feature work?" \
   --namespace site-product-docs-v1 \
   --namespace github-owner-product-v1 \
-  --live --top-k 5
+  --top-k 5
 ```
 
 Explicit namespaces retain their supplied order. Buoy embeds once, queries each selected namespace sequentially with the same explicitly resolved region/model/precision, and merges namespace-local rankings with equal-weight reciprocal-rank fusion. If any selected namespace fails, no partial result set is printed. Every result identifies its source namespace.

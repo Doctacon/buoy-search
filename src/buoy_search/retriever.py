@@ -278,7 +278,7 @@ class RetrievalPlan:
             "ranking_profile": self.options.ranking_profile,
             "ranking_pool": self.options.ranking_pool,
             "ranking_aggregation": self.options.ranking_aggregation,
-            "live_execution": "pass --live to embed the query and call turbopuffer",
+            "live_execution": "omit --dry-run/--plan to embed the query and call turbopuffer",
             "retrieval": {
                 "request": "turbopuffer multi_query",
                 "subqueries": [ann_subquery, bm25_subquery],
@@ -324,7 +324,7 @@ class MultiNamespaceRetrievalPlan:
                 }
                 for plan in self.plans
             ],
-            "live_execution": "pass --live to embed once and query each selected namespace",
+            "live_execution": "omit --dry-run/--plan to embed once and query each selected namespace",
         }
 
 
@@ -350,7 +350,7 @@ class HybridRetriever:
         if not api_key:
             raise RuntimeError(
                 "TURBOPUFFER_API_KEY must be set in the environment for live retrieval. "
-                "Use `retrieve --dry-run` or omit `--live` to inspect the plan without credentials."
+                "Use `retrieve --dry-run` or `retrieve --plan` to inspect the plan without credentials."
             )
         embedder = SentenceTransformerEmbedder(
             config.embedding_model, precision=config.embedding_precision
@@ -452,7 +452,7 @@ class MultiNamespaceRetriever:
         if not api_key:
             raise RuntimeError(
                 "TURBOPUFFER_API_KEY must be set in the environment for live retrieval. "
-                "Use `retrieve --dry-run` or omit `--live` to inspect the plan without credentials."
+                "Use `retrieve --dry-run` or `retrieve --plan` to inspect the plan without credentials."
             )
         embedder = SentenceTransformerEmbedder(
             first.embedding_model, precision=first.embedding_precision

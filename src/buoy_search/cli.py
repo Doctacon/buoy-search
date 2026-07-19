@@ -627,11 +627,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     retrieve_parser = subparsers.add_parser(
         "retrieve",
-        help="retrieve relevant chunks; authenticated remote preview by default unless --namespace is explicit",
+        help="retrieve relevant chunks through live automatic or explicit namespace routing",
         description=(
-            "Plan or execute hybrid retrieval. Without --namespace, Buoy discovers live namespaces "
+            "Execute hybrid retrieval by default. Without --namespace, Buoy discovers live namespaces "
             "and routes through the authenticated remote catalog. Explicit repeatable --namespace "
-            "is the credential-free local preview bypass. Pass --live to query selected content namespaces."
+            "bypasses automatic routing. Use --dry-run/--plan for preview."
         ),
     )
     retrieve_parser.add_argument(
@@ -641,14 +641,14 @@ def build_parser() -> argparse.ArgumentParser:
     retrieve_parser.add_argument(
         "--live",
         action="store_true",
-        help="Execute live retrieval. Reads TURBOPUFFER_API_KEY from the environment and calls turbopuffer.",
+        help="Compatibility no-op; retrieval is live by default. Conflicts with --dry-run/--plan.",
     )
     retrieve_parser.add_argument(
         "--dry-run",
         "--plan",
         dest="dry_run",
         action="store_true",
-        help="Require preview mode (default); automatic preview reads remote routing state, while explicit --namespace remains local and credential-free.",
+        help="Preview retrieval; automatic preview reads remote routing state, while explicit --namespace remains local and credential-free.",
     )
     retrieve_parser.add_argument(
         "--auto-route",
@@ -1405,7 +1405,7 @@ def _run_retrieve(args: argparse.Namespace) -> int:
         retrieval_options_from_args(args, config=config, doc_kind=args.doc_kind)
         for config in configs
     ]
-    if not args.live:
+    if args.dry_run:
         plan: RetrievalPlan | MultiNamespaceRetrievalPlan
         if len(configs) == 1:
             plan = retrieval_plan(query, config=configs[0], options=options[0])
@@ -1509,7 +1509,7 @@ def _run_auto_routed_retrieve(args: argparse.Namespace, *, query: str) -> int:
         print(f"Selected namespace preparation failed: {exc}", file=sys.stderr)
         return 2
 
-    if not args.live:
+    if args.dry_run:
         plan = RoutedRetrievalPlan(
             plan=multi_namespace_retrieval_plan(
                 query,
@@ -1909,7 +1909,7 @@ def print_retrieval_text(
                 f"aggregation={payload.get('ranking_aggregation')}"
             )
         print("  hybrid: ANN over vector + boosted BM25 over title/section_path/content + RRF")
-        print("  live: pass --live to execute; TURBOPUFFER_API_KEY is read from the environment only")
+        print("  live: omit --dry-run/--plan to execute; TURBOPUFFER_API_KEY is read from the environment only")
         return
 
     hits = payload.get("hits", [])
