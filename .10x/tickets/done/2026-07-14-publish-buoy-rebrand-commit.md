@@ -1,7 +1,7 @@
 Status: done
 Created: 2026-07-14
 Updated: 2026-07-14
-Parent: .10x/tickets/2026-07-14-buoy-public-ci-release-plan.md
+Parent: .10x/tickets/done/2026-07-14-buoy-public-ci-release-plan.md
 Depends-On: .10x/tickets/done/2026-07-14-buoy-rebrand-plan.md, .10x/tickets/done/2026-07-14-validate-buoy-ci-release-automation.md
 
 # Commit and Push the Buoy Rebrand
