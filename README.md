@@ -31,10 +31,10 @@ export TURBOPUFFER_API_KEY="..."
 uv run buoy apply --approve
 
 # 4. Search through authenticated automatic remote routing.
-uv run buoy retrieve "How does this feature work?" --live
+uv run buoy retrieve "How does this feature work?"
 ```
 
-`plan` may fetch a public source, but it does not read Turbopuffer credentials, load embeddings, or contact Turbopuffer. Writes require `--approve`, and live content search requires `--live`. Approved apply and automatic retrieval require `TURBOPUFFER_API_KEY`; apply preflight and explicit `--namespace` previews remain local-only, while default automatic previews perform read-only remote discovery and catalog reads.
+`plan` may fetch a public source, but it does not read Turbopuffer credentials, load embeddings, or contact Turbopuffer. Writes require `--approve`. Retrieval is live by default and requires `TURBOPUFFER_API_KEY`; use `retrieve --dry-run` (or `--plan`) for preview. Apply preflight and explicit `--namespace` previews remain local-only, while automatic previews perform read-only remote discovery and catalog reads. Compatibility flag `retrieve --live` remains accepted as a no-op.
 
 ## Choose a source
 

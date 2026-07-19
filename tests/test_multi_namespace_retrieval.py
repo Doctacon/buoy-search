@@ -218,6 +218,7 @@ class MultiNamespaceCliTests(unittest.TestCase):
                     "site-one-v1",
                     "--namespace",
                     "site-two-v1",
+                    "--dry-run",
                 ]
             )
 
@@ -263,7 +264,7 @@ class MultiNamespaceCliTests(unittest.TestCase):
         self.assertIn("Retrieval failed for namespace 'site-only-v1'", stderr.getvalue())
         self.assertIn("service unavailable", stderr.getvalue())
 
-    def test_multi_live_text_attributes_each_hit_namespace(self) -> None:
+    def test_plain_and_compatibility_live_explicit_outputs_are_identical(self) -> None:
         class TextResult:
             def to_dict(self) -> dict[str, object]:
                 return {
@@ -292,30 +293,40 @@ class MultiNamespaceCliTests(unittest.TestCase):
                 }
 
         class SuccessfulMultiRetriever:
-            def retrieve(self, _query: str, _options: object) -> TextResult:
+            def __init__(self) -> None:
+                self.calls: list[tuple[str, object]] = []
+
+            def retrieve(self, query: str, options: object) -> TextResult:
+                self.calls.append((query, options))
                 return TextResult()
 
-        stdout = StringIO()
-        stderr = StringIO()
-        with patch(
-            "buoy_search.cli.MultiNamespaceRetriever.from_configs",
-            return_value=SuccessfulMultiRetriever(),
-        ), redirect_stdout(stdout), redirect_stderr(stderr):
-            result = main(
-                [
-                    "retrieve",
-                    "query",
-                    "--namespace",
-                    "site-one-v1",
-                    "--namespace",
-                    "site-two-v1",
-                    "--live",
-                ]
-            )
+        outputs = []
+        for extra in ([], ["--live"]):
+            retriever = SuccessfulMultiRetriever()
+            stdout = StringIO()
+            stderr = StringIO()
+            with self.subTest(extra=extra), patch(
+                "buoy_search.cli.MultiNamespaceRetriever.from_configs",
+                return_value=retriever,
+            ), redirect_stdout(stdout), redirect_stderr(stderr):
+                result = main(
+                    [
+                        "retrieve",
+                        "query",
+                        "--namespace",
+                        "site-one-v1",
+                        "--namespace",
+                        "site-two-v1",
+                        *extra,
+                    ]
+                )
 
-        self.assertEqual(result, 0, stderr.getvalue())
-        self.assertIn("Namespace: site-one-v1", stdout.getvalue())
-        self.assertIn("Namespace: site-two-v1", stdout.getvalue())
+            self.assertEqual(result, 0, stderr.getvalue())
+            self.assertEqual(len(retriever.calls), 1)
+            outputs.append(stdout.getvalue())
+        self.assertEqual(outputs[0], outputs[1])
+        self.assertIn("Namespace: site-one-v1", outputs[0])
+        self.assertIn("Namespace: site-two-v1", outputs[0])
 
     def test_live_namespace_failure_prints_no_partial_payload(self) -> None:
         class FailingMultiRetriever:

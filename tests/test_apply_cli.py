@@ -328,9 +328,9 @@ class ApplyCliTests(unittest.TestCase):
         self.assertEqual(payload["region"], "gcp-us-east4")
         self.assertEqual(payload["embedding_model"], model)
         self.assertEqual(payload["embedding_precision"], "float16")
-        preview = shlex.split(payload["retrieval_commands"]["preview"])
+        live = shlex.split(payload["retrieval_commands"]["live"])
         self.assertEqual(
-            preview,
+            live,
             [
                 "buoy",
                 "retrieve",
@@ -345,7 +345,7 @@ class ApplyCliTests(unittest.TestCase):
                 "float16",
             ],
         )
-        self.assertEqual(shlex.split(payload["retrieval_commands"]["live"]), [*preview, "--live"])
+        self.assertEqual(shlex.split(payload["retrieval_commands"]["preview"]), [*live, "--dry-run"])
 
     def run_main(
         self,
@@ -397,8 +397,9 @@ class ApplyCliTests(unittest.TestCase):
         self.assertEqual(payload["rows_to_upsert"], 2)
         self.assertEqual(payload["rows_upserted"], 0)
         self.assertEqual(payload["region"], "gcp-us-central1")
+        live = shlex.split(payload["retrieval_commands"]["live"])
         self.assertEqual(
-            shlex.split(payload["retrieval_commands"]["live"]),
+            live,
             [
                 "buoy",
                 "retrieve",
@@ -411,8 +412,11 @@ class ApplyCliTests(unittest.TestCase):
                 "BAAI/bge-small-en-v1.5",
                 "--embedding-precision",
                 "float32",
-                "--live",
             ],
+        )
+        self.assertEqual(
+            shlex.split(payload["retrieval_commands"]["preview"]),
+            [*live, "--dry-run"],
         )
         self.assertEqual(stderr, "")
 
@@ -423,7 +427,7 @@ class ApplyCliTests(unittest.TestCase):
             embedding_model="model/$(touch nope)",
             embedding_precision="precision; false",
         )
-        preview = [
+        live = [
             "buoy",
             "retrieve",
             "<query>",
@@ -436,8 +440,8 @@ class ApplyCliTests(unittest.TestCase):
             "--embedding-precision",
             "precision; false",
         ]
-        self.assertEqual(shlex.split(commands["preview"]), preview)
-        self.assertEqual(shlex.split(commands["live"]), [*preview, "--live"])
+        self.assertEqual(shlex.split(commands["live"]), live)
+        self.assertEqual(shlex.split(commands["preview"]), [*live, "--dry-run"])
 
     def test_automatic_plan_preflight_text_is_decision_complete(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -767,7 +767,7 @@ def build_retrieval_commands(
 ) -> JsonObject:
     """Return shell-safe preview/live commands for the applied retrieval contract."""
 
-    preview_args = [
+    live_args = [
         "buoy",
         "retrieve",
         "<query>",
@@ -781,8 +781,8 @@ def build_retrieval_commands(
         embedding_precision,
     ]
     return {
-        "preview": shlex.join(preview_args),
-        "live": shlex.join([*preview_args, "--live"]),
+        "preview": shlex.join([*live_args, "--dry-run"]),
+        "live": shlex.join(live_args),
     }
 
 

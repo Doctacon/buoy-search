@@ -326,9 +326,10 @@ class CliTests(unittest.TestCase):
         self.assertIn("apply", help_text)
         self.assertIn("retrieve", help_text)
         self.assertIn("evals", help_text)
-        self.assertIn("authenticated remote preview", help_text)
-        self.assertIn("Compatibility no-op; automatic remote routing is", retrieve_help)
-        self.assertIn("remains local and credential-free", retrieve_help)
+        self.assertIn("live automatic or explicit namespace routing", " ".join(help_text.split()))
+        normalized_retrieve_help = " ".join(retrieve_help.split())
+        self.assertIn("Compatibility no-op; retrieval is live by default", normalized_retrieve_help)
+        self.assertIn("explicit --namespace remains local and credential-free", normalized_retrieve_help)
         self.assertIn("TURBOPUFFER_NAMESPACE is ignored", retrieve_help)
         self.assertNotIn("--catalog", retrieve_help)
 
@@ -1254,25 +1255,26 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["ranking_pool"], 20)
         self.assertEqual(payload["ranking_aggregation"], "max")
 
-    def test_retrieve_live_with_generic_overrides_is_gated_by_api_key(self) -> None:
-        stdout = StringIO()
-        stderr = StringIO()
-        with patch.dict("os.environ", {}, clear=True):
-            with redirect_stdout(stdout), redirect_stderr(stderr):
-                result = main(
-                    [
-                        "retrieve",
-                        "How does LinkExtractor filter links?",
-                        "--live",
-                        "--namespace",
-                        "site-scrapling-readthedocs-io-v1",
-                        "--json",
-                    ]
-                )
+    def test_plain_and_compatibility_live_explicit_retrieval_require_api_key(self) -> None:
+        for extra in ([], ["--live"]):
+            stdout = StringIO()
+            stderr = StringIO()
+            with self.subTest(extra=extra), patch.dict("os.environ", {}, clear=True):
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    result = main(
+                        [
+                            "retrieve",
+                            "How does LinkExtractor filter links?",
+                            "--namespace",
+                            "site-scrapling-readthedocs-io-v1",
+                            *extra,
+                            "--json",
+                        ]
+                    )
 
-        self.assertEqual(result, 2)
-        self.assertEqual(stdout.getvalue(), "")
-        self.assertIn("TURBOPUFFER_API_KEY must be set", stderr.getvalue())
+            self.assertEqual(result, 2)
+            self.assertEqual(stdout.getvalue(), "")
+            self.assertIn("TURBOPUFFER_API_KEY must be set", stderr.getvalue())
 
     def test_evals_command_dry_run_lists_cases_without_credentials(self) -> None:
         stdout = StringIO()
