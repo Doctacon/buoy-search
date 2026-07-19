@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
+import dis
 from fnmatch import fnmatchcase
 from gzip import GzipFile
 import hashlib
+from importlib.metadata import version as distribution_version
 from io import BytesIO
 import json
 import mimetypes
@@ -20,8 +22,8 @@ import re
 import time
 from typing import Any, Callable, Literal, Sequence
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, unquote, urlparse, urlunparse
-from urllib.request import Request, urlopen
+from urllib.parse import quote, unquote, urljoin, urlparse, urlunparse
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from buoy_search.chunker import (
     DEFAULT_OVERLAP_SENTENCES,
@@ -46,6 +48,17 @@ DEFAULT_DOCS_VERSION_POLICY = "warn"
 DOCS_VERSION_POLICIES = ("warn", "all", "latest", "stable-latest", "latest-nightly")
 DEFAULT_LANGUAGE_POLICY = "english"
 LANGUAGE_POLICIES = ("english", "all")
+MAX_REDIRECT_HOPS = 20
+REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+SUPPORTED_SCRAPLING_VERSION = "0.4.9"
+
+
+class _NoRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001 - urllib hook.
+        return None
+
+
+_NO_REDIRECT_OPENER = build_opener(_NoRedirectHandler())
 
 
 @dataclass(frozen=True)
@@ -779,17 +792,63 @@ def local_xml_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
-def fetch_url_bytes(
-    url: str, *, timeout: int = SITEMAP_ANALYSIS_TIMEOUT_SECONDS
-) -> bytes | None:
-    try:
-        request = Request(
-            url, headers={"User-Agent": "buoy-search-sitemap-analysis/0.2"}
-        )
-        with urlopen(request, timeout=timeout) as response:
-            return response.read()
-    except (HTTPError, URLError, TimeoutError, OSError, ValueError):
+def increment_boundary_stat(stats: dict[str, object] | None, key: str) -> None:
+    if stats is not None:
+        stats[key] = int(stats.get(key, 0) or 0) + 1
+
+
+def redirect_location(response: Any) -> str | None:
+    if int(getattr(response, "status", getattr(response, "code", 0)) or 0) not in REDIRECT_STATUSES:
         return None
+    headers = getattr(response, "headers", None)
+    if not headers:
+        return None
+    location = headers.get("location") or headers.get("Location")
+    return str(location) if location else None
+
+
+def fetch_url_bytes(
+    url: str,
+    *,
+    timeout: int = SITEMAP_ANALYSIS_TIMEOUT_SECONDS,
+    allowed_host: str | None = None,
+    boundary_stats: dict[str, object] | None = None,
+) -> bytes | None:
+    """Fetch bytes while checking each redirect before its destination request."""
+
+    current_url = url
+    for redirect_hops in range(MAX_REDIRECT_HOPS + 1):
+        if allowed_host is not None and not same_host_url(current_url, allowed_host):
+            increment_boundary_stat(boundary_stats, "blocked_redirect_count")
+            return None
+        try:
+            request = Request(
+                current_url,
+                headers={"User-Agent": "buoy-search-sitemap-analysis/0.2"},
+            )
+            try:
+                response = _NO_REDIRECT_OPENER.open(request, timeout=timeout)
+            except HTTPError as error:
+                response = error
+            with response:
+                final_url = str(response.geturl())
+                if allowed_host is not None and not same_host_url(final_url, allowed_host):
+                    increment_boundary_stat(boundary_stats, "blocked_redirect_count")
+                    return None
+                location = redirect_location(response)
+                if location is None:
+                    return response.read() if int(response.status) == 200 else None
+                if redirect_hops >= MAX_REDIRECT_HOPS:
+                    increment_boundary_stat(boundary_stats, "blocked_redirect_count")
+                    return None
+                target = urljoin(final_url, location)
+                if allowed_host is not None and not same_host_url(target, allowed_host):
+                    increment_boundary_stat(boundary_stats, "blocked_redirect_count")
+                    return None
+                current_url = target
+        except (HTTPError, URLError, TimeoutError, OSError, ValueError):
+            return None
+    return None
 
 
 def sitemap_urls_from_robots(body: bytes) -> list[str]:
@@ -861,12 +920,24 @@ def same_host_url(url: str, allowed_host: str) -> bool:
     )
 
 
-def discover_sitemap_page_urls(options: CrawlOptions) -> list[str]:
+def discover_sitemap_page_urls(
+    options: CrawlOptions, *, boundary_stats: dict[str, object] | None = None
+) -> list[str]:
     allowed_host = host_from_url(options.base_url)
     queue = sitemap_seed_urls(options.base_url)
     visited: set[str] = set()
     page_urls: list[str] = []
     seen_pages: set[str] = set()
+
+    def enqueue_declarations(values: Sequence[str], declaration_url: str) -> None:
+        for value in values:
+            candidate = urljoin(declaration_url, value)
+            if not same_host_url(candidate, allowed_host):
+                if urlparse(candidate).scheme in {"http", "https"}:
+                    increment_boundary_stat(boundary_stats, "blocked_discovery_count")
+                continue
+            if candidate not in visited:
+                queue.append(candidate)
 
     while (
         queue
@@ -877,23 +948,22 @@ def discover_sitemap_page_urls(options: CrawlOptions) -> list[str]:
         if url in visited or not same_host_url(url, allowed_host):
             continue
         visited.add(url)
-        body = fetch_url_bytes(url)
+        body = fetch_url_bytes(
+            url, allowed_host=allowed_host, boundary_stats=boundary_stats
+        )
         if body is None:
             continue
         if urlparse(url).path.endswith("/robots.txt"):
-            queue.extend(
-                sitemap_url
-                for sitemap_url in sitemap_urls_from_robots(body)
-                if sitemap_url not in visited
-            )
+            enqueue_declarations(sitemap_urls_from_robots(body), url)
             continue
 
         pages, child_sitemaps = sitemap_locations_from_xml(body, url)
-        queue.extend(
-            sitemap_url for sitemap_url in child_sitemaps if sitemap_url not in visited
-        )
-        for page_url in pages:
+        enqueue_declarations(child_sitemaps, url)
+        for declared_page_url in pages:
+            page_url = urljoin(url, declared_page_url)
             if not same_host_url(page_url, allowed_host):
+                if urlparse(page_url).scheme in {"http", "https"}:
+                    increment_boundary_stat(boundary_stats, "blocked_discovery_count")
                 continue
             if not url_allowed_by_path_filters(
                 page_url,
@@ -1289,6 +1359,221 @@ def crawled_page_from_response(
     )
 
 
+def _loaded_method_names(function: Callable[..., object]) -> list[str]:
+    return [
+        str(instruction.argval)
+        for instruction in dis.get_instructions(function)
+        if instruction.opname in {"LOAD_ATTR", "LOAD_METHOD"}
+    ]
+
+
+def _assert_scrapling_runtime_shape() -> None:
+    """Abort if the pinned Scrapling lifecycle no longer enforces our hooks."""
+
+    installed_version = distribution_version("scrapling")
+    if installed_version != SUPPORTED_SCRAPLING_VERSION:
+        raise RuntimeError(
+            "Website crawling requires Scrapling "
+            f"{SUPPORTED_SCRAPLING_VERSION}; found {installed_version}."
+        )
+
+    from scrapling.spiders.engine import CrawlerEngine
+    from scrapling.spiders.robotstxt import RobotsTxtManager
+    from scrapling.spiders.session import SessionManager
+
+    required_names = (
+        (CrawlerEngine._prefetch_robots_txt, {"_robots_manager", "prefetch"}),
+        (
+            CrawlerEngine._process_request,
+            {"_robots_manager", "can_fetch", "session_manager", "fetch"},
+        ),
+        (RobotsTxtManager._get_parser, {"_fetch_fn"}),
+        (SessionManager.fetch, {"_session_kwargs", "_make_request"}),
+    )
+    for function, names in required_names:
+        code = getattr(function, "__code__", None)
+        if code is None or not names.issubset(set(code.co_names)):
+            raise RuntimeError(
+                "Scrapling's website crawl integration changed; refusing to request pages."
+            )
+
+    try:
+        lifecycle_names = _loaded_method_names(CrawlerEngine.crawl)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError(
+            "Scrapling's website crawl lifecycle changed; refusing to request pages."
+        ) from exc
+    try:
+        lifecycle_positions = [
+            lifecycle_names.index(name)
+            for name in ("on_start", "_prefetch_robots_txt", "start_requests")
+        ]
+    except ValueError as exc:
+        raise RuntimeError(
+            "Scrapling's website crawl lifecycle changed; refusing to request pages."
+        ) from exc
+    if lifecycle_positions != sorted(lifecycle_positions):
+        raise RuntimeError(
+            "Scrapling's robots lifecycle is no longer installed before requests; refusing to crawl."
+        )
+
+
+class _ExactHostSpiderMixin:
+    """Disable client redirects and validate each hop before scheduling it."""
+
+    _allowed_host: str
+    _include_paths: Sequence[str]
+    _exclude_paths: Sequence[str]
+    _strip_trailing_slash: bool
+
+    def _init_exact_host_boundary(self) -> None:
+        self._blocked_discovery_count = 0
+        self._blocked_redirect_count = 0
+
+    def configure_sessions(self, manager) -> None:  # noqa: ANN001 - Scrapling hook.
+        from scrapling.fetchers import FetcherSession
+
+        _assert_scrapling_runtime_shape()
+        session = FetcherSession(follow_redirects=False)
+        if getattr(session, "_default_follow_redirects", None) is not False:
+            raise RuntimeError(
+                "Scrapling did not disable automatic redirects; refusing to crawl."
+            )
+        manager.add("default", session)
+        if manager.get("default") is not session:
+            raise RuntimeError(
+                "Scrapling did not retain the redirect-safe session; refusing to crawl."
+            )
+
+    async def on_start(self, resuming: bool = False) -> None:
+        _assert_scrapling_runtime_shape()
+        from scrapling.spiders.engine import CrawlerEngine
+        from scrapling.spiders.robotstxt import RobotsTxtManager
+        from scrapling.spiders.session import SessionManager
+
+        engine = getattr(self, "_engine", None)
+        if not isinstance(engine, CrawlerEngine) or engine.spider is not self:
+            raise RuntimeError(
+                "Scrapling's crawler engine integration changed; refusing to request pages."
+            )
+        if (
+            not isinstance(engine.session_manager, SessionManager)
+            or engine.session_manager is not self._session_manager
+            or not callable(getattr(engine.session_manager, "fetch", None))
+        ):
+            raise RuntimeError(
+                "Scrapling's fetch integration changed; refusing to request pages."
+            )
+        robots_manager = getattr(engine, "_robots_manager", None)
+        if (
+            not isinstance(robots_manager, RobotsTxtManager)
+            or not callable(getattr(robots_manager, "_fetch_fn", None))
+            or getattr(robots_manager, "_cache", None) != {}
+        ):
+            raise RuntimeError(
+                "Scrapling's robots integration changed or ran too early; refusing to request pages."
+            )
+        robots_manager._fetch_fn = self._fetch_robots_with_exact_host_redirects
+        installed_fetch = robots_manager._fetch_fn
+        if (
+            getattr(installed_fetch, "__self__", None) is not self
+            or getattr(installed_fetch, "__func__", None)
+            is not type(self)._fetch_robots_with_exact_host_redirects
+        ):
+            raise RuntimeError(
+                "Scrapling did not retain the redirect-safe robots fetcher; refusing to crawl."
+            )
+        await super().on_start(resuming=resuming)
+
+    def _response_stayed_on_host(self, response: Any) -> bool:
+        for historical_response in getattr(response, "history", ()) or ():
+            historical_url = str(getattr(historical_response, "url", ""))
+            if not same_host_url(historical_url, self._allowed_host):
+                self._blocked_redirect_count += 1
+                return False
+            location = redirect_location(historical_response)
+            if location and not same_host_url(
+                urljoin(historical_url, location), self._allowed_host
+            ):
+                self._blocked_redirect_count += 1
+                return False
+        if not same_host_url(str(response.url), self._allowed_host):
+            self._blocked_redirect_count += 1
+            return False
+        return True
+
+    def _redirect_request(
+        self, response: Any, callback: Any, *, enforce_path_filters: bool
+    ) -> tuple[bool, Any | None]:
+        if not self._response_stayed_on_host(response):
+            return True, None
+        status = int(getattr(response, "status", 0) or 0)
+        if status not in REDIRECT_STATUSES:
+            return False, None
+        location = redirect_location(response)
+        if location is None:
+            return True, None
+        target = urljoin(str(response.url), location)
+        redirect_hops = int(getattr(response, "meta", {}).get("_buoy_redirect_hops", 0) or 0)
+        if redirect_hops >= MAX_REDIRECT_HOPS or not same_host_url(
+            target, self._allowed_host
+        ):
+            self._blocked_redirect_count += 1
+            return True, None
+        if enforce_path_filters and not url_allowed_by_path_filters(
+            target,
+            include_paths=self._include_paths,
+            exclude_paths=self._exclude_paths,
+            strip_trailing_slash=self._strip_trailing_slash,
+        ):
+            self._blocked_redirect_count += 1
+            return True, None
+        request = response.follow(
+            target,
+            callback=callback,
+            meta={"_buoy_redirect_hops": redirect_hops + 1},
+            follow_redirects=False,
+        )
+        return True, request
+
+    async def _fetch_robots_with_exact_host_redirects(self, url: str, sid: str):
+        from scrapling.spiders import Request as SpiderRequest
+
+        current_url = url
+        response = None
+        for redirect_hops in range(MAX_REDIRECT_HOPS + 1):
+            if not same_host_url(current_url, self._allowed_host):
+                self._blocked_redirect_count += 1
+                return response
+            response = await self._engine.session_manager.fetch(
+                SpiderRequest(current_url, sid=sid, follow_redirects=False)
+            )
+            if not self._response_stayed_on_host(response):
+                return response
+            status = int(getattr(response, "status", 0) or 0)
+            if status not in REDIRECT_STATUSES:
+                return response
+            location = redirect_location(response)
+            if location is None:
+                return response
+            if redirect_hops >= MAX_REDIRECT_HOPS:
+                self._blocked_redirect_count += 1
+                return response
+            target = urljoin(str(response.url), location)
+            if not same_host_url(target, self._allowed_host):
+                self._blocked_redirect_count += 1
+                return response
+            current_url = target
+        return response
+
+    def _record_discovery_if_off_host(self, url: str) -> bool:
+        if same_host_url(url, self._allowed_host):
+            return False
+        if urlparse(url).scheme in {"http", "https"}:
+            self._blocked_discovery_count += 1
+        return True
+
+
 def build_link_spider_class(options: CrawlOptions, allowed_host: str):
     """Build a Scrapling Spider subclass for same-host fallback link crawling."""
 
@@ -1296,7 +1581,7 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
 
     _base_url = validate_base_url(options.base_url)
     _allowed_host = allowed_host
-    _allowed_domains = allowed_domains_for_url(_base_url)
+    _allowed_domains: set[str] = set()
     _max_pages = options.max_pages
     _css_selector = options.css_selector
     _include_paths = options.include_paths
@@ -1304,7 +1589,7 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
     _strip_trailing_slash = options.strip_trailing_slash
     _progress_callback = options.progress_callback
 
-    class SiteLinkDryRunSpider(Spider):
+    class SiteLinkDryRunSpider(_ExactHostSpiderMixin, Spider):
         name = "site_link_dry_crawl"
         robots_txt_obey = True
         start_urls = [_base_url]
@@ -1318,11 +1603,16 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
         )
 
         def __init__(self) -> None:
+            self._allowed_host = _allowed_host
+            self._include_paths = _include_paths
+            self._exclude_paths = _exclude_paths
+            self._strip_trailing_slash = _strip_trailing_slash
+            self._init_exact_host_boundary()
             self._scheduled_urls: set[str] = {
                 page_identity_url(_base_url, strip_trailing_slash=_strip_trailing_slash)
             }
             self._pages_scraped = 0
-            self._links = LinkExtractor(allow_domains=_allowed_host)
+            self._links = LinkExtractor()
             emit_progress(
                 _progress_callback,
                 f"crawl link: pages=0; queued=1; cap={_max_pages}; {progress_url_label(_base_url)}",
@@ -1330,6 +1620,14 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
             super().__init__()
 
         async def parse(self, response):
+            handled, redirect_request = self._redirect_request(
+                response, self.parse, enforce_path_filters=True
+            )
+            if handled:
+                if redirect_request is not None:
+                    yield redirect_request
+                return
+
             page_allowed = url_allowed_by_path_filters(
                 response.url,
                 include_paths=_include_paths,
@@ -1359,6 +1657,8 @@ def build_link_spider_class(options: CrawlOptions, allowed_host: str):
             for url in self._links.extract(response):
                 if len(self._scheduled_urls) >= _max_pages:
                     break
+                if self._record_discovery_if_off_host(url):
+                    continue
                 if not url_allowed_by_path_filters(
                     url,
                     include_paths=_include_paths,
@@ -1386,9 +1686,10 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
 
     from scrapling.spiders import LinkExtractor, SitemapSpider
 
-    _sitemap_urls = sitemap_seed_urls(options.base_url)
+    _base_url = validate_base_url(options.base_url)
+    _sitemap_urls = sitemap_seed_urls(_base_url)
     _allowed_host = allowed_host
-    _allowed_domains = allowed_domains_for_url(options.base_url)
+    _allowed_domains: set[str] = set()
     _max_pages = options.max_pages
     _css_selector = options.css_selector
     _include_paths = options.include_paths
@@ -1396,7 +1697,7 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
     _strip_trailing_slash = options.strip_trailing_slash
     _progress_callback = options.progress_callback
 
-    class SiteSitemapDryRunSpider(SitemapSpider):
+    class SiteSitemapDryRunSpider(_ExactHostSpiderMixin, SitemapSpider):
         name = "site_sitemap_dry_crawl"
         robots_txt_obey = True
         sitemap_urls = _sitemap_urls
@@ -1410,10 +1711,15 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
         )
 
         def __init__(self) -> None:
+            self._allowed_host = _allowed_host
+            self._include_paths = _include_paths
+            self._exclude_paths = _exclude_paths
+            self._strip_trailing_slash = _strip_trailing_slash
+            self._init_exact_host_boundary()
             self._scheduled_page_urls: set[str] = set()
             self._estimated_sitemap_page_urls: set[str] = set()
             self._pages_scraped = 0
-            self._allowed_links = LinkExtractor(allow_domains=_allowed_host)
+            self._allowed_links = LinkExtractor()
             emit_progress(
                 _progress_callback,
                 f"crawl sitemap: discovering pages; cap={_max_pages}",
@@ -1421,6 +1727,10 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
             super().__init__()
 
         def _dispatch(self, response, url, rules):  # noqa: ANN001 - matches Scrapling template hook.
+            resolved_url = urljoin(str(getattr(response, "url", _base_url)), url)
+            if self._record_discovery_if_off_host(resolved_url):
+                return None
+            url = resolved_url
             if (
                 _progress_callback is None
                 and len(self._scheduled_page_urls) >= _max_pages
@@ -1455,7 +1765,51 @@ def build_sitemap_spider_class(options: CrawlOptions, allowed_host: str):
             )
             return response.follow(url, callback=self.parse)
 
+        async def start_requests(self):
+            from scrapling.spiders import Request as SpiderRequest
+
+            for url in self.sitemap_urls:
+                kind = "robots" if urlparse(url).path.endswith("/robots.txt") else "sitemap"
+                yield SpiderRequest(
+                    url,
+                    callback=self._parse_sitemap,
+                    meta={"_buoy_sitemap_kind": kind},
+                    follow_redirects=False,
+                )
+
+        async def _parse_sitemap(self, response):
+            handled, redirect_request = self._redirect_request(
+                response, self._parse_sitemap, enforce_path_filters=False
+            )
+            if handled:
+                if redirect_request is not None:
+                    yield redirect_request
+                return
+            if getattr(response, "meta", {}).get("_buoy_sitemap_kind") == "robots":
+                for declared_url in self._robots_body(response):
+                    sitemap_url = urljoin(str(response.url), declared_url)
+                    if self._record_discovery_if_off_host(sitemap_url):
+                        continue
+                    yield response.follow(
+                        sitemap_url,
+                        callback=self._parse_sitemap,
+                        meta={"_buoy_sitemap_kind": "sitemap"},
+                    )
+                return
+            async for result in super()._parse_sitemap(response):
+                result_url = str(getattr(result, "url", ""))
+                if result_url and self._record_discovery_if_off_host(result_url):
+                    continue
+                yield result
+
         async def parse(self, response):
+            handled, redirect_request = self._redirect_request(
+                response, self.parse, enforce_path_filters=True
+            )
+            if handled:
+                if redirect_request is not None:
+                    yield redirect_request
+                return
             page = crawled_page_from_response(
                 response,
                 css_selector=_css_selector,
@@ -1477,7 +1831,8 @@ def run_scrapling_spider(
 ) -> tuple[list[CrawledPage], dict[str, object]]:
     """Run a Scrapling spider and normalize its item/stat output."""
 
-    result = spider_cls().start()
+    spider = spider_cls()
+    result = spider.start()
     pages: list[CrawledPage] = []
     for item in result.items:
         if isinstance(item, CrawledPage):
@@ -1499,6 +1854,8 @@ def run_scrapling_spider(
         "robots_disallowed_count": getattr(result.stats, "robots_disallowed_count", 0),
         "blocked_requests_count": getattr(result.stats, "blocked_requests_count", 0),
         "failed_requests_count": getattr(result.stats, "failed_requests_count", 0),
+        "blocked_discovery_count": getattr(spider, "_blocked_discovery_count", 0),
+        "blocked_redirect_count": getattr(spider, "_blocked_redirect_count", 0),
     }
     return pages, stats
 
@@ -1599,6 +1956,8 @@ def combine_stats(
         "robots_disallowed_count",
         "blocked_requests_count",
         "failed_requests_count",
+        "blocked_discovery_count",
+        "blocked_redirect_count",
     }
     return {
         key: int(first.get(key, 0) or 0) + int(second.get(key, 0) or 0) for key in keys
@@ -1729,7 +2088,8 @@ def write_pdf_corpus(source: PdfSource, markdown: str, pages_dir: Path) -> Crawl
 
 
 def summarize_sample_chunks(
-    plan: IndexingPlan, sample_size: int = 3
+    plan: IndexingPlan,
+    sample_size: int = 3,
 ) -> list[dict[str, object]]:
     return [
         {
@@ -1754,6 +2114,8 @@ def build_summary(
     docs_version_report: dict[str, object],
     language_report: dict[str, object],
 ) -> dict[str, object]:
+    blocked_discovery_count = int(stats.get("blocked_discovery_count", 0) or 0)
+    blocked_redirect_count = int(stats.get("blocked_redirect_count", 0) or 0)
     return {
         "command": "crawl",
         "dry_run": True,
@@ -1785,12 +2147,18 @@ def build_summary(
         "robots_disallowed_count": int(stats.get("robots_disallowed_count", 0) or 0),
         "blocked_requests_count": int(stats.get("blocked_requests_count", 0) or 0),
         "failed_requests_count": int(stats.get("failed_requests_count", 0) or 0),
+        "blocked_discovery_count": blocked_discovery_count,
+        "blocked_redirect_count": blocked_redirect_count,
         "files_discovered": plan.files_discovered,
         "files_seen": plan.stats.files_seen,
         "files_error": plan.stats.files_error,
         "chunks_generated": plan.stats.chunks_generated,
         "limit_reached": plan.limit_reached,
-        "sample_chunks": summarize_sample_chunks(plan),
+        "sample_chunks": (
+            []
+            if blocked_discovery_count or blocked_redirect_count
+            else summarize_sample_chunks(plan)
+        ),
         "errors": [error.__dict__ for error in plan.stats.errors[:10]],
     }
 
@@ -1982,11 +2350,17 @@ def crawl_site_with_plan(options: CrawlOptions) -> CrawlExecution:
         progress_callback=options.progress_callback,
     )
     sitemap_policy_started_at = observe_monotonic()
+    boundary_stats: dict[str, object] = {
+        "blocked_discovery_count": 0,
+        "blocked_redirect_count": 0,
+    }
     sitemap_page_urls = None
     if options.crawl_strategy != "link" and (
         options.docs_version_policy != "all" or options.language_policy != "all"
     ):
-        sitemap_page_urls = discover_sitemap_page_urls(options)
+        sitemap_page_urls = discover_sitemap_page_urls(
+            options, boundary_stats=boundary_stats
+        )
     options, docs_version_report = apply_docs_version_policy(
         options, sitemap_page_urls=sitemap_page_urls
     )
@@ -2022,6 +2396,7 @@ def crawl_site_with_plan(options: CrawlOptions) -> CrawlExecution:
         )
     crawl_started_at = observe_monotonic()
     pages, stats, crawl_strategy = crawl_pages(options)
+    stats = combine_stats(boundary_stats, stats)
     crawl_seconds = elapsed_since(crawl_started_at)
     pages_dir = options.out_dir / "pages"
     emit_progress(

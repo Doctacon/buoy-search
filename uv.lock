@@ -249,7 +249,7 @@ requires-dist = [
     { name = "markitdown", extras = ["docx", "pdf", "pptx", "xls", "xlsx"] },
     { name = "portalocker", specifier = ">=3.2.0" },
     { name = "pyyaml" },
-    { name = "scrapling", extras = ["fetchers"], specifier = ">=0.4.9" },
+    { name = "scrapling", extras = ["fetchers"], specifier = "==0.4.9" },
     { name = "sentence-transformers" },
     { name = "turbopuffer" },
 ]

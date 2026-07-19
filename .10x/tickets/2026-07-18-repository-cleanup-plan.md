@@ -15,17 +15,18 @@ The already authorized clean merged-worktree cleanup is complete and recorded at
 ## Child sequence
 
 1. `.10x/tickets/done/2026-07-18-triage-thistle-qdrant-dead-end.md`
-2. `.10x/tickets/2026-07-18-remove-unreachable-local-catalog-persistence.md`
-3. `.10x/tickets/2026-07-18-normalize-terminal-ticket-placement.md`
-4. `.10x/tickets/2026-07-18-review-stale-ticket-statuses.md`
-5. `.10x/tickets/2026-07-18-shape-v0-4-compatibility-removal.md`
+2. `.10x/tickets/done/2026-07-18-enforce-website-exact-host-crawl-boundary.md`
+3. `.10x/tickets/2026-07-18-remove-unreachable-local-catalog-persistence.md`
+4. `.10x/tickets/2026-07-18-normalize-terminal-ticket-placement.md`
+5. `.10x/tickets/2026-07-18-review-stale-ticket-statuses.md`
+6. `.10x/tickets/2026-07-18-shape-v0-4-compatibility-removal.md`
 
-Thistle triage must complete before deleting its dirty worktree. Source cleanup follows the direct-command integration to avoid parallel changes against moving CLI/catalog contracts. Record placement precedes status review so closure checks use the canonical graph. Compatibility shaping is last so it builds on the cleaned current state. The parent is not executable.
+Thistle triage and manifest-authorized deletion complete before the one explicitly salvaged behavior, exact-host crawler safety, is implemented. Dead local-catalog removal follows that safety repair. Record placement precedes status review so closure checks use the canonical graph. Compatibility shaping is last so it builds on the cleaned current state. Sitemap resource limits and MarkItDown normalization remain separate follow-up tickets rather than children of this user-authorized cleanup sequence. The parent is not executable.
 
 ## Aggregate acceptance criteria
 
 - Dirty/unmerged work is never deleted before durable classification and salvage/disposition.
-- Product-neutral Thistle exact-host crawler safety receives a durable repair owner; exact-chunk dedup is retired/no-action with only historical non-authoritative provenance preserved; Qdrant-specific work is retired only with preserved inventory evidence and coherent ticket statuses.
+- Product-neutral Thistle exact-host crawler safety is implemented and verified; exact-chunk dedup is retired/no-action with only historical non-authoritative provenance preserved; Qdrant-specific work is retired only with preserved inventory evidence and coherent ticket statuses.
 - Only production-unreachable local-catalog persistence code/tests are removed; active card/schema/remote/migrate-local behavior remains.
 - All already-terminal tickets live in terminal directories with repaired references.
 - Stale open/active/blocked tickets receive evidence-backed closure, cancellation/no-action rationale, or explicit remaining blockers; no closure evidence is invented.

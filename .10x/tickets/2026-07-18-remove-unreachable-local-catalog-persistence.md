@@ -2,7 +2,7 @@ Status: blocked
 Created: 2026-07-18
 Updated: 2026-07-18
 Parent: .10x/tickets/2026-07-18-repository-cleanup-plan.md
-Depends-On: .10x/tickets/done/2026-07-18-triage-thistle-qdrant-dead-end.md
+Depends-On: .10x/tickets/done/2026-07-18-enforce-website-exact-host-crawl-boundary.md
 
 # Remove Unreachable Local-Catalog Persistence
 
@@ -36,7 +36,7 @@ Before/after production reachability report, exact deleted symbols/tests, focuse
 
 ## Blockers
 
-Complete the preceding Thistle disposition and incorporate current `develop` before execution.
+Complete the preceding exact-host crawler safety repair and incorporate current `develop` before execution.
 
 ## Explicit exclusions
 
