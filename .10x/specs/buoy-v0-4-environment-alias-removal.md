@@ -1,65 +1,87 @@
-Status: draft
+Status: active
 Created: 2026-07-19
 Updated: 2026-07-19
 
 # Buoy 0.4 Environment Alias Removal
 
-## Draft status and blocker
-
-This is a candidate contract, not implementation authority. It remains blocked until the user confirms the combined checkpoint in `.10x/research/2026-07-19-v0-4-compatibility-removal-inventory.md`, especially the old-variable failure behavior. No executable ticket or test may encode that behavior before ratification.
-
 ## Purpose and scope
 
-Remove fallback acceptance of exactly two deprecated branded embedding variables at the first 0.4 release:
+Remove fallback acceptance of exactly two deprecated branded embedding variables in Buoy 0.4.0:
 
-- `TURBO_SEARCH_EMBEDDING_MODEL` → `BUOY_EMBEDDING_MODEL`;
-- `TURBO_SEARCH_EMBEDDING_PRECISION` → `BUOY_EMBEDDING_PRECISION`.
+- `TURBO_SEARCH_EMBEDDING_MODEL` -> `BUOY_EMBEDDING_MODEL`;
+- `TURBO_SEARCH_EMBEDDING_PRECISION` -> `BUOY_EMBEDDING_PRECISION`.
 
-No other `TURBO_SEARCH_*` variable is implemented, and this draft grants no authority over `TURBOPUFFER_*` variables.
+No other `TURBO_SEARCH_*` variable is implemented, and this contract grants no authority over `TURBOPUFFER_*` variables.
 
-## Candidate behavior
+## Dispatch boundary
 
-Recommended, pending confirmation:
+After successful argument parsing and before dispatching any actual command handler, the CLI MUST inspect environment-variable presence. Presence includes an empty value.
 
-- If either removed variable is present, configuration would fail with exit 2 before model loading, credential use, local mutation, or remote calls.
-- The error would name each present old variable and its exact `BUOY_*` replacement without printing variable values.
-- Old-only, old+new-equal, and old+new-different input would all fail under this candidate. The old value would never supply an effective model or precision.
-- With no old variable present, `BUOY_EMBEDDING_MODEL`, `BUOY_EMBEDDING_PRECISION`, their current defaults, CLI overrides, and validation would remain unchanged.
-- Approved apply would continue deriving the effective embedding model and precision from its verified plan; removed ambient aliases would not override or silently alter that contract.
+If either removed variable is present:
 
-This recommendation intentionally detects removed names for a migration error. The alternative—stop reading them entirely—would make old-only configuration silently select the default model/precision and can cause routing exclusion or explicit-retrieval embedding mismatch. The user must choose; neither behavior is ratified by the existing removal schedule alone.
+- the invocation MUST return exit 2;
+- stdout MUST be empty, including when `--json` is present;
+- stderr MUST contain exactly one newline-terminated diagnostic and no warning in addition to it;
+- no command handler, model loader, credential lookup, local state/artifact operation, or remote client call may begin.
 
-## Explicit retained compatibility
+Argument-parser errors occur before this gate and retain existing argparse behavior. Help/version requests terminate within parsing and remain available even when removed variables are present. A parsed invocation with no selected handler, including bare `buoy` or bare `buoy catalog`, retains its existing help behavior rather than being treated as an actual command.
 
-This draft would not alter:
+The same boundary applies to `python -m buoy_search.autoresearch`: `--help` remains available, while a successfully parsed experiment invocation rejects removed-variable presence before reading the experiment or choosing/writing its output directory.
 
-- `TURBOPUFFER_API_KEY`, `TURBOPUFFER_REGION`, or command-specific `TURBOPUFFER_NAMESPACE` behavior;
-- current `BUOY_EMBEDDING_MODEL` / `BUOY_EMBEDDING_PRECISION` semantics;
-- CLI model/precision overrides;
-- old plans missing `embedding_precision`, which remain interpreted as `float32` under their active contract;
-- `.turbo-search` state-root fallback, old plan paths, command flags, source aliases, `catalog migrate-local`, IDs, namespaces, rows, cards, or artifact hashes.
+## Exact diagnostics
 
-## State, data, and side effects
+Diagnostics MUST never print either old or new variable value. They MUST use these exact forms:
 
-Configuration rejection would occur before side effects. The removal would not migrate configuration files automatically, rewrite plans or DuckDB ledgers, re-embed content, change deterministic IDs, mutate remote cards/rows/namespaces, or delete local/remote data.
+- model only: `Removed environment variable is not supported in Buoy 0.4.0: TURBO_SEARCH_EMBEDDING_MODEL -> BUOY_EMBEDDING_MODEL`
+- precision only: `Removed environment variable is not supported in Buoy 0.4.0: TURBO_SEARCH_EMBEDDING_PRECISION -> BUOY_EMBEDDING_PRECISION`
+- both: `Removed environment variables are not supported in Buoy 0.4.0: TURBO_SEARCH_EMBEDDING_MODEL -> BUOY_EMBEDDING_MODEL; TURBO_SEARCH_EMBEDDING_PRECISION -> BUOY_EMBEDDING_PRECISION`
 
-## Candidate acceptance scenarios
+When both are present, the model mapping MUST precede the precision mapping regardless of process-environment insertion order. Old-only, old+new-equal, and old+new-different input all reject identically based on which old names are present. CLI model/precision overrides do not bypass the gate.
 
-- Given only `TURBO_SEARCH_EMBEDDING_MODEL`, when a configuration-consuming command starts, then it fails with the exact replacement name, does not expose the value, and performs no model/credential/state/API work.
-- Given only `TURBO_SEARCH_EMBEDDING_PRECISION`, the same fail-before-side-effect behavior occurs.
-- Given old and new forms together with equal or different values, the candidate rejects removed-variable presence rather than retaining the 0.3 fallback/conflict matrix.
-- Given only current `BUOY_*` variables, current selection, validation, CLI precedence, JSON cleanliness, and command behavior remain unchanged.
-- Given approved apply, the verified plan remains authoritative for effective model/precision and no ambient old alias changes the plan contract.
-- Given retrieve/evals/autoresearch/config consumers, focused tests prove the same chosen boundary without live Turbopuffer calls.
+## Exact command coverage
 
-## Candidate documentation and verification
+The gate MUST cover every actual primary CLI command:
 
-A future ratified implementation would update `src/buoy_search/config.py`, focused config/CLI tests, migration documentation, changelog/release notes, and active local-compatibility/precision contracts coherently. Secret or configuration values would never be persisted in records or diagnostics.
+- `crawl`, `plan`, `apply`, `namespaces`, `retrieve`, and `evals`;
+- `catalog list`, `catalog show`, `catalog upsert`, `catalog enable`, `catalog disable`, `catalog remove`, `catalog migrate-local`, `catalog reconcile`, and `catalog abandon-pending`;
+- one successfully parsed `python -m buoy_search.autoresearch` experiment invocation.
+
+Tests MUST cover each command handler with valid minimum arguments while replacing the handler with a sentinel that proves dispatch did not occur. They MUST also cover `buoy --help`, `buoy --version`, every top-level `buoy <command> --help`, every `buoy catalog <command> --help`, bare `buoy`, bare `buoy catalog`, `python -m buoy_search --help`, and `python -m buoy_search.autoresearch --help` with removed variables present. Help/version tests prove availability only and MUST NOT execute command behavior.
+
+## Current configuration behavior retained
+
+With neither old variable present:
+
+- `BUOY_EMBEDDING_MODEL`, `BUOY_EMBEDDING_PRECISION`, defaults, CLI overrides, validation, and precedence remain unchanged;
+- `TURBOPUFFER_API_KEY`, `TURBOPUFFER_REGION`, and command-specific `TURBOPUFFER_NAMESPACE` behavior remain unchanged;
+- approved apply continues deriving effective embedding model and precision from its verified plan;
+- old plans without `embedding_precision` remain interpreted as `float32` under their active contract;
+- all parser, output, direct-command, state-root, plan, identifier, catalog, and migration compatibility outside the two named aliases remains unchanged.
+
+Approved apply does not bypass the rejection gate: removed ambient names reject before plan discovery or verification even though the verified plan remains authoritative when no old name is present.
+
+## State, data, and external effects
+
+Rejection MUST occur before crawl/plan output creation, state-root discovery, plan reads, DuckDB reads/writes, model loading, embedding, credential access, remote catalog/content reads or writes, namespace mutation, deletion, or publication. The removal MUST NOT migrate configuration automatically, rewrite plans or ledgers, re-embed content, change deterministic IDs, mutate remote cards/rows/namespaces, or delete local/remote data.
+
+## Acceptance scenarios
+
+- Given only one removed variable, including an empty value, when any actual command is invoked with otherwise valid arguments, then it exits 2 with empty stdout and the exact one-mapping diagnostic before its handler runs.
+- Given both removed variables in either environment insertion order, when any actual command is invoked, then it exits 2 and emits the exact model-then-precision diagnostic without either value.
+- Given an old name and its new name with equal or different values, when a command is invoked, then the old name's presence rejects rather than selecting, warning, or comparing values.
+- Given `--json`, when rejection occurs, then stdout remains empty and the sole diagnostic remains stderr text.
+- Given help/version or a parsed no-handler invocation, when removed names are present, then existing help/version behavior remains available.
+- Given malformed arguments, when parsing fails, then existing argparse exit/output occurs and the removed-variable gate does not replace it.
+- Given no removed names, when commands run, then current `BUOY_*`, plan-derived apply, parser, state/data, and remote behavior is unchanged.
+
+## Acceptance criteria
+
+- Deprecated fallback/warning/conflict selection is removed for exactly the two named old variables, while a minimal presence detector enforces this contract at the pre-dispatch boundary.
+- Focused tests cover the complete command/help/version matrix, all old/new combinations, empty values, both insertion orders, exact bytes/streams/exit status, sentinel non-dispatch, and pre-read/pre-write side-effect boundaries.
+- Existing current-variable/default/CLI/plan precedence tests and the complete supported Python suite pass.
+- User documentation and changelog list both exact substitutions, the exit-2 migration failure, help/version exception, value redaction, and absence of state/data/remote effects.
+- Evidence records exact focused/full commands and results, representative stderr bytes, empty stdout under `--json`, sentinel traces, no-side-effect observations, and independent review.
 
 ## Explicit exclusions
 
-Console alias removal (owned by `.10x/specs/buoy-v0-4-console-alias-removal.md`), changes to current variables/defaults, plan-schema changes, state/data migration, remote operations, version/tag/publication work, or removal of any unrelated compatibility.
-
-## Confirmation required
-
-Confirm or correct: 0.4 rejects either removed environment variable—even when the corresponding new variable is also present—with a value-redacting, pre-side-effect migration error. If instead 0.4 should ignore removed variables, explicitly accept the silent-default/mismatch risk described above.
+Console alias removal; changes to current variables/defaults; changes to `TURBOPUFFER_*`; plan-schema changes; state/data migration; remote operations; version/tag/publication work; removal of any unrelated compatibility; correction of stale `.pi/skills/turbopuffer-site-rag/references/scrapling-site-workflow.md` direct-command guidance.

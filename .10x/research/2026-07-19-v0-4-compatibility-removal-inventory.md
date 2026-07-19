@@ -21,7 +21,7 @@ Inspected the current `work/shape-v0-4-compatibility-removal` checkout at integr
 - the active operational skill `.pi/skills/turbopuffer-site-rag/SKILL.md` and `.pi/skills/turbopuffer-site-rag/references/scrapling-site-workflow.md`;
 - repository-wide searches for `0.4`, deprecation/removal language, old branded names, state roots, old plans, compatibility flags, source aliases, and `migrate-local`.
 
-No source behavior, package version, state, data, remote resource, release artifact, or executable ticket was changed or created.
+The initial inventory changed no source behavior, package version, state, data, remote resource, release artifact, or executable ticket. After the user ratified the reviewed contract, the focused specs were activated and the bounded execution graph was created as record-only follow-through.
 
 ## Authority finding
 
@@ -130,24 +130,18 @@ The removal target is a release boundary, not authorization to mutate the curren
 
 The release process is GitHub-only today. `docs/releasing.md` states that no PyPI publication occurs; 0.4 shaping does not alter that policy.
 
-## Draft recommended contract
+## Ratified contract and disposition
 
-This is a recommendation for confirmation, not active behavior authority:
+On 2026-07-19 the user explicitly ratified the reviewer's exact recommended contract:
 
-1. The first 0.4 release removes exactly the `turbo-search` console entry point and fallback acceptance of `TURBO_SEARCH_EMBEDDING_MODEL` / `TURBO_SEARCH_EMBEDDING_PRECISION`.
-2. A 0.4 clean install and supported 0.3-to-0.4 upgrade expose `buoy` but not `turbo-search`; scripts replace only the executable name.
-3. Presence of either removed environment variable fails before model loading, credentials, local mutation, or remote calls with an error naming the exact `BUOY_*` replacement. This is safer than silently selecting defaults, but it deliberately retains temporary detection of the removed names and therefore needs explicit ratification.
-4. All other compatibility in the matrix remains supported. In particular, no state root, plan, flag, migration command, durable identifier, local data, or remote data is removed or rewritten.
-5. Implementation, docs, tests, package inspection, changelog, and release notes land coherently for the 0.4 boundary; version changes, tagging, publishing, and release creation remain separately authorized work.
+1. The first 0.4.0 release removes exactly the `turbo-search` console entry point and fallback acceptance of `TURBO_SEARCH_EMBEDDING_MODEL` / `TURBO_SEARCH_EMBEDDING_PRECISION`.
+2. After successful parsing but before actual command-handler dispatch, either removed variable rejects with exit 2, empty stdout even under `--json`, and one value-redacted stderr diagnostic listing present old-to-new mappings in deterministic model-then-precision order. Help/version remain available.
+3. Console removal deletes both the `pyproject.toml` script and dedicated `legacy_main` hook.
+4. Clean-install validation is supplemented by same-environment upgrade validation: install the immutable released 0.3.0 GitHub wheel, then normally upgrade that isolated environment to the candidate 0.4.0 wheel and inspect installed entry points/launchers.
+5. Every other compatibility surface in the matrix remains supported, and no state, data, or remote effect occurs.
 
-## User checkpoint
-
-Confirm or correct this smallest complete contract:
-
-> In 0.4.0, remove the `turbo-search` installed command and the two `TURBO_SEARCH_EMBEDDING_*` fallbacks; reject either old variable with a pre-side-effect migration error naming its `BUOY_*` replacement; retain every other compatibility surface in the matrix; make no state/data/remote changes; and require both clean-install and 0.3-to-0.4 upgrade validation plus atomic docs/changelog/tests/package updates.
-
-If rejection is not desired, the execution-critical alternative must be stated explicitly: ignore removed variables even though old-only configurations can silently fall back to the default model/precision. No implementation ticket should be opened until this behavior and the 0.4.0 boundary are confirmed.
+The exact active contracts are `.10x/specs/buoy-v0-4-console-alias-removal.md` and `.10x/specs/buoy-v0-4-environment-alias-removal.md`. Execution is owned by the non-executable plan `.10x/tickets/2026-07-19-buoy-v0-4-compatibility-removal-plan.md` and its two bounded children. The stale direct-command statement in the Scrapling workflow reference is separately owned by `.10x/tickets/2026-07-19-reconcile-scrapling-site-workflow-direct-command-guidance.md` and is not part of 0.4 implementation.
 
 ## Conclusion
 
-Active authority schedules only one console alias and two embedding environment aliases for 0.4 removal. Every other inspected compatibility surface is retained by active contracts or lacks release/removal authority. Two focused draft specifications capture the candidate command and environment contracts, but both remain blocked on the single checkpoint above.
+Active authority and user ratification cover only one console alias and two embedding environment aliases for 0.4.0 removal. Every other inspected compatibility surface remains retained. The focused active specs and executable graph now make the command boundary, diagnostics, package upgrade proof, exclusions, and side-effect limits execution-ready without semantic invention.
