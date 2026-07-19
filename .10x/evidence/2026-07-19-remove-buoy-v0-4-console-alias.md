@@ -62,6 +62,7 @@ After upgrade, installed metadata reported version 0.4.0 and exactly the `buoy` 
 - `uv run --no-project python scripts/release_checks.py assets --dist /tmp/buoy-console-alias-artifacts-8fca875`: passed.
 - Python zip/tar metadata, package-data, entry-point, and hook assertions: passed.
 - `git diff --check`, source-reference inspection, and `uv.lock` coherence check: passed.
+- Pull request #47 CI run `29707534036` at pushed head `5bfa8455f35f12aae0041f8cfec98c6bec70e22f` passed: Python 3.11 job `88246909509` (47s), Python 3.13 job `88246909505` (46s), and distribution build job `88246964840` (10s).
 
 The full suites emitted two existing best-effort temporary plan-artifact cleanup warnings and still passed; no repository or user state was involved.
 
@@ -85,5 +86,5 @@ This supports the ticket's source/package/version, clean-install, same-environme
 
 - Clean-install and upgrade checks ran locally on macOS with Python 3.13; the complete locked source suite separately passed on Python 3.11 and 3.13.
 - Dependency installation resolved/downloaded open-source dependencies and, during the upgrade, reconciled the candidate's existing `scrapling==0.4.9` pin; no dependency contract was changed by this ticket.
-- Hosted check identities and independent review are pending the pull request and are required before ticket closure.
+- Hosted checks passed on the implementation/evidence head named above. This follow-up evidence update is record-only; exact final pull-request-head checks remain observable on PR #47. Independent review remains required before ticket closure.
 - This branch intentionally does not implement the separately owned environment-alias removal. Aggregate integration must reconcile both child diffs and coherent 0.4.0 metadata before either lands on `develop`.
