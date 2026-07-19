@@ -40,13 +40,18 @@ uv run python scripts/release_checks.py assets --dist dist
 git fetch origin develop
 git merge-base --is-ancestor origin/develop HEAD
 # exit 0; origin/develop e27de0d is already incorporated by pre-change HEAD f1adf33
+
+gh pr checks 34 --watch --interval 10
+# Python 3.11 — pass (40s), job 88157565805
+# Python 3.13 — pass (56s), job 88157565799
+# Build distributions — pass (12s), job 88157629794
 ```
 
 The unittest runs emitted one existing non-fatal warning from a cleanup-path test about a temporary plan artifact directory; every run completed `OK`.
 
 ## What this supports or challenges
 
-This supports the ticket's focused/full Python 3.11/3.13, parser/help, exact routing boundary, preview safety, all-or-nothing, generated command tokenization, documentation, distribution-build, and no-write acceptance claims. Hosted CI and independent review remain separate required gates.
+This supports the ticket's focused/full Python 3.11/3.13, parser/help, exact routing boundary, preview safety, all-or-nothing, generated command tokenization, documentation, distribution-build, hosted-CI, and no-write acceptance claims. Hosted run `29673894066` for pull request `#34` passed both versioned test jobs and the dependent distribution build. Independent review remains a separate required gate.
 
 ## Limits
 

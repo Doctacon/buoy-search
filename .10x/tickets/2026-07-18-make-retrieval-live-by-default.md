@@ -52,4 +52,5 @@ Apply prompt/mode implementation; catalog command defaults; routing algorithm/ca
 - 2026-07-18: Implemented plain live automatic and explicit retrieval, retained `--live` as a conflicting-with-preview compatibility no-op, and preserved `--dry-run`/`--plan` preview boundaries and validation precedence.
 - 2026-07-18: Reversed generated apply handoff commands so `live` is plain and `preview` appends `--dry-run`; updated retrieval help, README, changelog, retrieval guide, and migration guidance without changing apply confirmation or applied-state behavior.
 - 2026-07-18: Focused fake-backed suites passed on Python 3.11 and 3.13 (107 tests each); full suites passed on both (405 tests each); wheel/sdist build and asset verification passed. Evidence: `.10x/evidence/2026-07-18-retrieval-live-by-default.md`.
-- 2026-07-18: Ticket remains active pending independent review and final hosted checks; it is not closed by this implementation session.
+- 2026-07-18: Initial hosted pull-request checks passed on Python 3.11, Python 3.13, and distribution build (PR #34, Actions run `29673894066`); identities are recorded in `.10x/evidence/2026-07-18-retrieval-live-by-default.md`.
+- 2026-07-18: Ticket remains active pending independent review; it is not closed by this implementation session.
