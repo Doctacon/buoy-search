@@ -2168,26 +2168,19 @@ def _url_like_start(content: str, index: int) -> bool:
         content[index : index + 2] == "//"
         and index + 2 < len(content)
         and not content[index + 2].isspace()
-        and content[index + 2] not in "<>()[]{}'\"`/"
+        and content[index + 2] not in "<>'\"`/"
     )
 
 
 def _url_like_end(content: str, start: int) -> int:
     cursor = start
-    depth = 0
     while cursor < len(content):
         character = content[cursor]
         if character == "\\" and cursor + 1 < len(content):
             cursor += 2
             continue
-        if character.isspace() or character in "<>[]{}'\"`":
+        if character.isspace() or character in "<>'\"`":
             break
-        if character == "(":
-            depth += 1
-        elif character == ")":
-            if depth == 0:
-                break
-            depth -= 1
         cursor += 1
     return cursor
 

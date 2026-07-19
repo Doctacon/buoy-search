@@ -77,6 +77,22 @@ Validation after this remediation:
 - All 45 `src`/`tests` Python files parsed successfully and `git diff --check` passed.
 - Hosted GitHub Actions run `29698186044` passed Python 3.11 (43s), Python 3.13 (43s), and distribution build (8s) for remediation commit `810ec28`.
 
+## IPv6 visible-URL leakage blocker remediation
+
+The visible-URL scanner was narrowed to genuinely safe termination boundaries (whitespace, quotes, angle delimiters, and Markdown backticks). It now conservatively consumes square, round, and curly brackets plus attached punctuation for both HTTP(S) and protocol-relative visible URLs. This is a generic boundary change rather than an IPv6-literal branch; Markdown destination parsing and angle-autolink handling remain separate and unchanged, and the website-only call site still preserves local PDF/file behavior.
+
+The new regression first failed against the previous scanner because `https://IPV6_USER_A@[2001:db8::1]/PATH_A?...` left the bracketed address, path, query, fragment, and sentinel in serialized `sample_chunks`. After the change it passed IPv6 literals with userinfo, IPv4-mapped addresses, zone identifiers, ports, path brackets/parentheses/braces, punctuation both before and after query data, protocol-relative bracketed addresses, angle autolinks, visible Markdown labels with distinct destinations, and quoted boundaries. Raw previews plus JSON and text `sample_chunks` retained useful surrounding prose while containing none of the asserted users, addresses, paths, queries, fragments, or sentinels.
+
+Validation after this remediation:
+
+- Python 3.11 focused: 53 tests passed.
+- Python 3.11 full: 425 tests passed.
+- Python 3.13 focused: 53 tests passed.
+- Python 3.13 full: 425 tests passed.
+- Wheel and source distribution built successfully under `/tmp/buoy-exact-host-ipv6-dist`.
+- All 45 `src`/`tests` Python files parsed successfully and `git diff --check` passed.
+- Hosted GitHub Actions and independent rereview remain pending.
+
 ## Limits
 
 - Fixtures contacted loopback servers only; no live site, model, Turbopuffer service, or other remote service was used.

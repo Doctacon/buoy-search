@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import tempfile
 from threading import Thread
+from types import SimpleNamespace
 from typing import Callable, Iterator
 import unittest
 from unittest.mock import patch
@@ -22,6 +23,7 @@ from buoy_search.crawler import (
     build_link_spider_class,
     crawl_site,
     discover_sitemap_page_urls,
+    summarize_sample_chunks,
     summary_content_preview,
 )
 
@@ -459,6 +461,75 @@ class ExactHostCrawlBoundaryTests(unittest.TestCase):
             "PROTO_SENTINEL",
         ):
             self.assertNotIn(blocked_detail, preview)
+
+    def test_summary_destination_sanitizer_consumes_ipv6_and_attached_punctuation(self) -> None:
+        variants = (
+            "https://IPV6_USER_A@[2001:db8::1]/PATH_A?QUERY_A=1#FRAGMENT_A_SENTINEL_A],};",
+            "(https://IPV6_USER_B@[::ffff:192.0.2.1]:8443/a[b]{c}(d))]},;?QUERY_B=2#FRAGMENT_B_SENTINEL_B.,",
+            "<https://IPV6_USER_C@[fe80::1%25eth0]/PATH_C?QUERY_C=3#FRAGMENT_C_SENTINEL_C>",
+            "[https://IPV6_USER_D@[2001:db8::4]/PATH_D?QUERY_D=4#FRAGMENT_D_SENTINEL_D]"
+            "(https://DEST_USER@[2001:db8::5]/DEST_PATH?DEST_QUERY=5#DEST_FRAGMENT_SENTINEL_DEST)",
+            "//[2001:db8::7]/PATH_PROTOCOL?QUERY_PROTOCOL=7#FRAGMENT_PROTOCOL_SENTINEL_PROTOCOL]}.,",
+            '"https://IPV6_USER_E@[2001:db8::6]/PATH_E?QUERY_E=6#FRAGMENT_E_SENTINEL_E"',
+        )
+        content = "Useful before " + " useful middle ".join(variants) + " useful after."
+
+        preview = summary_content_preview(content, max_length=2000)
+        self.assertIn("useful middle", preview)
+        plan = SimpleNamespace(
+            chunks=[
+                SimpleNamespace(
+                    id=f"ipv6-adversarial-{index}",
+                    title="IPv6 adversarial",
+                    url="https://allowed.example/",
+                    section_path="",
+                    content=f"Useful before {variant} useful after.",
+                )
+                for index, variant in enumerate(variants)
+            ]
+        )
+        sample_chunks = summarize_sample_chunks(
+            plan,
+            sample_size=len(variants),
+            sanitize_website_destinations=True,
+        )
+        rendered_outputs = (
+            preview,
+            json.dumps({"sample_chunks": sample_chunks}),
+            str(sample_chunks),
+        )
+
+        for rendered in rendered_outputs:
+            self.assertIn("Useful before", rendered)
+            self.assertIn("useful after", rendered)
+            for blocked_detail in (
+                "IPV6_USER",
+                "2001:db8",
+                "::ffff:192.0.2.1",
+                "fe80::1",
+                "PATH_A",
+                "PATH_C",
+                "PATH_D",
+                "PATH_E",
+                "PATH_PROTOCOL",
+                "DEST_PATH",
+                "QUERY_A",
+                "QUERY_B",
+                "QUERY_C",
+                "QUERY_D",
+                "QUERY_E",
+                "QUERY_PROTOCOL",
+                "DEST_QUERY",
+                "FRAGMENT_A",
+                "FRAGMENT_B",
+                "FRAGMENT_C",
+                "FRAGMENT_D",
+                "FRAGMENT_E",
+                "FRAGMENT_PROTOCOL",
+                "DEST_FRAGMENT",
+                "SENTINEL",
+            ):
+                self.assertNotIn(blocked_detail, rendered)
 
     def test_redirected_robots_denial_is_used_before_page_requests(self) -> None:
         with fixture_server() as allowed, tempfile.TemporaryDirectory() as tmp:
