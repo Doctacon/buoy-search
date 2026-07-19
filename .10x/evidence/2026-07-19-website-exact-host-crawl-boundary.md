@@ -28,6 +28,7 @@ Current Buoy exact-host enforcement was implemented without a live or external-n
 4. Built wheel and source distribution outside the repository:
    `uv build --out-dir /tmp/buoy-exact-host-dist`
 5. Ran Python compilation, `git diff --check`, and a static search for blocked URL/query-bearing output fields.
+6. Pushed commit `1b64bc3`, opened PR #42, and observed GitHub Actions run `29696972955` to completion.
 
 ## Validation results
 
@@ -37,6 +38,7 @@ Current Buoy exact-host enforcement was implemented without a live or external-n
 - Python 3.13 full: 418 tests passed.
 - Build: `buoy_search-0.3.0-py3-none-any.whl` and `buoy_search-0.3.0.tar.gz` built successfully under `/tmp/buoy-exact-host-dist`.
 - Compilation and whitespace checks passed; the static blocked-detail field search returned no matches.
+- Hosted CI passed: Python 3.11 (43s), Python 3.13 (39s), and distribution build (11s).
 
 ## What this supports
 
@@ -45,5 +47,5 @@ This supports the executable ticket's implementation and local-validation accept
 ## Limits
 
 - Fixtures contacted loopback servers only; no live site, model, Turbopuffer service, or other remote service was used.
-- Hosted CI and independent review remain separate gates.
+- Independent review remains a separate gate; this evidence does not review or close the ticket.
 - Scrapling integration necessarily uses its current spider lifecycle hook to replace the robots fetch callback so redirected robots remain enforced while automatic client redirects are disabled.
