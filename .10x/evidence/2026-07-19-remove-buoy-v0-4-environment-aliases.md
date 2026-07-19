@@ -39,6 +39,10 @@ No test invoked a real command handler after rejection. Therefore no handler-own
    - Passed: 75 focused tests after final diff inspection.
 9. Repository searches for the two removed names and legacy fallback identifiers across `src`, `tests`, `docs`, `CHANGELOG.md`, and active specs.
    - Observed removed names only in the presence detector, diagnostics/tests, migration/changelog text, and governing historical/current spec statements; no fallback variables or deprecation-warning implementation remained.
+10. Pull request [#48](https://github.com/Doctacon/buoy-search/pull/48) at implementation commit `96ff96e563a0e5b57207446534040fe881e5e2cb` ran hosted workflow `29708193056`.
+   - Python 3.11 job `88248483359`: passed in 52 seconds.
+   - Python 3.13 job `88248483358`: passed in 56 seconds.
+   - Build distributions job `88248542411`: passed in 11 seconds.
 
 The two pre-existing advisory cleanup warnings printed by full/focused tests concern mocked plan cleanup behavior and did not fail either suite.
 
@@ -62,7 +66,7 @@ This supports the child ticket's local implementation, exact stream/exit behavio
 
 ## Limits
 
-- Independent source review, aggregate review, hosted CI identities, PR checks, and integration with the console-alias sibling remain pending; this evidence does not satisfy those gates.
+- Independent source review, aggregate review, and integration with the console-alias sibling remain pending; passing hosted checks do not satisfy those review gates.
 - Candidate 0.4.0 version metadata is intentionally absent from this child diff. The parent plan assigns package/module/lock candidate metadata to the console-alias sibling and requires aggregate reconciliation before integration. The locally built standalone child artifacts therefore still report the base version `0.3.0`; they establish build integrity, not final candidate-version acceptance.
 - No live remote behavior was exercised. Non-rejection behavior is supported by the unchanged-handler boundary plus passing existing tests, not by live Turbopuffer calls.
 - Temporary build outputs are outside the repository and are not release candidates; nothing was published, tagged, or released.
