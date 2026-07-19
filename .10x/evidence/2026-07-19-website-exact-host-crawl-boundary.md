@@ -111,6 +111,22 @@ Validation after this remediation:
 - Remediation commit `e7f9d02` was pushed; hosted GitHub Actions run `29699075735` passed Python 3.11 (48s), Python 3.13 (44s), and distribution build (7s).
 - Independent rereview remains pending.
 
+## Empty blocked-sample policy remediation
+
+The final PR #42 review found that heading-derived `section_path` remained untrusted content under the fixed-field policy. The website summary boundary is now representation-independent: when either `blocked_discovery_count` or `blocked_redirect_count` is nonzero, `sample_chunks` is an empty list. No sample entry exists, so title, URL, heading-derived section path, preview, ID, or future sample fields can leak through selective redaction. When both counts are zero, the prior complete website sample dictionaries are preserved. The shared sample summarizer and local PDF/file summaries retain their prior behavior, and the obsolete fixed replacement constant and redaction parameter were removed.
+
+The regression fixture includes a heading-derived URL with userinfo, path, query, and fragment sentinels and proves the crawled Markdown contains that untrusted heading while blocked JSON/text output contains none of it. Separate discovery-only and redirect-only cases assert an empty `sample_chunks` list and absence of every sample-entry field in JSON/text. Zero-block coverage asserts the complete prior website sample dictionary, and the existing PDF/local-file output regressions remain passing.
+
+Validation after this remediation:
+
+- Python 3.11 focused: 52 tests passed.
+- Python 3.11 full: 424 tests passed.
+- Python 3.13 focused: 52 tests passed.
+- Python 3.13 full: 424 tests passed.
+- Wheel and source distribution built successfully under `/tmp/buoy-exact-host-final-dist`.
+- Python compilation and `git diff --check` passed; static search found no obsolete fixed-redaction symbols.
+- Hosted GitHub Actions and independent rereview remain pending.
+
 ## Limits
 
 - Fixtures contacted loopback servers only; no live site, model, Turbopuffer service, or other remote service was used.

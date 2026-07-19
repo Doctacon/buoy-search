@@ -18,7 +18,6 @@ import anyio
 
 from buoy_search.cli import print_crawl_text
 from buoy_search.crawler import (
-    BLOCKED_WEBSITE_SAMPLE_REDACTION,
     CrawlOptions,
     _assert_scrapling_runtime_shape,
     build_link_spider_class,
@@ -214,6 +213,10 @@ class ExactHostCrawlBoundaryTests(unittest.TestCase):
             visible_destination = visible_url.replace(
                 "VISIBLE_SENTINEL", "DESTINATION_SENTINEL"
             )
+            heading_url = (
+                f"http://HEADING_USER@127.0.0.1:{destination.server_port}"
+                "/heading/path?HEADING_QUERY=heading-value#HEADING_FRAGMENT"
+            )
 
             destination.router = lambda _path: (
                 200,
@@ -231,6 +234,7 @@ class ExactHostCrawlBoundaryTests(unittest.TestCase):
                         {"Content-Type": "text/html"},
                         "<html><head><title>TITLE_SENTINEL 192.0.2.40 2001:db8::40</title></head><body><main>"
                         "<p>Useful sanitizer fixture content before links.</p>"
+                        f"<h2>Heading-derived {heading_url}</h2>"
                         f"<p>&lt;{autolink_url}&gt;</p>"
                         f'<a href="{autolink_url}">{autolink_url}</a>'
                         f'<a href="{visible_destination}">{visible_url}</a>'
@@ -251,6 +255,8 @@ class ExactHostCrawlBoundaryTests(unittest.TestCase):
             self.assertIn(r"<http://AUTOLINK\_USER@", crawled_markdown)
             self.assertIn("<http://AUTOLINK_USER@", crawled_markdown)
             self.assertIn(r"[http://VISIBLE\_USER@", crawled_markdown)
+            self.assertIn(r"HEADING\_QUERY", crawled_markdown)
+            self.assertIn(r"HEADING\_FRAGMENT", crawled_markdown)
             self.assertEqual(destination.counts["/autolink_(nested)/oauth/callback"], 0)
             self.assertEqual(destination.counts["/visible_(nested)/oauth/callback"], 0)
 
@@ -273,14 +279,14 @@ class ExactHostCrawlBoundaryTests(unittest.TestCase):
                 "AUTOLINK_SENTINEL",
                 "VISIBLE_SENTINEL",
                 "DESTINATION_SENTINEL",
+                "HEADING_USER",
+                "HEADING_QUERY",
+                "heading-value",
+                "HEADING_FRAGMENT",
                 "Useful sanitizer fixture content",
             ):
                 self.assertNotIn(blocked_detail, rendered_summaries)
-            for sample in summary["sample_chunks"]:
-                self.assertEqual(sample["title"], BLOCKED_WEBSITE_SAMPLE_REDACTION)
-                self.assertEqual(
-                    sample["content_preview"], BLOCKED_WEBSITE_SAMPLE_REDACTION
-                )
+            self.assertEqual(summary["sample_chunks"], [])
 
     def test_sitemap_and_robots_declarations_and_redirects_stay_on_host(self) -> None:
         with fixture_server() as allowed, fixture_server() as destination, tempfile.TemporaryDirectory() as tmp:
@@ -420,8 +426,12 @@ class ExactHostCrawlBoundaryTests(unittest.TestCase):
         self.assertFalse(spider._response_stayed_on_host(Response()))
         self.assertEqual(spider._blocked_redirect_count, 1)
 
-    def test_website_samples_fail_closed_for_either_blocked_count(self) -> None:
+    def test_blocked_website_summaries_omit_all_sample_entries(self) -> None:
         title = "TITLE_SECRET bare 192.0.2.10 2001:db8::10 PERCENT%2FSECRET"
+        section_path = (
+            "Heading > https://HEADING_USER@blocked.invalid/heading/path"
+            "?HEADING_QUERY=heading-value#HEADING_FRAGMENT"
+        )
         content = (
             "Useful normal content LITERAL_SECRET "
             "https://USER_SECRET@blocked.invalid/arbitrary/path?QUERY_SECRET=1#FRAGMENT_SECRET "
@@ -444,7 +454,7 @@ class ExactHostCrawlBoundaryTests(unittest.TestCase):
                     id="safe-structural-id",
                     title=title,
                     url="https://allowed.example/safe-page",
-                    section_path="safe-section",
+                    section_path=section_path,
                     content=content,
                 )
             ],
@@ -468,27 +478,40 @@ class ExactHostCrawlBoundaryTests(unittest.TestCase):
                     docs_version_report={"detected": False},
                     language_report={"detected": False},
                 )
-                sample = summary["sample_chunks"][0]
-                self.assertEqual(sample["title"], BLOCKED_WEBSITE_SAMPLE_REDACTION)
-                self.assertEqual(
-                    sample["content_preview"], BLOCKED_WEBSITE_SAMPLE_REDACTION
-                )
-                self.assertEqual(sample["id"], "safe-structural-id")
-                self.assertEqual(sample["url"], "https://allowed.example/safe-page")
-                self.assertEqual(sample["section_path"], "safe-section")
+                self.assertEqual(summary["sample_chunks"], [])
 
                 stdout = StringIO()
                 with redirect_stdout(stdout):
                     print_crawl_text(summary)
                 serialized_json = json.dumps(summary, sort_keys=True)
                 rendered_text = stdout.getvalue()
-                self.assertIn(BLOCKED_WEBSITE_SAMPLE_REDACTION, serialized_json)
+                self.assertIn('"sample_chunks": []', serialized_json)
                 self.assertIn("exact_host_boundary", rendered_text)
+                for sample_field in (
+                    '"id":',
+                    '"title":',
+                    '"url":',
+                    '"section_path":',
+                    '"content_preview":',
+                ):
+                    self.assertNotIn(sample_field, serialized_json)
+                for sample_label in (
+                    "  id:",
+                    "  title:",
+                    "  url:",
+                    "  section_path:",
+                    "  content_preview:",
+                ):
+                    self.assertNotIn(sample_label, rendered_text)
                 for secret in (
                     "TITLE_SECRET",
                     "192.0.2.10",
                     "2001:db8::10",
                     "PERCENT%2FSECRET",
+                    "HEADING_USER",
+                    "HEADING_QUERY",
+                    "heading-value",
+                    "HEADING_FRAGMENT",
                     "LITERAL_SECRET",
                     "USER_SECRET",
                     "blocked.invalid",
@@ -539,11 +562,17 @@ class ExactHostCrawlBoundaryTests(unittest.TestCase):
             language_report={"detected": False},
         )
 
-        sample = summary["sample_chunks"][0]
-        self.assertEqual(sample["title"], "Useful normal title")
         self.assertEqual(
-            sample["content_preview"],
-            "Useful normal website content with a second line.",
+            summary["sample_chunks"],
+            [
+                {
+                    "id": "normal-id",
+                    "title": "Useful normal title",
+                    "url": "https://allowed.example/normal",
+                    "section_path": "overview",
+                    "content_preview": "Useful normal website content with a second line.",
+                }
+            ],
         )
 
     def test_redirected_robots_denial_is_used_before_page_requests(self) -> None:

@@ -51,7 +51,6 @@ LANGUAGE_POLICIES = ("english", "all")
 MAX_REDIRECT_HOPS = 20
 REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 SUPPORTED_SCRAPLING_VERSION = "0.4.9"
-BLOCKED_WEBSITE_SAMPLE_REDACTION = "[redacted: blocked website crawl boundary]"
 
 
 class _NoRedirectHandler(HTTPRedirectHandler):
@@ -2091,24 +2090,14 @@ def write_pdf_corpus(source: PdfSource, markdown: str, pages_dir: Path) -> Crawl
 def summarize_sample_chunks(
     plan: IndexingPlan,
     sample_size: int = 3,
-    *,
-    redact_untrusted_fields: bool = False,
 ) -> list[dict[str, object]]:
     return [
         {
             "id": chunk.id,
-            "title": (
-                BLOCKED_WEBSITE_SAMPLE_REDACTION
-                if redact_untrusted_fields
-                else chunk.title
-            ),
+            "title": chunk.title,
             "url": chunk.url,
             "section_path": chunk.section_path,
-            "content_preview": (
-                BLOCKED_WEBSITE_SAMPLE_REDACTION
-                if redact_untrusted_fields
-                else chunk.content[:240].replace("\n", " ")
-            ),
+            "content_preview": chunk.content[:240].replace("\n", " "),
         }
         for chunk in plan.chunks[:sample_size]
     ]
@@ -2165,11 +2154,10 @@ def build_summary(
         "files_error": plan.stats.files_error,
         "chunks_generated": plan.stats.chunks_generated,
         "limit_reached": plan.limit_reached,
-        "sample_chunks": summarize_sample_chunks(
-            plan,
-            redact_untrusted_fields=bool(
-                blocked_discovery_count or blocked_redirect_count
-            ),
+        "sample_chunks": (
+            []
+            if blocked_discovery_count or blocked_redirect_count
+            else summarize_sample_chunks(plan)
         ),
         "errors": [error.__dict__ for error in plan.stats.errors[:10]],
     }
