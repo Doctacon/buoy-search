@@ -44,8 +44,26 @@ Current Buoy exact-host enforcement was implemented without a live or external-n
 
 This supports the executable ticket's implementation and local-validation acceptance criteria. It does not provide independent review or ticket closure.
 
+## Independent-review blocker remediation
+
+A later independent review found three blockers. The implementation was revised and locally revalidated:
+
+- Website summary destination removal now parses complete valid inline Markdown destinations with balanced or escaped parentheses, angle brackets, optional titles, and suffix text. Adversarial fixtures assert blocked host/path details, query values, OAuth-shaped userinfo, and sentinels are absent from serialized JSON and rendered text summaries.
+- Scrapling is now declared and locked at exactly 0.4.9. Runtime checks validate the pinned version, lifecycle order, robots callback usage, request processing, session fetch path, disabled automatic redirects, empty prefetch cache, and installed robots fetch binding. Shape/version failures abort during spider initialization or `on_start`, before robots or page requests. A redirected same-host robots fixture proves the redirected denial prevents the page request.
+- Destination sanitization and exact-host counter fields are website-only. PDF/local-file regressions prove their summary fields omit boundary counters and their `content_preview` retains Markdown destinations exactly as before this PR.
+
+Validation after remediation:
+
+- Python 3.11 focused: 50 tests passed.
+- Python 3.11 full: 422 tests passed.
+- Python 3.13 focused: 50 tests passed.
+- Python 3.13 full: 422 tests passed.
+- Wheel and source distribution rebuilt successfully under `/tmp/buoy-exact-host-review-dist`.
+- All `src`/`tests` Python files parsed successfully; `git diff --check`, exact dependency/lock/version checks, and the blocked-detail output-field diff search passed.
+
 ## Limits
 
 - Fixtures contacted loopback servers only; no live site, model, Turbopuffer service, or other remote service was used.
-- Independent review remains a separate gate; this evidence does not review or close the ticket.
-- Scrapling integration necessarily uses its current spider lifecycle hook to replace the robots fetch callback so redirected robots remain enforced while automatic client redirects are disabled.
+- Independent rereview remains a separate gate; this evidence does not review or close the ticket.
+- The redirect-safe robots integration remains private Scrapling API usage, bounded to exact version 0.4.9 and guarded to fail closed when the version or required runtime shape differs.
+- Hosted validation for the remediation commit was still pending when these local results were recorded.

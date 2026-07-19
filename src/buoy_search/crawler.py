@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
+import dis
 from fnmatch import fnmatchcase
 from gzip import GzipFile
 import hashlib
+from importlib.metadata import version as distribution_version
 from io import BytesIO
 import json
 import mimetypes
@@ -48,6 +50,9 @@ DEFAULT_LANGUAGE_POLICY = "english"
 LANGUAGE_POLICIES = ("english", "all")
 MAX_REDIRECT_HOPS = 20
 REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+SUPPORTED_SCRAPLING_VERSION = "0.4.9"
+
+
 class _NoRedirectHandler(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001 - urllib hook.
         return None
@@ -1354,6 +1359,65 @@ def crawled_page_from_response(
     )
 
 
+def _loaded_method_names(function: Callable[..., object]) -> list[str]:
+    return [
+        str(instruction.argval)
+        for instruction in dis.get_instructions(function)
+        if instruction.opname in {"LOAD_ATTR", "LOAD_METHOD"}
+    ]
+
+
+def _assert_scrapling_runtime_shape() -> None:
+    """Abort if the pinned Scrapling lifecycle no longer enforces our hooks."""
+
+    installed_version = distribution_version("scrapling")
+    if installed_version != SUPPORTED_SCRAPLING_VERSION:
+        raise RuntimeError(
+            "Website crawling requires Scrapling "
+            f"{SUPPORTED_SCRAPLING_VERSION}; found {installed_version}."
+        )
+
+    from scrapling.spiders.engine import CrawlerEngine
+    from scrapling.spiders.robotstxt import RobotsTxtManager
+    from scrapling.spiders.session import SessionManager
+
+    required_names = (
+        (CrawlerEngine._prefetch_robots_txt, {"_robots_manager", "prefetch"}),
+        (
+            CrawlerEngine._process_request,
+            {"_robots_manager", "can_fetch", "session_manager", "fetch"},
+        ),
+        (RobotsTxtManager._get_parser, {"_fetch_fn"}),
+        (SessionManager.fetch, {"_session_kwargs", "_make_request"}),
+    )
+    for function, names in required_names:
+        code = getattr(function, "__code__", None)
+        if code is None or not names.issubset(set(code.co_names)):
+            raise RuntimeError(
+                "Scrapling's website crawl integration changed; refusing to request pages."
+            )
+
+    try:
+        lifecycle_names = _loaded_method_names(CrawlerEngine.crawl)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError(
+            "Scrapling's website crawl lifecycle changed; refusing to request pages."
+        ) from exc
+    try:
+        lifecycle_positions = [
+            lifecycle_names.index(name)
+            for name in ("on_start", "_prefetch_robots_txt", "start_requests")
+        ]
+    except ValueError as exc:
+        raise RuntimeError(
+            "Scrapling's website crawl lifecycle changed; refusing to request pages."
+        ) from exc
+    if lifecycle_positions != sorted(lifecycle_positions):
+        raise RuntimeError(
+            "Scrapling's robots lifecycle is no longer installed before requests; refusing to crawl."
+        )
+
+
 class _ExactHostSpiderMixin:
     """Disable client redirects and validate each hop before scheduling it."""
 
@@ -1369,13 +1433,57 @@ class _ExactHostSpiderMixin:
     def configure_sessions(self, manager) -> None:  # noqa: ANN001 - Scrapling hook.
         from scrapling.fetchers import FetcherSession
 
-        manager.add("default", FetcherSession(follow_redirects=False))
+        _assert_scrapling_runtime_shape()
+        session = FetcherSession(follow_redirects=False)
+        if getattr(session, "_default_follow_redirects", None) is not False:
+            raise RuntimeError(
+                "Scrapling did not disable automatic redirects; refusing to crawl."
+            )
+        manager.add("default", session)
+        if manager.get("default") is not session:
+            raise RuntimeError(
+                "Scrapling did not retain the redirect-safe session; refusing to crawl."
+            )
 
     async def on_start(self, resuming: bool = False) -> None:
+        _assert_scrapling_runtime_shape()
+        from scrapling.spiders.engine import CrawlerEngine
+        from scrapling.spiders.robotstxt import RobotsTxtManager
+        from scrapling.spiders.session import SessionManager
+
+        engine = getattr(self, "_engine", None)
+        if not isinstance(engine, CrawlerEngine) or engine.spider is not self:
+            raise RuntimeError(
+                "Scrapling's crawler engine integration changed; refusing to request pages."
+            )
+        if (
+            not isinstance(engine.session_manager, SessionManager)
+            or engine.session_manager is not self._session_manager
+            or not callable(getattr(engine.session_manager, "fetch", None))
+        ):
+            raise RuntimeError(
+                "Scrapling's fetch integration changed; refusing to request pages."
+            )
+        robots_manager = getattr(engine, "_robots_manager", None)
+        if (
+            not isinstance(robots_manager, RobotsTxtManager)
+            or not callable(getattr(robots_manager, "_fetch_fn", None))
+            or getattr(robots_manager, "_cache", None) != {}
+        ):
+            raise RuntimeError(
+                "Scrapling's robots integration changed or ran too early; refusing to request pages."
+            )
+        robots_manager._fetch_fn = self._fetch_robots_with_exact_host_redirects
+        installed_fetch = robots_manager._fetch_fn
+        if (
+            getattr(installed_fetch, "__self__", None) is not self
+            or getattr(installed_fetch, "__func__", None)
+            is not type(self)._fetch_robots_with_exact_host_redirects
+        ):
+            raise RuntimeError(
+                "Scrapling did not retain the redirect-safe robots fetcher; refusing to crawl."
+            )
         await super().on_start(resuming=resuming)
-        robots_manager = getattr(getattr(self, "_engine", None), "_robots_manager", None)
-        if robots_manager is not None:
-            robots_manager._fetch_fn = self._fetch_robots_with_exact_host_redirects
 
     def _response_stayed_on_host(self, response: Any) -> bool:
         for historical_response in getattr(response, "history", ()) or ():
@@ -1979,15 +2087,108 @@ def write_pdf_corpus(source: PdfSource, markdown: str, pages_dir: Path) -> Crawl
     return write_local_document_corpus(source, markdown, pages_dir)
 
 
-def summary_content_preview(content: str, max_length: int = 240) -> str:
-    """Keep link labels while excluding link destinations from crawl summaries."""
+def _is_markdown_escaped(content: str, index: int) -> bool:
+    backslashes = 0
+    index -= 1
+    while index >= 0 and content[index] == "\\":
+        backslashes += 1
+        index -= 1
+    return backslashes % 2 == 1
 
-    without_destinations = re.sub(r"\]\([^\s)]*(?:\s+[^)]*)?\)", "]", content)
-    return without_destinations[:max_length].replace("\n", " ")
+
+def _markdown_link_destination_end(content: str, start: int) -> int | None:
+    cursor = start
+    while cursor < len(content) and content[cursor].isspace():
+        cursor += 1
+    if cursor >= len(content):
+        return None
+    if content[cursor] == ")":
+        return cursor
+
+    if content[cursor] == "<":
+        cursor += 1
+        while cursor < len(content):
+            if content[cursor] == "\\" and cursor + 1 < len(content):
+                cursor += 2
+                continue
+            if content[cursor] == ">":
+                cursor += 1
+                break
+            cursor += 1
+        else:
+            return None
+    else:
+        depth = 0
+        while cursor < len(content):
+            character = content[cursor]
+            if character == "\\" and cursor + 1 < len(content):
+                cursor += 2
+                continue
+            if character == "(":
+                depth += 1
+            elif character == ")":
+                if depth == 0:
+                    return cursor
+                depth -= 1
+            elif character.isspace() and depth == 0:
+                break
+            cursor += 1
+        if depth:
+            return None
+
+    while cursor < len(content) and content[cursor].isspace():
+        cursor += 1
+    if cursor >= len(content) or content[cursor] == ")":
+        return cursor if cursor < len(content) else None
+
+    title_closer = {"\"": "\"", "'": "'", "(": ")"}.get(content[cursor])
+    if title_closer is None:
+        return None
+    cursor += 1
+    while cursor < len(content):
+        if content[cursor] == "\\" and cursor + 1 < len(content):
+            cursor += 2
+            continue
+        if content[cursor] == title_closer:
+            cursor += 1
+            break
+        cursor += 1
+    else:
+        return None
+    while cursor < len(content) and content[cursor].isspace():
+        cursor += 1
+    return cursor if cursor < len(content) and content[cursor] == ")" else None
+
+
+def summary_content_preview(content: str, max_length: int = 240) -> str:
+    """Keep link labels while excluding complete valid Markdown destinations."""
+
+    parts: list[str] = []
+    copied_through = 0
+    index = 0
+    while index < len(content) - 1:
+        if content[index : index + 2] != "](" or _is_markdown_escaped(
+            content, index
+        ):
+            index += 1
+            continue
+        destination_end = _markdown_link_destination_end(content, index + 2)
+        if destination_end is None:
+            index += 1
+            continue
+        parts.append(content[copied_through : index + 1])
+        copied_through = destination_end + 1
+        index = copied_through
+
+    parts.append(content[copied_through:])
+    return "".join(parts)[:max_length].replace("\n", " ")
 
 
 def summarize_sample_chunks(
-    plan: IndexingPlan, sample_size: int = 3
+    plan: IndexingPlan,
+    sample_size: int = 3,
+    *,
+    sanitize_website_destinations: bool = False,
 ) -> list[dict[str, object]]:
     return [
         {
@@ -1995,7 +2196,11 @@ def summarize_sample_chunks(
             "title": chunk.title,
             "url": chunk.url,
             "section_path": chunk.section_path,
-            "content_preview": summary_content_preview(chunk.content),
+            "content_preview": (
+                summary_content_preview(chunk.content)
+                if sanitize_website_destinations
+                else chunk.content[:240].replace("\n", " ")
+            ),
         }
         for chunk in plan.chunks[:sample_size]
     ]
@@ -2050,7 +2255,9 @@ def build_summary(
         "files_error": plan.stats.files_error,
         "chunks_generated": plan.stats.chunks_generated,
         "limit_reached": plan.limit_reached,
-        "sample_chunks": summarize_sample_chunks(plan),
+        "sample_chunks": summarize_sample_chunks(
+            plan, sanitize_website_destinations=True
+        ),
         "errors": [error.__dict__ for error in plan.stats.errors[:10]],
     }
 
@@ -2106,8 +2313,6 @@ def build_local_document_summary(
         "robots_disallowed_count": 0,
         "blocked_requests_count": 0,
         "failed_requests_count": 0,
-        "blocked_discovery_count": 0,
-        "blocked_redirect_count": 0,
         "files_discovered": plan.files_discovered,
         "files_seen": plan.stats.files_seen,
         "files_error": plan.stats.files_error,

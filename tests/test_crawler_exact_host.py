@@ -10,14 +10,19 @@ import tempfile
 from threading import Thread
 from typing import Callable, Iterator
 import unittest
+from unittest.mock import patch
 from urllib.parse import urlparse
+
+import anyio
 
 from buoy_search.cli import print_crawl_text
 from buoy_search.crawler import (
     CrawlOptions,
+    _assert_scrapling_runtime_shape,
     build_link_spider_class,
     crawl_site,
     discover_sitemap_page_urls,
+    summary_content_preview,
 )
 
 
@@ -93,7 +98,7 @@ class ExactHostCrawlBoundaryTests(unittest.TestCase):
             destination_localhost = f"http://localhost:{destination.server_port}"
             destination_ip = f"http://127.0.0.1:{destination.server_port}"
             blocked_paths = {
-                "/external",
+                "/external_(nested)",
                 "/protocol-relative",
                 "/oauth",
                 "/sibling",
@@ -115,10 +120,10 @@ class ExactHostCrawlBoundaryTests(unittest.TestCase):
                 "/denied",
                 "/redirect-denied",
                 f"{destination_localhost}/same-host-port",
-                f"{destination_ip}/external?secret=external-query",
-                f"//127.0.0.1:{destination.server_port}/protocol-relative?secret=protocol-query",
-                f"http://allowed.example@127.0.0.1:{destination.server_port}/oauth?code=oauth-code",
-                f"http://sibling.localhost:{destination.server_port}/sibling?token=sibling-token",
+                f"{destination_ip}/external_(nested)?secret=external-query&SENTINEL_EXTERNAL=1",
+                f"//127.0.0.1:{destination.server_port}/protocol-relative?secret=protocol-query&SENTINEL_PROTOCOL=1",
+                f"http://allowed.example@127.0.0.1:{destination.server_port}/oauth?code=oauth-code&SENTINEL_OAUTH=1",
+                f"http://sibling.localhost:{destination.server_port}/sibling?token=sibling-token&SENTINEL_SIBLING=1",
                 "/open",
                 "/chained-start",
                 "/limit/0",
@@ -172,16 +177,26 @@ class ExactHostCrawlBoundaryTests(unittest.TestCase):
             for path in blocked_paths:
                 self.assertEqual(destination.counts[path], 0, path)
 
-            serialized = json.dumps(summary, sort_keys=True)
-            for secret in (
+            stdout = StringIO()
+            with redirect_stdout(stdout):
+                print_crawl_text(summary)
+            rendered_summaries = json.dumps(summary, sort_keys=True) + stdout.getvalue()
+            for blocked_detail in (
+                "127.0.0.1",
+                "allowed.example@",
+                "external_(nested)",
                 "external-query",
                 "protocol-query",
                 "oauth-code",
                 "sibling-token",
                 "open-query",
                 "chain-code",
+                "SENTINEL_EXTERNAL",
+                "SENTINEL_PROTOCOL",
+                "SENTINEL_OAUTH",
+                "SENTINEL_SIBLING",
             ):
-                self.assertNotIn(secret, serialized)
+                self.assertNotIn(blocked_detail, rendered_summaries)
 
     def test_sitemap_and_robots_declarations_and_redirects_stay_on_host(self) -> None:
         with fixture_server() as allowed, fixture_server() as destination, tempfile.TemporaryDirectory() as tmp:
@@ -320,6 +335,85 @@ class ExactHostCrawlBoundaryTests(unittest.TestCase):
 
         self.assertFalse(spider._response_stayed_on_host(Response()))
         self.assertEqual(spider._blocked_redirect_count, 1)
+
+    def test_summary_destination_sanitizer_consumes_valid_complex_destinations(self) -> None:
+        content = (
+            r'Before [nested](https://allowed.example@blocked.invalid/a_(b\)c)?code=oauth-query&SENTINEL_NESTED=1 "title (safe)") '
+            r"and [angle](<https://blocked.invalid/a(unbalanced?token=query-sentinel&SENTINEL_ANGLE=1> 'OAuth title)') after."
+        )
+
+        preview = summary_content_preview(content)
+
+        self.assertEqual(preview, "Before [nested] and [angle] after.")
+        for blocked_detail in (
+            "blocked.invalid",
+            "allowed.example@",
+            "oauth-query",
+            "query-sentinel",
+            "SENTINEL_NESTED",
+            "SENTINEL_ANGLE",
+        ):
+            self.assertNotIn(blocked_detail, preview)
+
+    def test_redirected_robots_denial_is_used_before_page_requests(self) -> None:
+        with fixture_server() as allowed, tempfile.TemporaryDirectory() as tmp:
+            origin = f"http://localhost:{allowed.server_port}"
+
+            def router(raw_path: str) -> ResponseSpec:
+                path = urlparse(raw_path).path
+                if path == "/robots.txt":
+                    return 302, {"Location": "/redirected-robots.txt"}, ""
+                if path == "/redirected-robots.txt":
+                    return 200, {"Content-Type": "text/plain"}, "User-agent: *\nDisallow: /denied\n"
+                if path == "/":
+                    return 200, {"Content-Type": "text/html"}, html_page("Home", ["/denied"])
+                if path == "/denied":
+                    return 200, {"Content-Type": "text/html"}, html_page("Denied")
+                return 404, {}, "not found"
+
+            allowed.router = router
+            summary = crawl_site(crawl_options(origin, Path(tmp), strategy="link"))
+
+            self.assertGreaterEqual(allowed.counts["/robots.txt"], 1)
+            self.assertGreaterEqual(allowed.counts["/redirected-robots.txt"], 1)
+            self.assertEqual(allowed.counts["/denied"], 0)
+            self.assertGreaterEqual(int(summary["robots_disallowed_count"]), 1)
+
+    def test_scrapling_version_and_private_usage_changes_fail_before_requests(self) -> None:
+        from scrapling.spiders.engine import CrawlerEngine
+        from scrapling.spiders.robotstxt import RobotsTxtManager
+        from scrapling.spiders.session import SessionManager
+
+        async def changed_integration(*_args, **_kwargs):
+            return None
+
+        with patch("buoy_search.crawler.distribution_version", return_value="0.5.0"):
+            with self.assertRaisesRegex(RuntimeError, "requires Scrapling 0.4.9"):
+                _assert_scrapling_runtime_shape()
+
+        for owner, attribute in (
+            (CrawlerEngine, "crawl"),
+            (RobotsTxtManager, "_get_parser"),
+            (SessionManager, "fetch"),
+        ):
+            with self.subTest(integration=f"{owner.__name__}.{attribute}"):
+                with patch.object(owner, attribute, changed_integration):
+                    with self.assertRaisesRegex(RuntimeError, "refusing to request pages"):
+                        _assert_scrapling_runtime_shape()
+
+    def test_missing_runtime_robots_manager_fails_before_fetch(self) -> None:
+        from scrapling.spiders.engine import CrawlerEngine
+
+        spider = build_link_spider_class(
+            crawl_options("http://localhost:8000/", Path("unused"), strategy="link"),
+            "localhost",
+        )()
+        engine = CrawlerEngine(spider, spider._session_manager)
+        engine._robots_manager = None
+        spider._engine = engine
+
+        with self.assertRaisesRegex(RuntimeError, "robots integration changed"):
+            anyio.run(spider.on_start)
 
     def test_text_summary_reports_counts_without_blocked_url_details(self) -> None:
         payload: dict[str, object] = {

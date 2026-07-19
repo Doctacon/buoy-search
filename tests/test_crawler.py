@@ -483,7 +483,10 @@ class CrawlerHelperTests(unittest.TestCase):
 
             with patch(
                 "buoy_search.crawler.markitdown_pdf_to_markdown",
-                return_value="# Annual Plan\n\nUseful PDF text for retrieval.",
+                return_value=(
+                    "# Annual Plan\n\nUseful PDF [reference](file:///retained.pdf?field=value) "
+                    "text for retrieval."
+                ),
             ):
                 summary = crawl_pdf(source, options)
 
@@ -496,6 +499,12 @@ class CrawlerHelperTests(unittest.TestCase):
             self.assertEqual(summary["crawl_strategy"], "markitdown-pdf")
             self.assertEqual(summary["pages_scraped"], 1)
             self.assertEqual(summary["chunks_generated"], 1)
+            self.assertNotIn("blocked_discovery_count", summary)
+            self.assertNotIn("blocked_redirect_count", summary)
+            self.assertIn(
+                "[reference](file:///retained.pdf?field=value)",
+                str(summary["sample_chunks"][0]["content_preview"]),
+            )
             page_files = list((root / "crawl" / "pages").glob("*.md"))
             self.assertEqual(len(page_files), 1)
             page_text = page_files[0].read_text(encoding="utf-8")
@@ -516,7 +525,10 @@ class CrawlerHelperTests(unittest.TestCase):
 
             with patch(
                 "buoy_search.crawler.markitdown_file_to_markdown",
-                return_value="| metric | value |\n| --- | --- |\n| revenue | 42 |",
+                return_value=(
+                    "| metric | value |\n| --- | --- |\n| revenue | "
+                    "[42](file:///retained.csv?field=value) |"
+                ),
             ):
                 summary = crawl_local_document(source, options)
 
@@ -531,6 +543,12 @@ class CrawlerHelperTests(unittest.TestCase):
             self.assertEqual(summary["documents_converted"], 1)
             self.assertEqual(summary["pages_scraped"], 1)
             self.assertEqual(summary["chunks_generated"], 1)
+            self.assertNotIn("blocked_discovery_count", summary)
+            self.assertNotIn("blocked_redirect_count", summary)
+            self.assertIn(
+                "[42](file:///retained.csv?field=value)",
+                str(summary["sample_chunks"][0]["content_preview"]),
+            )
             page_files = list((root / "crawl" / "pages").glob("*.md"))
             self.assertEqual(len(page_files), 1)
             page_text = page_files[0].read_text(encoding="utf-8")

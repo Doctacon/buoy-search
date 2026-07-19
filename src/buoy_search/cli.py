@@ -1770,7 +1770,10 @@ def print_filter_summary(payload: dict[str, object]) -> None:
 
 
 def print_crawl_boundary_summary(payload: dict[str, object]) -> None:
-    if "blocked_discovery_count" not in payload and "blocked_redirect_count" not in payload:
+    if payload.get("source_kind", "website") != "website" or (
+        "blocked_discovery_count" not in payload
+        and "blocked_redirect_count" not in payload
+    ):
         return
     print(
         "  exact_host_boundary: "
