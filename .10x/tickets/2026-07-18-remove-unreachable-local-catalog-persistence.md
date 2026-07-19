@@ -1,6 +1,6 @@
-Status: blocked
+Status: active
 Created: 2026-07-18
-Updated: 2026-07-18
+Updated: 2026-07-19
 Parent: .10x/tickets/2026-07-18-repository-cleanup-plan.md
 Depends-On: .10x/tickets/done/2026-07-18-enforce-website-exact-host-crawl-boundary.md
 
@@ -50,3 +50,7 @@ Removing `catalog migrate-local`; changing card schema, semantic projection, rem
 - `.10x/specs/remote-routing-catalog-cli.md`
 
 ## Progress and notes
+
+- 2026-07-19: Pre-execution blocker revalidation confirmed the exact-host predecessor is done. Fetched `origin/develop`; task HEAD and current `origin/develop` both resolved to `25aafee398f78761d3638becd7bd452d00e14927`, so no integration commit was needed.
+- 2026-07-19: Recomputed production reachability with Python AST across `src/**/*.py`. None of the nine scoped symbols is imported or referenced from another production module. Intra-cluster edges are only `save_catalog -> document_to_dict/_atomic_write`, `load_catalog -> empty_catalog`, and `commit_system_card`/`mutate_catalog -> catalog_lock/load_catalog/save_catalog`; `resolve_catalog_path`, `commit_system_card`, and `mutate_catalog` have no production callers.
+- 2026-07-19: Removed exactly the nine scoped definitions and ten persistence-only tests. Preserved parser/card/generated merge coverage without persistence helpers. AST comparison found all 38 retained `catalog.py` definitions identical and no removed-symbol production import. Focused suites passed 151 tests and full suites passed 414 tests on both locked Python 3.11 and 3.13; wheel/sdist build and source/diff checks passed. No live Buoy, Turbopuffer, crawl, user-data, or local-catalog operation occurred. Evidence: `.10x/evidence/2026-07-19-remove-unreachable-local-catalog-persistence.md`. Independent review and closure remain pending.
