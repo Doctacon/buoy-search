@@ -1,12 +1,12 @@
-Status: draft
+Status: active
 Created: 2026-07-20
 Updated: 2026-07-20
 
 # Experimental Buoy Baseline Executor
 
-## Draft authority boundary
+## Authority boundary
 
-This is a focused, **unratified draft** for one future experimental baseline operation. It authorizes no credential read, model load/download, provider call, source/test change, namespace/catalog/local-state mutation, or approval. No executable source ticket exists for this draft. Ratification, a bounded implementation ticket, implementation, independent review, and a separately granted Approval A are all required before execution.
+This is the focused, ratified specification for one future experimental baseline operation. It authorizes no credential read, model load/download, provider call, namespace/catalog/local-state mutation, or approval. `.10x/tickets/2026-07-20-implement-experimental-buoy-baseline-executor.md` authorizes only bounded source/test implementation. Implementation, independent implementation review, and a separately granted Approval A are all required before execution.
 
 ## Purpose and exact scope
 
