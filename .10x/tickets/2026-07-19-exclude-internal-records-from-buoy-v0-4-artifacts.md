@@ -39,7 +39,7 @@ Record:
 - proof that the comparison's only source-tree delta is one `.10x/**` evidence record;
 - aggregate clean-install and released-0.3.0 upgrade commands, verified release URL/digest, installed metadata/entry points, launcher-directory inventories, and primary CLI outputs;
 - diff checks proving runtime/package code, bundled package data, and user docs are unchanged;
-- exact-head hosted check identities and an explicit no-publication/no-tag/no-release/no-state/no-remote attestation.
+- exact-head hosted check identities and an explicit no-publication/no-tag/no-release/no-state/no-live-product-service attestation; authorized GitHub PR/check delivery operations are allowed.
 
 ## Blockers
 
@@ -47,7 +47,7 @@ None. The assembled candidate and aggregate evidence exist. The observed candida
 
 ## Explicit exclusions
 
-Any exclusion other than repository-root `.10x/**`; removal or relocation of repository records; runtime/package code or bundled-data changes; user-documentation changes; unrelated test changes; any additional compatibility removal; state/data migration or deletion; remote operations; PyPI publication; Git tag creation; GitHub Release creation; release publication.
+Any exclusion other than repository-root `.10x/**`; removal or relocation of repository records; runtime/package code or bundled-data changes; user-documentation changes; unrelated test changes; any additional compatibility removal; state/data migration or deletion; live product-service operations; PyPI publication; Git tag creation; GitHub Release creation; release publication. Authorized GitHub branch, PR, and hosted-check delivery operations are allowed.
 
 ## References
 

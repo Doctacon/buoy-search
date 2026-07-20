@@ -33,7 +33,7 @@ The compatibility-removal children have no semantic dependency and their impleme
 
 ## Integration and evidence expectations
 
-Each child records exact commands, focused/full results, changed paths, stream/exit assertions, package or sentinel observations, and explicit side-effect limits. Aggregate integration verifies both active specifications against the combined diff, candidate 0.4.0 metadata, distribution artifacts, hosted checks, and independent reviews before either child or this plan closes.
+Each child records exact commands, focused/full results, changed paths, stream/exit assertions, package or sentinel observations, and explicit side-effect limits. Aggregate integration verifies all three active specifications against the combined diff, candidate 0.4.0 metadata, distribution artifacts, hosted checks, and independent reviews before either child or this plan closes.
 
 The two stale retrieval-mode and apply-namespace statements in `.pi/skills/turbopuffer-site-rag/references/scrapling-site-workflow.md` are separately owned by `.10x/tickets/2026-07-19-reconcile-scrapling-site-workflow-direct-command-guidance.md`; neither is implementation scope or evidence for this plan.
 
@@ -43,7 +43,7 @@ Aggregate acceptance is blocked by the candidate sdist containing `.10x/**`, whi
 
 ## Explicit exclusions
 
-Any compatibility beyond the three named aliases; any artifact exclusion beyond repository-root `.10x/**`; removal or relocation of repository records; runtime/package-code, bundled-data, or user-documentation changes for the packaging repair; arbitrary user-owned launchers; state/data migration or deletion; remote reads/writes; PyPI publication; Git tags; GitHub Release creation; stale skill-reference corrections; unrelated parser/config/refactoring work.
+Any compatibility beyond the three named aliases; any artifact exclusion beyond repository-root `.10x/**`; removal or relocation of repository records; runtime/package-code, bundled-data, or user-documentation changes for the packaging repair; arbitrary user-owned launchers; state/data migration or deletion; live product-service reads/writes (authorized GitHub PR/check delivery operations are allowed); PyPI publication; Git tags; GitHub Release creation; stale skill-reference corrections; unrelated parser/config/refactoring work.
 
 ## References
 
