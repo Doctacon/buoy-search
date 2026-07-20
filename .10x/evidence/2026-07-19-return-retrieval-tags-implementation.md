@@ -131,6 +131,8 @@ $ git diff --check
 
 The test suites emitted only the same pre-existing advisory plan-artifact cleanup warnings described above. No live Turbopuffer read or write was run.
 
+Hosted PR #57 CI run `29720376822` then passed at head `5c5202e3fb1cc25dda6c01b24b770fb43f63e499`: Python 3.11 in 45 seconds, Python 3.13 in 42 seconds, and distribution build in 11 seconds.
+
 ## What this supports or challenges
 
 This supports every implementation and deterministic validation criterion in `.10x/tickets/2026-07-19-return-retrieval-tags.md`, including the PR #57 fallback-association blocker. It does not close the ticket: independent re-review remains a separate gate.
@@ -143,4 +145,4 @@ Current `origin/develop` had no divergence before commit. Implementation commit 
 
 - Validation was entirely fake-backed/non-live. It proves request construction, fallback branching, conversion, serialization, rendering, and failure atomicity without contacting Turbopuffer.
 - No remote schema migration or backfill was performed or required.
-- The initial independent review blocker and its local remediation are represented here; independent re-review and post-repair pull-request CI remain required before closure.
+- The initial independent review blocker, its local remediation, and post-repair hosted CI are represented here; independent re-review remains required before closure.
