@@ -85,6 +85,10 @@ Exact tokenizer readiness fails. The offline tokenizer-only preflight scanned al
 
 Ruff's 559 Python parse fallbacks per treatment are contract-shaped whole-file fallbacks and are reported, not silently downgraded. Their 19.4434783% rate is dominated by the frozen corpus's parser/formatter fixtures and still requires independent interpretation before any live request.
 
+## Hosted validation at repaired head
+
+GitHub Actions run `29788028012` passed on exact repaired head `d9909fdd65a7456a1bdbb9b6bdb11a8a2b9ddd83`: Python 3.11 job `88503676740` passed in 1m21s, Python 3.13 job `88503676777` passed in 1m13s, and Build distributions job `88503896312` passed in 11s. Both runtime jobs executed the checked-in blocked-forecast validator before the complete test suite. This is CI evidence only; it does not make tokenizer readiness pass or authorize C6.
+
 ## What this supports or challenges
 
 This fills C6's exact local resource forecast with pinned commits/corpora, deterministic namespaces, row/write/resource counts, distributions, fallback rates, multipliers, and zero-delete/state/default evidence. It does not make C6 executable and does not ask for or grant namespace writes.
