@@ -1,6 +1,6 @@
 Status: active
 Created: 2026-07-19
-Updated: 2026-07-19
+Updated: 2026-07-20
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
 Depends-On: None
 
@@ -52,3 +52,5 @@ Model download/inference; benchmark execution; dependency/source/test changes; p
 - 2026-07-19: Opened as an independent read-only research child. No model identity, revision, budget, or download was ratified during decomposition.
 - 2026-07-19: Completed authoritative read-only screening. No credible native 384-dimensional candidate met all open-source/local/SentenceTransformer/no-remote-code constraints. Retained only `nomic-ai/nomic-embed-code@11114029805cee545ef111d5144b623787462a52` as a dynamic-dimension decision candidate, not as C4-compatible or approved; no fallback retained. Research: `.10x/research/2026-07-19-code-aware-embedding-candidate.md`; evidence: `.10x/evidence/2026-07-19-code-aware-embedding-feasibility-research.md`.
 - 2026-07-19: C4 must remain blocked under its 384-dimensional stop condition. This ticket remains active pending independent review; no model/dependency download/install, model load, inference, credentials, source/test/lockfile mutation, namespace/catalog operation, or live service call occurred.
+- 2026-07-20: Repaired independent-review completeness findings by reproducing and dispositioning the full 14-result discovery roster. Fully screened `Shuu12121/CodeSearch-ModernBERT-Crow-Plus@96ff525a7aa3bf8bfa90d77337c2b24bd45229af` and retained it as the fallback dynamic-dimension decision candidate: authoritative Apache-2.0, standard SentenceTransformer/no remote code, single 768-dimensional CLS vector, no prefix, 1,024-token maximum, and 611,525,163 listed bytes. It remains incompatible with C4's exact 384-dimensional contract.
+- 2026-07-20: Qualified Nomic resources: current construct-then-`.half()` initialization requires more than 26.34 GiB float32 weights plus overhead; 24 GiB applies only after separately authorized direct-half/loading plumbing. C2 remains active pending a new independent review. C4 remains stopped; no model/dependency download/install, model load, inference, source/test/lockfile mutation, namespace/catalog operation, credential access, or Buoy live service call occurred.

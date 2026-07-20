@@ -46,7 +46,7 @@ Approval provenance, pinned model/license contract, local plans/preflights, exac
 ## Blockers
 
 - C1 is incomplete; C2 research is complete but pending review.
-- C2 found no credible native 384-dimensional code-aware candidate satisfying the open-source/local/SentenceTransformer/no-remote-code boundary. C4 is stopped until the user separately decides whether to shape dynamic content-vector dimensions; that migration is outside this ticket.
+- C2 found no credible native 384-dimensional code-aware candidate satisfying the open-source/local/SentenceTransformer/no-remote-code boundary. Its 3,584-dimensional primary and 768-dimensional fallback are decision candidates only. C4 is stopped until the user separately decides whether to shape dynamic content-vector dimensions; that migration is outside this ticket.
 - No model/download/resource/new-namespace approval exists.
 
 ## Explicit exclusions
@@ -67,3 +67,4 @@ Dynamic vector dimensions; default model/ranking changes; routing/catalog migrat
 - 2026-07-19: Opened blocked. No model identity, budget, surface, download, namespace, source, test, or promotion was authorized or created.
 - 2026-07-20: Clarified that the three-repo rule is an experiment escalation gate only, not active promotion policy.
 - 2026-07-20: C2 found no credible native 384-dimensional candidate within the approved boundary. C4 remains blocked and stopped; `nomic-ai/nomic-embed-code@11114029805cee545ef111d5144b623787462a52` is only a 3,584-dimensional decision candidate. A separate user decision is required before shaping dynamic content-vector schema/card/routing work. No C4 model, source, namespace, catalog, or live operation was authorized.
+- 2026-07-20: C2 completeness repair retained `Shuu12121/CodeSearch-ModernBERT-Crow-Plus@96ff525a7aa3bf8bfa90d77337c2b24bd45229af` as a 768-dimensional fallback decision candidate. This does not alter C4: neither retained model is 384-dimensional, and no download/install/inference, source plumbing, namespace/catalog mutation, or live operation is authorized.
