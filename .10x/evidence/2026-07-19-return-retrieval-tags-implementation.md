@@ -94,6 +94,10 @@ The repository CI defines the full unittest command for Python 3.11 and 3.13 plu
 
 This supports every implementation and deterministic validation criterion in `.10x/tickets/2026-07-19-return-retrieval-tags.md`. It does not close the ticket: the required independent review remains a separate gate.
 
+## Handoff
+
+Current `origin/develop` had no divergence before commit. Implementation commit `bd06042` was pushed on `work/return-retrieval-tags`, and PR #57 (`https://github.com/Doctacon/buoy-search/pull/57`) was opened against `develop` for the required independent review.
+
 ## Limits
 
 - Validation was entirely fake-backed/non-live. It proves request construction, fallback branching, conversion, serialization, rendering, and failure atomicity without contacting Turbopuffer.
