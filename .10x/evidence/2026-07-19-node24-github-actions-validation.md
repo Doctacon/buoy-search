@@ -12,6 +12,8 @@ Relates-To: .10x/tickets/2026-07-14-update-node24-github-actions.md
 - The exact tag-to-SHA mappings agreed between the GitHub Git Data API and independent `git ls-remote` queries against the upstream repositories.
 - Local Python 3.11 and 3.13 full test runs each passed all 422 tests.
 - Local distribution build produced the expected wheel and source archive outside the repository.
+- Pull-request CI run [`29713297074`](https://github.com/Doctacon/buoy-search/actions/runs/29713297074) completed successfully for implementation commit `14496acc3693744e8231d30b6e718c625e4bd421`: Python 3.11, Python 3.13, and Build distributions all passed.
+- GitHub's check-run annotation API returned an empty annotation list for all three hosted jobs, confirming there were no Node.js 20 runtime deprecation annotations.
 - The workflow diff changes only the `actions/checkout` and `astral-sh/setup-uv` full-SHA pins and their identifying major-version comments. The static workflow test's expected majors changed correspondingly.
 
 The selected revisions are the latest patch releases in the minimum upstream major lines that natively use Node.js 24 (`checkout` v5 and `setup-uv` v7). This avoids unrelated later-major adoption while including patch fixes in those compatibility lines.
@@ -59,10 +61,26 @@ Build: buoy_search-0.4.0-py3-none-any.whl and buoy_search-0.4.0.tar.gz built suc
 git diff --check: passed
 ```
 
+Hosted validation and annotation inspection:
+
+```bash
+gh pr checks 53 --repo Doctacon/buoy-search --watch --interval 10
+gh api repos/Doctacon/buoy-search/actions/runs/29713297074
+gh api repos/Doctacon/buoy-search/check-runs/<job-id>/annotations
+```
+
+```text
+Run 29713297074: completed / success
+Python 3.11: success
+Python 3.13: success
+Build distributions: success
+Annotations for all three check runs: none
+```
+
 ## What this supports or challenges
 
-This supports that the replacement pins are released, immutable full commit SHAs with independently corroborated upstream provenance, that both action metadata files natively select Node.js 24, and that the workflow/static-test changes retain local project validation.
+This supports that the replacement pins are released, immutable full commit SHAs with independently corroborated upstream provenance, that both action metadata files natively select Node.js 24, that the workflow/static-test changes retain local project validation, and that the updated actions execute successfully on GitHub-hosted runners without Node.js 20 deprecation annotations.
 
 ## Limits
 
-Hosted pull-request CI and its annotations require a pushed branch and open pull request. They remain pending until the implementation commit is pushed; the ticket stays active for independent review and must not be merged by this task.
+The successful hosted run covers the pull-request CI workflow, not the tag-only release workflow; triggering release validation would violate this ticket's explicit no-tag/no-release boundary. Independent review remains pending, so the ticket stays active and this task must not merge the pull request.
