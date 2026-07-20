@@ -33,6 +33,7 @@ Static inspection and 28 focused fake-backed tests establish:
 7. `uv build --out-dir /tmp/buoy-baseline-build-dist` — passed; built wheel and source distribution outside the repository.
 8. `git diff --check` — passed.
 9. Static inspection confirms 26 slots, 10 reads, 16 writes, 904 write positions, 1,817 returned-row ceilings, no executor delete method, no retry/fallback/pagination loop, literal `max_retries=0`, exact offline revision construction, no live CLI import, and source-pinned Approval A grant constants intentionally `None`.
+10. PR #70 GitHub Actions run `29773872982` on pushed repair commit `54fb751` — passed Python 3.11, Python 3.13, and Build distributions.
 
 The full suite emitted two existing temporary plan-cleanup warning lines per interpreter and still completed successfully; no executor test touched retained plan/state paths.
 
