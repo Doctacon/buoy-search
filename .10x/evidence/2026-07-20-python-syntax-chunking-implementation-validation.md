@@ -1,0 +1,43 @@
+Status: recorded
+Created: 2026-07-20
+Updated: 2026-07-20
+Relates-To: .10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md, .10x/specs/repo-python-syntax-chunking-experiment.md
+
+# Python Syntax Chunking Implementation Validation
+
+## What was observed
+
+The implementation worktree passed the focused syntax/repository/CLI suites, the complete 462-test suite, and the frozen ranking-contract validator on both required local CPython runtimes. CPython 3.13 also built the wheel and source distribution successfully.
+
+| Runtime | Command | Result |
+|---|---|---|
+| CPython 3.11.5 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.11 python -m unittest tests.test_repo_syntax_chunking tests.test_github_repo tests.test_cli -q` | PASS, 69 tests |
+| CPython 3.11.5 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.11 python scripts/validate_ranking_contract.py` | PASS, 13 datasets / 90 identities / 369 judgments / 13 folds |
+| CPython 3.11.5 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.11 python -m unittest discover -s tests -p 'test_*.py' -q` | PASS, 462 tests |
+| CPython 3.13.0 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.13 python -m unittest tests.test_repo_syntax_chunking tests.test_github_repo tests.test_cli -q` | PASS, 69 tests |
+| CPython 3.13.0 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.13 python scripts/validate_ranking_contract.py` | PASS, 13 datasets / 90 identities / 369 judgments / 13 folds |
+| CPython 3.13.0 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.13 python -m unittest discover -s tests -p 'test_*.py' -q` | PASS, 462 tests |
+| CPython 3.13.0 | `rm -rf /tmp/buoy-c5-dist && uv build --out-dir /tmp/buoy-c5-dist` | PASS, wheel and source distribution built outside the project |
+
+`git diff --check` also passed. Test output contained only the suite's pre-existing temporary plan-cleanup warnings; no test failed.
+
+## Coverage represented
+
+Focused tests cover:
+
+- unchanged ordinary no-arm output and explicit `current-default` page/body/chunk/ID/hash/citation parity;
+- LF-only coordinates, terminal LF, blank lines, form-feed, and bare-carriage-return rejection;
+- standard-library Python 3.11 parsing and tokenizer-owned sync/async/class decorator spans, including multiline decorators, final-row comments, expression-internal `@`, trivia, and nesting;
+- fixed-window all-intersecting ancestor breadcrumbs and AST innermost/module ownership with nested carving;
+- forward-except-at-EOF outside-symbol trivia assignment, all-trivia modules, deterministic `80/80/1` subdivision, exact reconstruction, adjacency, and zero overlap;
+- one identical control/treatment header chunk, exact treatment line citations and immutable blob URLs, and generic Markdown/prose compatibility;
+- whole-file sanitized Python parse fallback, deterministic non-Python fallback, unexpected tokenizer/coordinate failure propagation, and partial-plan refusal;
+- CLI opt-in propagation, non-repository rejection, metadata/card incompatibility, fixed experiment token/overlap settings, local manifest row generation, and omission of the arm option from ordinary no-arm plan inputs.
+
+## Safety observation
+
+Validation loaded no embedding model, read no service credential, contacted no remote retrieval/provider service, and performed no namespace/catalog/applied-state write or delete. Distribution output and generated paired-plan pages were written only under temporary directories outside the project and removed or left outside the repository. No default, dataset, label, dependency, or lockfile changed.
+
+## Limits
+
+These are local runtime results, not exact-head hosted GitHub Actions evidence or independent implementation review. C5 remains active pending that review gate. C6 remains blocked; this record authorizes no live apply, retrieval, namespace, catalog, state, dataset, label, default, or promotion action.
