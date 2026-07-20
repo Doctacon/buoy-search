@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import hashlib
 import tempfile
 from pathlib import Path
@@ -12,10 +13,15 @@ from buoy_search.crawler import (
     DEFAULT_CRAWL_MAX_PAGES,
     DEFAULT_GITHUB_REPO_MAX_CHUNKS,
     DEFAULT_GITHUB_REPO_MAX_FILES,
+    ROBOTS_RESPONSE_MAX_BYTES,
+    SITEMAP_DECOMPRESSED_MAX_BYTES,
+    SITEMAP_TRANSFER_MAX_BYTES,
     CrawledPage,
     CrawlOptions,
+    FetchedResource,
     GitHubRepoSource,
     LocalFileSource,
+    SitemapResourceError,
     PdfSource,
     WebsiteSource,
     analyze_docs_version_urls,
@@ -33,12 +39,16 @@ from buoy_search.crawler import (
     crawled_page_from_response,
     default_out_dir,
     detect_source,
+    discover_sitemap_page_urls,
     elapsed_since,
+    fetch_url_bytes,
+    maybe_decompress_sitemap,
     observe_monotonic,
     url_allowed_by_path_filters,
     namespace_candidate,
     page_filename,
     parse_github_repo_url,
+    sitemap_locations_from_xml,
     sitemap_page_progress_label,
     sitemap_seed_urls,
     source_id_for_url,
@@ -220,6 +230,233 @@ class CrawlerHelperTests(unittest.TestCase):
                 "https://example.com/sitemap_index.xml",
             ],
         )
+
+    def test_incremental_resource_read_accepts_exact_robots_and_sitemap_boundaries(self) -> None:
+        class Response:
+            status = 200
+            headers: dict[str, str] = {}
+
+            def __init__(self, url: str, body: bytes) -> None:
+                self.url = url
+                self.body = body
+                self.offset = 0
+                self.max_read_size = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def geturl(self) -> str:
+                return self.url
+
+            def read(self, size: int) -> bytes:
+                self.max_read_size = max(self.max_read_size, size)
+                chunk = self.body[self.offset : self.offset + size]
+                self.offset += len(chunk)
+                return chunk
+
+        cases = (
+            (
+                "https://example.com/robots.txt",
+                ROBOTS_RESPONSE_MAX_BYTES,
+                "robots response body",
+            ),
+            (
+                "https://example.com/sitemap.xml.gz",
+                SITEMAP_TRANSFER_MAX_BYTES,
+                "sitemap transferred bytes",
+            ),
+        )
+        for url, ceiling, limit_type in cases:
+            with self.subTest(limit_type=limit_type):
+                response = Response(url, b"a" * ceiling)
+                with patch(
+                    "buoy_search.crawler._NO_REDIRECT_OPENER.open",
+                    return_value=response,
+                ):
+                    resource = fetch_url_bytes(
+                        url,
+                        ceiling=ceiling,
+                        limit_type=limit_type,
+                    )
+
+                self.assertIsNotNone(resource)
+                assert resource is not None
+                self.assertEqual(len(resource.body), ceiling)
+                self.assertLessEqual(response.max_read_size, 64 * 1024)
+
+    def test_incremental_resource_read_rejects_over_limit_robots_and_sitemap(self) -> None:
+        class Response:
+            status = 200
+            headers: dict[str, str] = {}
+
+            def __init__(self, url: str, body: bytes) -> None:
+                self.url = url
+                self.body = body
+                self.offset = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return None
+
+            def geturl(self) -> str:
+                return self.url
+
+            def read(self, size: int) -> bytes:
+                chunk = self.body[self.offset : self.offset + size]
+                self.offset += len(chunk)
+                return chunk
+
+        cases = (
+            (
+                "https://example.com/robots.txt",
+                ROBOTS_RESPONSE_MAX_BYTES,
+                "robots response body",
+            ),
+            (
+                "https://example.com/sitemap.xml.gz",
+                SITEMAP_TRANSFER_MAX_BYTES,
+                "sitemap transferred bytes",
+            ),
+        )
+        for url, ceiling, limit_type in cases:
+            with self.subTest(limit_type=limit_type):
+                response = Response(url, b"a" * (ceiling + 1))
+                with patch(
+                    "buoy_search.crawler._NO_REDIRECT_OPENER.open",
+                    return_value=response,
+                ):
+                    with self.assertRaisesRegex(
+                        SitemapResourceError,
+                        rf"{limit_type} limit exceeded for {url}.*ceiling={ceiling} bytes",
+                    ):
+                        fetch_url_bytes(
+                            url,
+                            ceiling=ceiling,
+                            limit_type=limit_type,
+                        )
+
+    def test_gzip_sitemap_accepts_exact_decompressed_boundary_and_stops_bomb(self) -> None:
+        exact_xml = b"<urlset></urlset>" + b" " * (
+            SITEMAP_DECOMPRESSED_MAX_BYTES - 17
+        )
+        compressed_exact = gzip.compress(exact_xml)
+        self.assertEqual(
+            len(
+                maybe_decompress_sitemap(
+                    compressed_exact,
+                    "https://example.com/sitemap.xml",
+                )
+            ),
+            SITEMAP_DECOMPRESSED_MAX_BYTES,
+        )
+
+        bomb = gzip.compress(
+            b"a" * (SITEMAP_DECOMPRESSED_MAX_BYTES + 1), compresslevel=9
+        )
+        with self.assertRaisesRegex(
+            SitemapResourceError,
+            rf"sitemap decompressed bytes limit exceeded.*https://example.com/bomb.xml.gz.*ceiling={SITEMAP_DECOMPRESSED_MAX_BYTES} bytes",
+        ):
+            maybe_decompress_sitemap(bomb, "https://example.com/bomb.xml.gz")
+
+    def test_malformed_declared_or_detected_gzip_fails_closed(self) -> None:
+        cases = (
+            (b"not gzip", "https://example.com/sitemap.xml.gz", "", ""),
+            (b"\x1f\x8bbroken", "https://example.com/sitemap.xml", "", ""),
+            (
+                b"not gzip",
+                "https://example.com/sitemap.xml",
+                "application/gzip",
+                "",
+            ),
+            (
+                b"not gzip",
+                "https://example.com/sitemap.xml",
+                "",
+                "gzip",
+            ),
+        )
+        for body, url, content_type, content_encoding in cases:
+            with self.subTest(
+                url=url,
+                content_type=content_type,
+                content_encoding=content_encoding,
+            ):
+                with self.assertRaisesRegex(
+                    SitemapResourceError, rf"malformed gzip sitemap at {url}"
+                ):
+                    sitemap_locations_from_xml(
+                        body,
+                        url,
+                        content_type=content_type,
+                        content_encoding=content_encoding,
+                    )
+
+    def test_multiple_sitemap_queue_propagates_late_limit_error(self) -> None:
+        options = CrawlOptions(
+            base_url="https://example.com/", out_dir=Path("unused")
+        )
+        index_url = "https://example.com/index.xml"
+        first_url = "https://example.com/first.xml"
+        oversized_url = "https://example.com/oversized.xml"
+        resources = {
+            "https://example.com/robots.txt": FetchedResource(
+                f"Sitemap: {index_url}\n".encode()
+            ),
+            index_url: FetchedResource(
+                (
+                    "<sitemapindex><sitemap><loc>"
+                    f"{first_url}</loc></sitemap><sitemap><loc>{oversized_url}"
+                    "</loc></sitemap></sitemapindex>"
+                ).encode()
+            ),
+            first_url: FetchedResource(
+                b"<urlset><url><loc>https://example.com/docs/first</loc></url></urlset>"
+            ),
+        }
+
+        def fake_fetch(url: str, **_kwargs):
+            if url == oversized_url:
+                raise SitemapResourceError(
+                    f"sitemap transferred bytes limit exceeded for {url}: ceiling={SITEMAP_TRANSFER_MAX_BYTES} bytes"
+                )
+            return resources.get(url)
+
+        with patch(
+            "buoy_search.crawler.fetch_url_bytes", side_effect=fake_fetch
+        ):
+            with self.assertRaisesRegex(SitemapResourceError, "oversized.xml"):
+                discover_sitemap_page_urls(options)
+
+    def test_sitemap_resource_errors_never_start_link_fallback(self) -> None:
+        options = CrawlOptions(
+            base_url="https://example.com/", out_dir=Path("unused")
+        )
+        errors = (
+            SitemapResourceError(
+                f"sitemap transferred bytes limit exceeded for https://example.com/oversized.xml: ceiling={SITEMAP_TRANSFER_MAX_BYTES} bytes"
+            ),
+            SitemapResourceError(
+                "malformed gzip sitemap at https://example.com/malformed.xml.gz"
+            ),
+        )
+        for error in errors:
+            with self.subTest(error=str(error)):
+                with patch(
+                    "buoy_search.crawler.discover_sitemap_page_urls",
+                    side_effect=error,
+                ):
+                    with patch(
+                        "buoy_search.crawler.build_link_spider_class"
+                    ) as link_mock:
+                        with self.assertRaises(SitemapResourceError):
+                            crawl_pages(options)
+                link_mock.assert_not_called()
 
     def test_sitemap_page_progress_label_uses_estimate_not_cap_when_available(self) -> None:
         self.assertEqual(sitemap_page_progress_label(1, sitemap_url_count=0, cap=3000), "1; cap=3000")
@@ -640,7 +877,10 @@ class CrawlerHelperTests(unittest.TestCase):
         with patch("buoy_search.crawler.build_sitemap_spider_class", return_value=SitemapSpider):
             with patch("buoy_search.crawler.build_link_spider_class", return_value=LinkSpider):
                 with patch("buoy_search.crawler.run_scrapling_spider", side_effect=fake_run):
-                    pages, stats, strategy = crawl_pages(options)
+                    pages, stats, strategy = crawl_pages(
+                        options,
+                        sitemap_page_urls=["https://example.com/sitemap-page"],
+                    )
 
         self.assertEqual(strategy, "hybrid")
         self.assertEqual([page.url for page in pages], ["https://example.com/docs/", "https://example.com/docs/pinning"])
@@ -673,7 +913,10 @@ class CrawlerHelperTests(unittest.TestCase):
         with patch("buoy_search.crawler.build_sitemap_spider_class", return_value=SitemapSpider):
             with patch("buoy_search.crawler.build_link_spider_class", return_value=LinkSpider) as link_mock:
                 with patch("buoy_search.crawler.run_scrapling_spider", side_effect=fake_run):
-                    pages, stats, strategy = crawl_pages(options)
+                    pages, stats, strategy = crawl_pages(
+                        options,
+                        sitemap_page_urls=["https://example.com/sitemap-page"],
+                    )
 
         self.assertEqual(strategy, "sitemap")
         self.assertEqual([page.url for page in pages], ["https://example.com/docs/"])
@@ -710,7 +953,10 @@ class CrawlerHelperTests(unittest.TestCase):
         with patch("buoy_search.crawler.build_sitemap_spider_class", return_value=SitemapSpider):
             with patch("buoy_search.crawler.build_link_spider_class", return_value=LinkSpider):
                 with patch("buoy_search.crawler.run_scrapling_spider", side_effect=fake_run):
-                    pages, stats, strategy = crawl_pages(options)
+                    pages, stats, strategy = crawl_pages(
+                        options,
+                        sitemap_page_urls=["https://example.com/sitemap-page"],
+                    )
 
         self.assertEqual(strategy, "link_fallback")
         self.assertEqual([page.url for page in pages], ["https://example.com/docs/pinning"])
@@ -774,7 +1020,10 @@ class CrawlerHelperTests(unittest.TestCase):
         with patch("buoy_search.crawler.build_sitemap_spider_class", return_value=SitemapSpider):
             with patch("buoy_search.crawler.build_link_spider_class", return_value=LinkSpider):
                 with patch("buoy_search.crawler.run_scrapling_spider", side_effect=fake_run):
-                    pages, _stats, strategy = crawl_pages(options)
+                    pages, _stats, strategy = crawl_pages(
+                        options,
+                        sitemap_page_urls=["https://example.com/sitemap-page"],
+                    )
 
         self.assertEqual(strategy, "hybrid")
         self.assertEqual(len(pages), 2)

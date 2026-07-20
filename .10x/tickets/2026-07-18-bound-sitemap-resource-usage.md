@@ -1,6 +1,6 @@
-Status: open
+Status: active
 Created: 2026-07-18
-Updated: 2026-07-18
+Updated: 2026-07-19
 Parent: None
 Depends-On: None
 
@@ -37,3 +37,4 @@ Live crawling, page-body limits, service-grade SSRF, and changes to exact-host s
 ## Progress and notes
 
 - 2026-07-18: Current source inspection found `fetch_url_bytes()` calls `response.read()` and `maybe_decompress_sitemap()` expands gzip without byte ceilings; opened the smallest current repair owner.
+- 2026-07-19: Bounded incremental readers and declared/detected gzip fail-closed handling are integrated with exact-host discovery. Focused crawler/exact-host and full 428-test suites pass on Python 3.11 and 3.13; evidence is recorded at `.10x/evidence/2026-07-19-sitemap-resource-limits.md`. Independent review remains, so this ticket stays active.
