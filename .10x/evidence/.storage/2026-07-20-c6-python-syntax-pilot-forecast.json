@@ -12,8 +12,40 @@
     "repositories": 3,
     "serialized_plan_rows_plus_raw_vectors_bytes": 547388704
   },
-  "artifact_sha256": "64f2b79a4ab48fb02df181d3ec555a3fc1838bea5f816632309028421987c036",
+  "artifact_sha256": "d5199276c19ae89779287eaa90824ce1e1cc684a3f060899f02f65d976016243",
   "contract_inventory_sha256": "e6f97842ec90f0558f51e70f93ea6b8f09f82f63019a27d0738d2b1efb427608",
+  "fallback_path_categories": {
+    "buoy": {
+      "non_python_fallback": {
+        "count": 6,
+        "paths_sha256": "3746cf122ca0bfc4fa78e9176ede29dd3259f64d90c31c3bce933b784343a0de"
+      },
+      "python_parse_fallback": {
+        "count": 0,
+        "paths_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    },
+    "pytest": {
+      "non_python_fallback": {
+        "count": 55,
+        "paths_sha256": "65dd4bdcd80700938c0ef8f201a9ebc813bb4b18b14b50b416ca422d5da35e2e"
+      },
+      "python_parse_fallback": {
+        "count": 0,
+        "paths_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    },
+    "ruff": {
+      "non_python_fallback": {
+        "count": 6281,
+        "paths_sha256": "5cabfc19a6f7351fd2d6a321752d6b04561167fa8aa055d407201fe0e57e7a64"
+      },
+      "python_parse_fallback": {
+        "count": 559,
+        "paths_sha256": "51c144aaadc34c089fe10419e1e309ed63fb78b52c0262980374593645c8ffdb"
+      }
+    }
+  },
   "generated_at_utc": "2026-07-20T20:05:40.212387+00:00",
   "generator_commit": "687fe304a0ab2f2b2ba88c95b39eb04048104b7d",
   "local_plan_equivalence": {
@@ -22,10 +54,24 @@
     "identical_header_rows_across_arms": true,
     "ordinary_vs_current_default_exact_by_repository": true
   },
+  "model_tokenizer_preflight": {
+    "artifact_path": ".10x/evidence/.storage/2026-07-20-c6-python-syntax-tokenizer-preflight.json.gz",
+    "artifact_sha256": "c3a1560e611114760909c110a118a3ce1a60f0527de08c769a85a20b263f4e0f",
+    "incompatible_paths": 4162,
+    "incompatible_paths_sha256": "78de7935e5cc839dada868d04bf81ed264078bbeb9eaca673a2c1b9054c8a9c6",
+    "incompatible_rows": 21292,
+    "incompatible_rows_sha256": "340fe3b033f656b79f30fcac06e92183ea6bf683dd16413f7e788372d818ae20",
+    "maximum_observed_tokens": 12785,
+    "model": "BAAI/bge-small-en-v1.5",
+    "model_max_tokens": 512,
+    "ready": false,
+    "revision": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",
+    "tokenizer_files_sha256": "9c7beccadaa552c323907a895ad9ab188d8b75763022403f72c5d91085334f3b"
+  },
   "namespace_contract_sha256_12": "e6f97842ec90",
   "preflight_findings": {
     "approval_ready": false,
-    "blocking_interpretation": "Counts fill the resource checkpoint, but write approval must not be requested until independent review resolves the Ruff control citation-contract drift and evaluates the reported long-row model/resource risk.",
+    "blocking_interpretation": "The citation correction preserves exact current-default parity. C6 readiness still fails because exact pinned-tokenizer preflight found treatment payloads above the model maximum; no truncation or token subdivision is authorized.",
     "python_parse_fallbacks_by_treatment_and_repository": {
       "buoy": {
         "eligible_code_files": 40,
@@ -60102,535 +60148,535 @@
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_Annotated_subscript_\u2026_(98082f2161ea366f).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_Annotated_subscript_…_(98082f2161ea366f).snap",
           "size_bytes": 909,
           "source_hash": "89688e52b93cbbe54555c99d5b0b95593308bd56ad790938e7acafabac1e6401"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_Invalid_key_type_-_For_a_`dict`_(4aa9d1d82d07fcf1).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_Invalid_key_type_-_For_a_`dict`_(4aa9d1d82d07fcf1).snap",
           "size_bytes": 758,
           "source_hash": "c89e33a783b7ab155572c6107a29dcc7c83042d7ffcdddc3db8abb50e8f85dc5"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_Invalid_key_type_-_For_a_`list`_(752cfa73fb34c1c).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_Invalid_key_type_-_For_a_`list`_(752cfa73fb34c1c).snap",
           "size_bytes": 703,
           "source_hash": "ac7ae17d122235b07863747fedf7521e902e06b92e9ef84d25577c58cc35a335"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_Invalid_key_type_for\u2026_(815dae276e2fd2b7).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_Invalid_key_type_for…_(815dae276e2fd2b7).snap",
           "size_bytes": 748,
           "source_hash": "7b9c293be435b86290de2ffed24436d9fb5a042f65e0daedd7b7f658784ff511"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_Invalid_value_type_-_For_a_`dict`_(177872afa1956fef).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_Invalid_value_type_-_For_a_`dict`_(177872afa1956fef).snap",
           "size_bytes": 850,
           "source_hash": "eac1272e56b2eecdd44cbe9b3bba3d6bee07da14e4d13bcbda1a9bfc964e7ec4"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_Invalid_value_type_-_For_a_`list`_(e7ebbd4af387837c).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_Invalid_value_type_-_For_a_`list`_(e7ebbd4af387837c).snap",
           "size_bytes": 709,
           "source_hash": "d37cc33e62467134e44d057a90e740fd5ebe735dae1e9dc21374f276fea89bff"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_Invalid_value_type_f\u2026_(155d53762388f9ad).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_Invalid_value_type_f…_(155d53762388f9ad).snap",
           "size_bytes": 1043,
           "source_hash": "92d2e9c391dac8dfe02f8e0e962e954d0853feda044e8602291ae2016e56f279"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_Misspelled_key_for_`\u2026_(7cf0fa634e2a2d59).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_Misspelled_key_for_`…_(7cf0fa634e2a2d59).snap",
           "size_bytes": 998,
           "source_hash": "cb42e63786d47c9b1db31e19994e18a99a62cb33efb6d97dcf5a76412a4efd87"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_No_`__setitem__`_met\u2026_(468f62a3bdd1d60c).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_No_`__setitem__`_met…_(468f62a3bdd1d60c).snap",
           "size_bytes": 800,
           "source_hash": "f1f4bb540605434a4ff3c87db8f0fba4d96d7d9aef80fc01b83f49f2b45a14e4"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_Possibly_missing_`__\u2026_(efd3f0c02e9b89e9).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_Possibly_missing_`__…_(efd3f0c02e9b89e9).snap",
           "size_bytes": 801,
           "source_hash": "581fa70eca769b0b04db5cf46a39d59a757dafe18e63e64e8e45ac20424fb5ad"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_Unknown_key_for_all_\u2026_(8a0f0e8ceccc51b2).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_Unknown_key_for_all_…_(8a0f0e8ceccc51b2).snap",
           "size_bytes": 1211,
           "source_hash": "28b525d72690710ce9b24a7cf6e71b79084b25a52e512cc70a150bab14dae62b"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_Unknown_key_for_one_\u2026_(b515711c0a451a86).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_Unknown_key_for_one_…_(b515711c0a451a86).snap",
           "size_bytes": 916,
           "source_hash": "b5d43974bcd63948e3617619145a91d2529e23b08609f01bee756273f4b108e8"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_Wrong_value_type_for\u2026_(57372b65e30392a8).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_Wrong_value_type_for…_(57372b65e30392a8).snap",
           "size_bytes": 961,
           "source_hash": "da2167b5b3a5ec07de8a2fdd9ac5e720a9f1220798fc6bf5dbb00ec857737ed9"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti\u2026_-_Subscript_assignment\u2026_-_Wrong_value_type_for\u2026_(ffe39a3bae68cfe4).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/assignment_diagnosti…_-_Subscript_assignment…_-_Wrong_value_type_for…_(ffe39a3bae68cfe4).snap",
           "size_bytes": 1423,
           "source_hash": "9b48c0a410ad4a5dc289d61d8d30fe71e608ad28e173b6b0f86cc25913543488"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/async.md_-_Async_with_statement\u2026_-_Context_expression_w\u2026_(28ef812089a32e6a).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/async.md_-_Async_with_statement…_-_Context_expression_w…_(28ef812089a32e6a).snap",
           "size_bytes": 1243,
           "source_hash": "22c9b26c11de275da085cc932f59b0b902ff6de4483daaf757b75c6524c04eea"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Exception_Handling_-_Invalid_exception_ha\u2026_(d394c561bdd35078).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Exception_Handling_-_Invalid_exception_ha…_(d394c561bdd35078).snap",
           "size_bytes": 3297,
           "source_hash": "32102f7ed1627e87d8448778504c76d3bde24dced009197d2c609aa79874b755"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Exception_Handling_-_Special-cased_diagno\u2026_(a97274530a7f61c1).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Exception_Handling_-_Special-cased_diagno…_(a97274530a7f61c1).snap",
           "size_bytes": 2017,
           "source_hash": "efeba8b53cc73c630d5ac86b68a2882424a1f3a854f85002627690199fe25b77"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Structures_-_Attempting_to_import\u2026_(2fcfcf567587a056).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Structures_-_Attempting_to_import…_(2fcfcf567587a056).snap",
           "size_bytes": 1683,
           "source_hash": "e47205e00a63092fd27d37793ee486f3f7a0097b3e2fb0b375a8b1a247cb7a79"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Structures_-_Attempting_to_import\u2026_(c14954eefd15211f).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Structures_-_Attempting_to_import…_(c14954eefd15211f).snap",
           "size_bytes": 1137,
           "source_hash": "9c092dd2cb658e266d1add144d0c1f75204dda3cf5cbadb083e80300865666e5"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Structures_-_Attempting_to_import\u2026_(dba22bd97137ee38).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Structures_-_Attempting_to_import…_(dba22bd97137ee38).snap",
           "size_bytes": 2152,
           "source_hash": "bde475433c857e39c468b1d08455ebcb67253678e2915c22c8b63c7b8306cf83"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Structures_-_Multiple_objects_imp\u2026_(cbfbf5ff94e6e104).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Structures_-_Multiple_objects_imp…_(cbfbf5ff94e6e104).snap",
           "size_bytes": 856,
           "source_hash": "b61a82523b17e250bd146730aeba6f37b52be559b7dfb69884f127ad1fd86ebd"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Structures_-_Unresolvable_module_\u2026_(846453deaca1071c).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Structures_-_Unresolvable_module_…_(846453deaca1071c).snap",
           "size_bytes": 922,
           "source_hash": "f4efecfd86e066e7a0f56cca9653ff1d29fec3a8cec27c199680cd2296320b6f"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Structures_-_Unresolvable_submodu\u2026_(4fad4be9778578b7).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/basic.md_-_Structures_-_Unresolvable_submodu…_(4fad4be9778578b7).snap",
           "size_bytes": 1596,
           "source_hash": "34069052077aba3b92c0cae0fcdcba94180105785bda9f55dc3b78cada0d9996"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/classes.md_-_Generic_classes___Leg\u2026_-_Diagnostics_for_bad_\u2026_(2ceba7b720e21b8b).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/classes.md_-_Generic_classes___Leg…_-_Diagnostics_for_bad_…_(2ceba7b720e21b8b).snap",
           "size_bytes": 1378,
           "source_hash": "5333863b1d77760afe7e8c01606ce910431522bda258a1b5990c59b1a53f4c55"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/classes.md_-_Generic_classes___Leg\u2026_-_Errors_for_inconsist\u2026_(557742f3cd2464b2).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/classes.md_-_Generic_classes___Leg…_-_Errors_for_inconsist…_(557742f3cd2464b2).snap",
           "size_bytes": 9965,
           "source_hash": "cfa4ab5b145cd9319096ebebf1bf76866d2f8e7264cbee5376a0352c150574fc"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/classes.md_-_Generic_classes___Leg\u2026_-_Specializing_generic\u2026_(5a066394f338af48).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/classes.md_-_Generic_classes___Leg…_-_Specializing_generic…_(5a066394f338af48).snap",
           "size_bytes": 7911,
           "source_hash": "8c6cbd188c7adbba7d80152926cd7edf2f05990c01b68da15f1e99459df8f197"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/classes.md_-_Generic_classes___PEP\u2026_-_Default_type_paramet\u2026_(6bb09b09c131074).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/classes.md_-_Generic_classes___PEP…_-_Default_type_paramet…_(6bb09b09c131074).snap",
           "size_bytes": 4462,
           "source_hash": "0dcfe0b9e9c2890c494300b1d7e4a244504b9c851115c1d07476c78a40519d7f"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/classes.md_-_Generic_classes___PEP\u2026_-_Diagnostics_for_bad_\u2026_(cf706b07cf0ec31f).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/classes.md_-_Generic_classes___PEP…_-_Diagnostics_for_bad_…_(cf706b07cf0ec31f).snap",
           "size_bytes": 1291,
           "source_hash": "bbe9dac46744d8975ad9cfeeea50cbaa0688ee7a983b23519432408b03644871"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/classes.md_-_Generic_classes___PEP\u2026_-_Scoping_of_typevars_-_No_back-references_(9051beb16a623d36).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/classes.md_-_Generic_classes___PEP…_-_Scoping_of_typevars_-_No_back-references_(9051beb16a623d36).snap",
           "size_bytes": 2067,
           "source_hash": "7017022f31f200189bd3474104fb63cbf617a9d04e71576ac4768099f083f7cc"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/concatenate.md_-_`typing.Concatenate`_-_Invalid_uses_of_`Con\u2026_-_Last_argument_must_b\u2026_(dc429fc3e8c18eaf).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/concatenate.md_-_`typing.Concatenate`_-_Invalid_uses_of_`Con…_-_Last_argument_must_b…_(dc429fc3e8c18eaf).snap",
           "size_bytes": 4074,
           "source_hash": "4db94c89e5f750be8ff3a97df42f30d041d83e34a15a9e6100526ae3aa4fe4b1"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/concatenate.md_-_`typing.Concatenate`_-_Invalid_uses_of_`Con\u2026_-_Nested_`Concatenate`_(86093b62e6e6874c).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/concatenate.md_-_`typing.Concatenate`_-_Invalid_uses_of_`Con…_-_Nested_`Concatenate`_(86093b62e6e6874c).snap",
           "size_bytes": 2187,
           "source_hash": "5f192ae33d713b8da2fc94de9f65ec8c44f20974e9be2107c7a94c9870fa4cfe"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/concatenate.md_-_`typing.Concatenate`_-_Invalid_uses_of_`Con\u2026_-_Standalone_annotatio\u2026_(bb5fe70ded875e4).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/concatenate.md_-_`typing.Concatenate`_-_Invalid_uses_of_`Con…_-_Standalone_annotatio…_(bb5fe70ded875e4).snap",
           "size_bytes": 4957,
           "source_hash": "7db9904fee177136c442eb10cad5745528a9a3cb9d4ad7cea75231fcf83d7be7"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/concatenate.md_-_`typing.Concatenate`_-_Invalid_uses_of_`Con\u2026_-_Too_few_arguments_(efcf77cdbde3ff86).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/concatenate.md_-_`typing.Concatenate`_-_Invalid_uses_of_`Con…_-_Too_few_arguments_(efcf77cdbde3ff86).snap",
           "size_bytes": 9574,
           "source_hash": "33adfcf87375aa320a20f372b18587ff9af213486091b05e2baba6a34c9fb460"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/deprecated.md_-_Tests_for_the_`@depr\u2026_-_Introduction_(cff2724f4c9d28c4).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/deprecated.md_-_Tests_for_the_`@depr…_-_Introduction_(cff2724f4c9d28c4).snap",
           "size_bytes": 1801,
           "source_hash": "dc0595d0f69a4546f6591ba3c615a850648f009cb647703de58a8a93cd4e827a"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/deprecated.md_-_Tests_for_the_`@depr\u2026_-_Syntax_(142fa2948c3c6cf1).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/deprecated.md_-_Tests_for_the_`@depr…_-_Syntax_(142fa2948c3c6cf1).snap",
           "size_bytes": 3771,
           "source_hash": "1bf8014a1f1dd4e179fd9f1b38445b28b614a1914ad17854777d71063b9542f8"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi\u2026_-_A_`@final`_class_mus\u2026_-_Abstract_method_in_g\u2026_(6d8b024dda7ced11).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi…_-_A_`@final`_class_mus…_-_Abstract_method_in_g…_(6d8b024dda7ced11).snap",
           "size_bytes": 1213,
           "source_hash": "4043395c99d2f0015fa30df7b06aebe68c5ecbe1b78c2702621745e9d5847787"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi\u2026_-_A_`@final`_class_mus\u2026_-_Basic_case_with_ABC_(21e412599c45972a).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi…_-_A_`@final`_class_mus…_-_Basic_case_with_ABC_(21e412599c45972a).snap",
           "size_bytes": 1259,
           "source_hash": "336e414d831e89cf06dc5306649e02e51a62ea2b173ce5803c6aedf14a5c819e"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi\u2026_-_A_`@final`_class_mus\u2026_-_Diagnostic_when_ther\u2026_(ecae0f4510696c95).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi…_-_A_`@final`_class_mus…_-_Diagnostic_when_ther…_(ecae0f4510696c95).snap",
           "size_bytes": 2168,
           "source_hash": "ac2f848cf40d6bf1184e924bd282a3691c41d45776c568fa6adacd0c4675e04c"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi\u2026_-_A_`@final`_class_mus\u2026_-_Diagnostic_when_ther\u2026_(f807ff3716d8ab0d).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi…_-_A_`@final`_class_mus…_-_Diagnostic_when_ther…_(f807ff3716d8ab0d).snap",
           "size_bytes": 1986,
           "source_hash": "3a20d6dad8d8407d28d95cc6d19106873b7433f396e7909b397d567ce5ec7808"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi\u2026_-_A_`@final`_class_mus\u2026_-_Multiple_abstract_me\u2026_(feafee9a4abbe8d1).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi…_-_A_`@final`_class_mus…_-_Multiple_abstract_me…_(feafee9a4abbe8d1).snap",
           "size_bytes": 2019,
           "source_hash": "23baf2fdb8b5a2c372e4bbf072f13ffe35c4189eeee85b416c614219180ba4d6"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi\u2026_-_A_`@final`_class_mus\u2026_-_Protocol_with_implic\u2026_(e373f31c7a7d88e7).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi…_-_A_`@final`_class_mus…_-_Protocol_with_implic…_(e373f31c7a7d88e7).snap",
           "size_bytes": 17761,
           "source_hash": "66ce6cc4cda4453ee3fa5e2b1e3f870d256dbdcaf1b8b71786d777529ed4898e"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi\u2026_-_A_possibly-undefined\u2026_(fc7b496fd1986deb).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi…_-_A_possibly-undefined…_(fc7b496fd1986deb).snap",
           "size_bytes": 7582,
           "source_hash": "108636de05cacf158f52366ef0e3f9f820aa5016eabb0ded4b4aeda41615f4a2"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi\u2026_-_Cannot_override_a_me\u2026_(338615109711a91b).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi…_-_Cannot_override_a_me…_(338615109711a91b).snap",
           "size_bytes": 13545,
           "source_hash": "4187b2e334c43d7f96738bbac6cb64d23e99478cc02170f1744d846da706a161"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi\u2026_-_Diagnostic_edge_case\u2026_(2389d52c5ecfa2bd).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi…_-_Diagnostic_edge_case…_(2389d52c5ecfa2bd).snap",
           "size_bytes": 1270,
           "source_hash": "8dd19ed913592b32bf443f1d7f1d8d5b472399c8d7fda65ae11d98ee0cc42bcf"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi\u2026_-_Only_the_first_`@fin\u2026_(9863b583f4c651c5).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi…_-_Only_the_first_`@fin…_(9863b583f4c651c5).snap",
           "size_bytes": 2085,
           "source_hash": "3ba67cb1656aa3d6079cc31c77c34843fe1f24641d60b07bc790de157308f235"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi\u2026_-_Overloaded_methods_d\u2026_(861757f48340ed92).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi…_-_Overloaded_methods_d…_(861757f48340ed92).snap",
           "size_bytes": 12086,
           "source_hash": "a208daba7f50d0662a5fe5776bf5b593584da0e1ca0d9ff9dc92ff7e2383187f"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi\u2026_-_Overloads_in_statica\u2026_(29a698d9deaf7318).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi…_-_Overloads_in_statica…_(29a698d9deaf7318).snap",
           "size_bytes": 2338,
           "source_hash": "035fc67075145baf7ef3671051d48182b5b5c48f7435edfde912c44e623796f8"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi\u2026_-_Overriding_a_`@final\u2026_(c004aaab38745318).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/final.md_-_Tests_for_the_`@typi…_-_Overriding_a_`@final…_(c004aaab38745318).snap",
           "size_bytes": 1197,
           "source_hash": "9228aac882bcd400f52739460981432bfdfd41e5f325234c9dbf827551e7cc06"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/function.md_-_Call_expression_-_PEP-484_convention_f\u2026_(ee99fadd6476677e).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/function.md_-_Call_expression_-_PEP-484_convention_f…_(ee99fadd6476677e).snap",
           "size_bytes": 7162,
           "source_hash": "050f7817aa2c4f6bdfcdd81d4b52d4783d3081a74c1f3b1e7513d4778acb2aac"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/function.md_-_Call_expression_-_Wrong_argument_type_-_Diagnostics_for_unio\u2026_(5396a8f9e7f88f71).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/function.md_-_Call_expression_-_Wrong_argument_type_-_Diagnostics_for_unio…_(5396a8f9e7f88f71).snap",
           "size_bytes": 3617,
           "source_hash": "53329fdd73b3e47530061db3a17c90ef5aa83c58a4fae4a5c8fbfe1001b1794d"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/instance_layout_conf\u2026_-_Tests_for_ty's_`inst\u2026_-_Builtins_with_implic\u2026_(4c3d127986a58f11).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/instance_layout_conf…_-_Tests_for_ty's_`inst…_-_Builtins_with_implic…_(4c3d127986a58f11).snap",
           "size_bytes": 6729,
           "source_hash": "1ae2c092144c8e6ecb41dd7fea2bd45493b3e83de36ccc9eda5a06393cf0acfd"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/instance_layout_conf\u2026_-_Tests_for_ty's_`inst\u2026_-_`__slots__`___incompa\u2026_(98b54233987eb654).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/instance_layout_conf…_-_Tests_for_ty's_`inst…_-_`__slots__`___incompa…_(98b54233987eb654).snap",
           "size_bytes": 1232,
           "source_hash": "915eac763ba1883c42bc5675fda80b0b2b28d6f6141d601ec18faa7064335f74"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty\u2026_-_Diagnostics_for_comm\u2026_-_AST_nodes_that_are_o\u2026_(58a3839a9bc7026d).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty…_-_Diagnostics_for_comm…_-_AST_nodes_that_are_o…_(58a3839a9bc7026d).snap",
           "size_bytes": 2132,
           "source_hash": "274547775744ffe59bbec71f9850a87cd6e1936878ca7c557edc3c4db1dbf0b9"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty\u2026_-_Diagnostics_for_comm\u2026_-_Dict-literal_or_set-\u2026_(15737b0beb194b0e).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty…_-_Diagnostics_for_comm…_-_Dict-literal_or_set-…_(15737b0beb194b0e).snap",
           "size_bytes": 1304,
           "source_hash": "6c35c5cbfc86e0951bf7f4860c061d51252089588b70748a6c55e9df11792cc4"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty\u2026_-_Diagnostics_for_comm\u2026_-_List-literal_used_wh\u2026_(ba5cb09eaa3715d8).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty…_-_Diagnostics_for_comm…_-_List-literal_used_wh…_(ba5cb09eaa3715d8).snap",
           "size_bytes": 2295,
           "source_hash": "6eb21b1f5f60660cf494ccb1ca85285767ea9a9ec95133764537dc70f57397df"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty\u2026_-_Diagnostics_for_comm\u2026_-_Module-literal_used_\u2026_(652fec4fd4a6c63a).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty…_-_Diagnostics_for_comm…_-_Module-literal_used_…_(652fec4fd4a6c63a).snap",
           "size_bytes": 1515,
           "source_hash": "f4d2f5c78f0949ce05e7dce7d89a859b44efa001c156f4e7c875f930466710e1"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty\u2026_-_Diagnostics_for_comm\u2026_-_Special-cased_diagno\u2026_(a4b698196d337a3f).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty…_-_Diagnostics_for_comm…_-_Special-cased_diagno…_(a4b698196d337a3f).snap",
           "size_bytes": 1037,
           "source_hash": "b3a966e0e37cae0cf90f6008df80a921aab04e5c97465bdbd912d14b12a9f4e4"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty\u2026_-_Diagnostics_for_comm\u2026_-_Tuple-literal_used_w\u2026_(f61204fc81905069).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty…_-_Diagnostics_for_comm…_-_Tuple-literal_used_w…_(f61204fc81905069).snap",
           "size_bytes": 3230,
           "source_hash": "c0d8e1b0a7275912f93d545cc7ea1910f1f1bfffd8e6abf600629c91a426233b"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty\u2026_-_Multiple_starred_exp\u2026_(3fbab22ead236138).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid.md_-_Tests_for_invalid_ty…_-_Multiple_starred_exp…_(3fbab22ead236138).snap",
           "size_bytes": 4547,
           "source_hash": "5757fa49609c60511db69f33fb680d841131249956c95505fe41b3f271f4f8ff"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno\u2026_-_Basic_(f15db7dc447d0795).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno…_-_Basic_(f15db7dc447d0795).snap",
           "size_bytes": 658,
           "source_hash": "1b6935418c871e2a157251d0396c0edbd73bd9bc527a3138e9a7da4004d3fa0f"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno\u2026_-_Custom_type_with_mis\u2026_(9ce1ee3cd1c9c8d1).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno…_-_Custom_type_with_mis…_(9ce1ee3cd1c9c8d1).snap",
           "size_bytes": 770,
           "source_hash": "ea78e657b2a98f84eea9d6709477c06e9d6e82fd847007bcc78ae96071144f73"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno\u2026_-_Custom_type_with_pos\u2026_(a028edbafe180ca).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno…_-_Custom_type_with_pos…_(a028edbafe180ca).snap",
           "size_bytes": 944,
           "source_hash": "5cb73b75501078405de9d402d2da7828b9cb115bf50b17ead771f381dc60abfe"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno\u2026_-_Invalid_union_return\u2026_(fedf62ffaca0f2d7).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno…_-_Invalid_union_return…_(fedf62ffaca0f2d7).snap",
           "size_bytes": 1029,
           "source_hash": "232db01830221af466558923302432bc0848390742360d122111ee76b39e684d"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno\u2026_-_Non-callable_`__awai\u2026_(9db6c457a98cde25).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno…_-_Non-callable_`__awai…_(9db6c457a98cde25).snap",
           "size_bytes": 818,
           "source_hash": "2a60c4d5497a8a89cf124af462f4159fd09552310f6377f49dc0c9fc152fd9c0"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno\u2026_-_Non-callable_`__awai\u2026_(d78580fb6720e4ea).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno…_-_Non-callable_`__awai…_(d78580fb6720e4ea).snap",
           "size_bytes": 1846,
           "source_hash": "7d22d126e90f118bc6dfb284eb4195270dfcdc85c45689445f683cc664eab012"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno\u2026_-_Union_type_where_one\u2026_(ef7c2c0c8d9b1f0).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno…_-_Union_type_where_one…_(ef7c2c0c8d9b1f0).snap",
           "size_bytes": 908,
           "source_hash": "add68caf1d37d22cdeb10c1eae6a6e7d379e1259d7ee9e4e7eeb6a3d0ae7221d"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno\u2026_-_`__await__`_definiti\u2026_(15b05c126b6ae968).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno…_-_`__await__`_definiti…_(15b05c126b6ae968).snap",
           "size_bytes": 922,
           "source_hash": "6c52b102a9fefa6f867c4100c0132cc6b708815e22d6b899130796b8db0240de"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno\u2026_-_`__await__`_definiti\u2026_(ccb69f512135dd61).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_await.md_-_Invalid_await_diagno…_-_`__await__`_definiti…_(ccb69f512135dd61).snap",
           "size_bytes": 924,
           "source_hash": "c3cdc029b012137fd47e7797dad9ebead34a71234dae95ac3982ca54c6842793"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_type_paramet\u2026_-_Invalid_Order_of_Leg\u2026_(eaa359e8d6b3031d).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/invalid_type_paramet…_-_Invalid_Order_of_Leg…_(eaa359e8d6b3031d).snap",
           "size_bytes": 4980,
           "source_hash": "bc5e6ff4710c07c277fe88221d0e29b0aa735c420663e58e924846ecbee04e2a"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat\u2026_-_Boolean_parameters_m\u2026_(3edf97b20f58fa11).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat…_-_Boolean_parameters_m…_(3edf97b20f58fa11).snap",
           "size_bytes": 1471,
           "source_hash": "3acda3ac1ab656e3a0311525d700acb0aec11fdeebf83a53f08c23790020e6dc"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat\u2026_-_Cannot_be_both_covar\u2026_(b7b0976739681470).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat…_-_Cannot_be_both_covar…_(b7b0976739681470).snap",
           "size_bytes": 734,
           "source_hash": "ead57742b795b418ebadf87e05a3692814d1dbcf4caef6fd367dda11ae312ce6"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat\u2026_-_Cannot_have_both_bou\u2026_(4ca5f13621915554).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat…_-_Cannot_have_both_bou…_(4ca5f13621915554).snap",
           "size_bytes": 688,
           "source_hash": "ace506455e39bebef717ade757f2c96639c709a87ee13e7eb6a6f17085e087ae"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat\u2026_-_Cannot_have_only_one\u2026_(8b0258f5188209c6).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat…_-_Cannot_have_only_one…_(8b0258f5188209c6).snap",
           "size_bytes": 622,
           "source_hash": "e46a975516fcb8e24f6b179fe8b4533b877f78a3acdbe12fe3077c8ab9be7e68"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat\u2026_-_Invalid_feature_for_\u2026_(72827c64b5c73d05).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat…_-_Invalid_feature_for_…_(72827c64b5c73d05).snap",
           "size_bytes": 676,
           "source_hash": "2a661d34a6ea1802d011f6d89e6d102651ec4c1ccf09c0dc9347764fd576f801"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat\u2026_-_Invalid_keyword_argu\u2026_(39164266ada3dc2f).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat…_-_Invalid_keyword_argu…_(39164266ada3dc2f).snap",
           "size_bytes": 685,
           "source_hash": "fa2da808e509250dc488fbc048de544e8ba5112e151fe1b12b95feb95586bd39"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat\u2026_-_Must_be_directly_ass\u2026_(c2e3e46852bb268f).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat…_-_Must_be_directly_ass…_(c2e3e46852bb268f).snap",
           "size_bytes": 1013,
           "source_hash": "b63d3a1efd519f1459e5754705e6951888633a54413fec8076074099e2c94fdf"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat\u2026_-_Must_have_a_name_(79a4ce09338e666b).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat…_-_Must_have_a_name_(79a4ce09338e666b).snap",
           "size_bytes": 583,
           "source_hash": "cf2531d367872c82923fb11fe60949da02325049bdbebb6b46d2252dc3f826fb"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat\u2026_-_Must_not_be_redefine\u2026_(b1be57970f924722).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat…_-_Must_not_be_redefine…_(b1be57970f924722).snap",
           "size_bytes": 699,
           "source_hash": "3f4e5c03f8a18f6397698a1f1c72891a2a63094ea1495a8ec5a3b6ffde0712a5"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat\u2026_-_Name_can't_be_given_\u2026_(8f6aed0dba79e995).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat…_-_Name_can't_be_given_…_(8f6aed0dba79e995).snap",
           "size_bytes": 654,
           "source_hash": "3f91bdb60bf2820ac7865c15dec3ba4d9e393082fc60dfc248cbe517fdb9df6c"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat\u2026_-_No_variadic_argument\u2026_(9d57505425233fd8).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat…_-_No_variadic_argument…_(9d57505425233fd8).snap",
           "size_bytes": 970,
           "source_hash": "a0c5120c18fa8ef6154d468f42cb4dd7fb864867e75e1af0ef54b272bbba950c"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat\u2026_-_`TypeVar`_parameter_\u2026_(8424f2b8bc4351f9).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/legacy_typevars.md_-_Legacy_typevar_creat…_-_`TypeVar`_parameter_…_(8424f2b8bc4351f9).snap",
           "size_bytes": 652,
           "source_hash": "cec7a6ff1b6b9b28ec2fca7f86634e6308899db37b994ad10c7422e619768bdc"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/missing_argument_par\u2026_-_Missing_argument_for\u2026_(b632d61c1d75f9fb).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/missing_argument_par…_-_Missing_argument_for…_(b632d61c1d75f9fb).snap",
           "size_bytes": 1610,
           "source_hash": "67993f0e224266e004801383d5bf9f7dfae79ace94236c6f38f4e49d1f6ecdfc"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/mro.md_-_Method_Resolution_Or\u2026_-_Inline_tuple-literal\u2026_(4ee237f49e7ac736).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/mro.md_-_Method_Resolution_Or…_-_Inline_tuple-literal…_(4ee237f49e7ac736).snap",
           "size_bytes": 1234,
           "source_hash": "a5143d77419eb330a6f50e864e5fe77b3594377189c9d12b0f67ba0e844f208b"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/mro.md_-_Method_Resolution_Or\u2026_-_Unresolvable_MROs_in\u2026_(e2b355c09a967862).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/mro.md_-_Method_Resolution_Or…_-_Unresolvable_MROs_in…_(e2b355c09a967862).snap",
           "size_bytes": 953,
           "source_hash": "4d10cd9f668376feb35d2b82a95957e5e5e79aad7f697bb1d3da6c541c009161"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/mro.md_-_Method_Resolution_Or\u2026_-_`__bases__`_includes\u2026_(d2532518c44112c8).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/mro.md_-_Method_Resolution_Or…_-_`__bases__`_includes…_(d2532518c44112c8).snap",
           "size_bytes": 1819,
           "source_hash": "8227f7228ae9adf376716b73109d05a3de8641cf104bf6e670cb5350fe28a06d"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/mro.md_-_Method_Resolution_Or\u2026_-_`__bases__`_lists_th\u2026_(6f8d0bf648c4b305).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/mro.md_-_Method_Resolution_Or…_-_`__bases__`_lists_th…_(6f8d0bf648c4b305).snap",
           "size_bytes": 3311,
           "source_hash": "3bbcc5b258e8482d08d0666744b721a2e505de7777096cd7c040549254017a4e"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/mro.md_-_Method_Resolution_Or\u2026_-_`__bases__`_lists_wi\u2026_(ea7ebc83ec359b54).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/mro.md_-_Method_Resolution_Or…_-_`__bases__`_lists_wi…_(ea7ebc83ec359b54).snap",
           "size_bytes": 4719,
           "source_hash": "dbd4e5792b57eab60f8fa23a1d1d332701068c67265a0d7cce2af0192a1a3c6d"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/named_tuple.md_-_`NamedTuple`_-_Edge_case___multiple_\u2026_(f30babd05c89dce9).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/named_tuple.md_-_`NamedTuple`_-_Edge_case___multiple_…_(f30babd05c89dce9).snap",
           "size_bytes": 1720,
           "source_hash": "85980dd31cf7405cb2515d9da6b897d11d0926a964d56aaa158ea29839276768"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/named_tuple.md_-_`NamedTuple`_-_NamedTuples_cannot_h\u2026_(e2ed186fe2b2fc35).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/named_tuple.md_-_`NamedTuple`_-_NamedTuples_cannot_h…_(e2ed186fe2b2fc35).snap",
           "size_bytes": 3183,
           "source_hash": "b70631d1580f698c69d5a51d622f11e15791c1e2bb9c8f695371e9951c7b6cb2"
         },
@@ -60648,85 +60694,85 @@
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/named_tuple.md_-_`NamedTuple`_-_`typing.NamedTuple`_-_Name_mismatch_diagno\u2026_(8ca723b970e370d0).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/named_tuple.md_-_`NamedTuple`_-_`typing.NamedTuple`_-_Name_mismatch_diagno…_(8ca723b970e370d0).snap",
           "size_bytes": 913,
           "source_hash": "1a66388c4e98ae06cdfa729998a565c44395f2e88046173b978679d4f843706d"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload\u2026_-_No_matching_overload\u2026_-_A_class_constructor_\u2026_(dd9f8a8f736a329).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload…_-_No_matching_overload…_-_A_class_constructor_…_(dd9f8a8f736a329).snap",
           "size_bytes": 666,
           "source_hash": "07f29ef768ace9cc6930d4f230baac911d22b69805a80da8a032dcb8dbfd9c33"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload\u2026_-_No_matching_overload\u2026_-_A_method_call_with_u\u2026_(31cb5f881221158e).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload…_-_No_matching_overload…_-_A_method_call_with_u…_(31cb5f881221158e).snap",
           "size_bytes": 1386,
           "source_hash": "2d96eb8d7fbd5dcfcfc19d8639fceb2e149e2536159f4a2143fdf5f4e4e83381"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload\u2026_-_No_matching_overload\u2026_-_An_explicit_`__get__\u2026_(9ecd21d0927ee1ff).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload…_-_No_matching_overload…_-_An_explicit_`__get__…_(9ecd21d0927ee1ff).snap",
           "size_bytes": 1409,
           "source_hash": "8b98581523f41ff7d1693190fa6cddfe3654849284c267df843d50a4a81260e6"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload\u2026_-_No_matching_overload\u2026_-_Call_to_function_wit\u2026_(dd80c593d9136f35).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload…_-_No_matching_overload…_-_Call_to_function_wit…_(dd80c593d9136f35).snap",
           "size_bytes": 3420,
           "source_hash": "ee5de3373dbfbdd698d3e8b8c35db51446aae8c3b80b8d954ef02512052bf4ab"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload\u2026_-_No_matching_overload\u2026_-_Call_to_function_wit\u2026_(f66e3a8a3977c472).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload…_-_No_matching_overload…_-_Call_to_function_wit…_(f66e3a8a3977c472).snap",
           "size_bytes": 8159,
           "source_hash": "07da75855f4296d0a3a8f7320ea039bf404665c117d3516d8719b9ca13a57c73"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload\u2026_-_No_matching_overload\u2026_-_Calls_to_overloaded_\u2026_(3553d085684e16a0).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload…_-_No_matching_overload…_-_Calls_to_overloaded_…_(3553d085684e16a0).snap",
           "size_bytes": 1198,
           "source_hash": "39fa0b15e1b4525beaef84c007efdaaf22c81c1b0174e4a21714600a3e8e60a9"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload\u2026_-_No_matching_overload\u2026_-_Calls_to_overloaded_\u2026_(36814b28492c01d2).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/no_matching_overload…_-_No_matching_overload…_-_Calls_to_overloaded_…_(36814b28492c01d2).snap",
           "size_bytes": 3727,
           "source_hash": "04bc3216e149fd3dd9adcb17b04f7db13c5f9196401b179263d0f309d358a3e9"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/overloads.md_-_Overloads_-_Invalid_-_At_least_two_overloa\u2026_(84dadf8abd8f2f2).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/overloads.md_-_Overloads_-_Invalid_-_At_least_two_overloa…_(84dadf8abd8f2f2).snap",
           "size_bytes": 1145,
           "source_hash": "67887b371dd0ec10ca78ef2ef4cd6424eb693019e058bec27db6556eb6993bf5"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/overloads.md_-_Overloads_-_Invalid_-_Inconsistent_decorat\u2026_-_`@classmethod`_(aaa04d4cfa3adaba).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/overloads.md_-_Overloads_-_Invalid_-_Inconsistent_decorat…_-_`@classmethod`_(aaa04d4cfa3adaba).snap",
           "size_bytes": 4831,
           "source_hash": "dbe3e648bd61f5ee868be7cda9e348bf3c5074fafe04bca7ae63c381b6fd7e51"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/overloads.md_-_Overloads_-_Invalid_-_Inconsistent_decorat\u2026_-_`@final`_(f8e529ec23a61665).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/overloads.md_-_Overloads_-_Invalid_-_Inconsistent_decorat…_-_`@final`_(f8e529ec23a61665).snap",
           "size_bytes": 4336,
           "source_hash": "19250273a76486fe8dd4cd4c8a580dc1f9ea47f018cbc5a25d9a7bd8a88ae552"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/overloads.md_-_Overloads_-_Invalid_-_Inconsistent_decorat\u2026_-_`@override`_(2df210735ca532f9).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/overloads.md_-_Overloads_-_Invalid_-_Inconsistent_decorat…_-_`@override`_(2df210735ca532f9).snap",
           "size_bytes": 3446,
           "source_hash": "ec8eb9b795ba5d5e3f3b5e09e41b608adabf289861bec64095748342af28e1fe"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/overloads.md_-_Overloads_-_Invalid_-_Overload_without_an_\u2026_-_Regular_modules_(5c8e81664d1c7470).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/overloads.md_-_Overloads_-_Invalid_-_Overload_without_an_…_-_Regular_modules_(5c8e81664d1c7470).snap",
           "size_bytes": 2149,
           "source_hash": "bc6efc38e5c6e68ccd1fc127a59beba5241096d3439a835a434db681577a8ca2"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/overloads.md_-_Overloads_-_Invalid_-_`@overload`-decorate\u2026_(d17a1580f99a6402).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/overloads.md_-_Overloads_-_Invalid_-_`@overload`-decorate…_(d17a1580f99a6402).snap",
           "size_bytes": 1930,
           "source_hash": "49a8b4d70126d527d690514be5955ca231e7e4beba47fc098b76693a79c8ce08"
         },
@@ -60738,73 +60784,73 @@
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/paramspec.md_-_Legacy_`ParamSpec`_-_Validating_`ParamSpe\u2026_(648be2a43987ffd8).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/paramspec.md_-_Legacy_`ParamSpec`_-_Validating_`ParamSpe…_(648be2a43987ffd8).snap",
           "size_bytes": 13150,
           "source_hash": "56c952fd2f3441da6789c2faede8c43f535d96954d934c6e84801cbfbcb0523d"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/paramspec.md_-_Legacy_`ParamSpec`_-_`ParamSpec`_cannot_s\u2026_(c9dbdc7b13b704a4).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/paramspec.md_-_Legacy_`ParamSpec`_-_`ParamSpec`_cannot_s…_(c9dbdc7b13b704a4).snap",
           "size_bytes": 2052,
           "source_hash": "acc5f52091d6cbd93758ffecc1c2f5f02d2c13b2cefd875ef5424518a5221819"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/paramspec.md_-_PEP_695_`ParamSpec`_-_Validating_`ParamSpe\u2026_(327594c6dacd8ad).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/paramspec.md_-_PEP_695_`ParamSpec`_-_Validating_`ParamSpe…_(327594c6dacd8ad).snap",
           "size_bytes": 12305,
           "source_hash": "5a7e5219441e3cdc83979033a0a87d384eb9efeef4a7c4f55334469a35a7deb8"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/paramspec.md_-_PEP_695_`ParamSpec`_-_`ParamSpec`_cannot_s\u2026_(8243f67799c93e3c).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/paramspec.md_-_PEP_695_`ParamSpec`_-_`ParamSpec`_cannot_s…_(8243f67799c93e3c).snap",
           "size_bytes": 2778,
           "source_hash": "4731dacb70c827db92209e0bb8de5adbac6425ad0777950572d6715b9060413d"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Calls_to_protocol_cl\u2026_(288988036f34ddcf).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Calls_to_protocol_cl…_(288988036f34ddcf).snap",
           "size_bytes": 2375,
           "source_hash": "8cbde7d72373d9125515bdb26f3fc504af25694b7ecda709c7e9e3b44f135304"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Diagnostics_and_auto\u2026_(310665856cfe2424).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Diagnostics_and_auto…_(310665856cfe2424).snap",
           "size_bytes": 3440,
           "source_hash": "f1b5b85152656f2cfcb96613eef35251563eb8a5f8a953113cb77522c4b1fab6"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Diagnostics_for_prot\u2026_(585a3e9545d41b64).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Diagnostics_for_prot…_(585a3e9545d41b64).snap",
           "size_bytes": 3458,
           "source_hash": "0c7ce61b5e42a639b3711fa38c330190e7be54e53a695f0b08acc987f2826a11"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Invalid_calls_to_`ge\u2026_(3d0c4ee818c4d8d5).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Invalid_calls_to_`ge…_(3d0c4ee818c4d8d5).snap",
           "size_bytes": 2250,
           "source_hash": "a6ce86265fa519af284cb3c9c0c4afc44be2eda76bc00e00aa6c0221dd9e862b"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Match_class_patterns\u2026_(8ae0e231033b78e).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Match_class_patterns…_(8ae0e231033b78e).snap",
           "size_bytes": 2712,
           "source_hash": "cd453c248673d10848577a88543ea2006e95f3bf6048999837e16a6c6a112552"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Narrowing_of_protoco\u2026_(98257e7c2300373).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Narrowing_of_protoco…_(98257e7c2300373).snap",
           "size_bytes": 12641,
           "source_hash": "c3fe9588e7a24909da3b26dd01e423111fb49836e885d8d51fb707e01de17cab"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Protocol_members_in_\u2026_(21be5d9bdab1c844).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/protocols.md_-_Protocols_-_Protocol_members_in_…_(21be5d9bdab1c844).snap",
           "size_bytes": 1349,
           "source_hash": "7d4d15ac63ad450fe42d5cb53225bcd32c010baef6f0d86f93d3c4b0b3d1d382"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/return_type.md_-_Function_return_type_-_Diagnostics_for_`emp\u2026_(f44e56404a51ca26).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/return_type.md_-_Function_return_type_-_Diagnostics_for_`emp…_(f44e56404a51ca26).snap",
           "size_bytes": 1587,
           "source_hash": "cd11e862e14663b45bb3483e5e61a5b8bd00de7a341364ab4b2380f6f8922c9b"
         },
@@ -60822,19 +60868,19 @@
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/return_type.md_-_Function_return_type_-_Invalid_conditional_\u2026_(94c036c5d3803ab2).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/return_type.md_-_Function_return_type_-_Invalid_conditional_…_(94c036c5d3803ab2).snap",
           "size_bytes": 1760,
           "source_hash": "b7e92d861945a6fc72c75b309b75166983a982ef2e12862a57038d58924cce9a"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/return_type.md_-_Function_return_type_-_Invalid_implicit_ret\u2026_(393cb38bf7119649).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/return_type.md_-_Function_return_type_-_Invalid_implicit_ret…_(393cb38bf7119649).snap",
           "size_bytes": 1564,
           "source_hash": "4d5a3de370176cf2f89bc1f4c2d1fde465b04d247750861abf1a1769041a243c"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/return_type.md_-_Function_return_type_-_Invalid_implicit_ret\u2026_(3d2d19aa49b28f1c).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/return_type.md_-_Function_return_type_-_Invalid_implicit_ret…_(3d2d19aa49b28f1c).snap",
           "size_bytes": 687,
           "source_hash": "91c0047a002c40340d5d26d51f2f55873a9c41df129d8fa0cfd05a46bdc05290"
         },
@@ -60846,115 +60892,115 @@
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/return_type.md_-_Function_return_type_-_Invalid_return_type_\u2026_(c3a523878447af6b).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/return_type.md_-_Function_return_type_-_Invalid_return_type_…_(c3a523878447af6b).snap",
           "size_bytes": 1529,
           "source_hash": "1e6c9b84f51a3797c0f84f887ad1c5a6bf4c27455a9022d3eb5dc991366b9f8e"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty\u2026_-_Nested_formal_typeva\u2026_-_Generic_class_within\u2026_(3259718bf20b45a2).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty…_-_Nested_formal_typeva…_-_Generic_class_within…_(3259718bf20b45a2).snap",
           "size_bytes": 1543,
           "source_hash": "91b0af9cbd8210cb0d49ddaaacd305f71bda86465daef64b73cfe146c5e41872"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty\u2026_-_Nested_formal_typeva\u2026_-_Generic_class_within\u2026_(711fb86287c4d87b).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty…_-_Nested_formal_typeva…_-_Generic_class_within…_(711fb86287c4d87b).snap",
           "size_bytes": 1447,
           "source_hash": "acdf73587a04c21b608fad2035353bdbf1fea50f07d9ffca38b99fd6c3514a85"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty\u2026_-_Nested_formal_typeva\u2026_-_Generic_function_wit\u2026_(f58a51442a16371e).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty…_-_Nested_formal_typeva…_-_Generic_function_wit…_(f58a51442a16371e).snap",
           "size_bytes": 944,
           "source_hash": "ca4b1ff1f3b0b668edfe6009d62e32f57dde08309184e308ffb46c644b107680"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty\u2026_-_Nested_formal_typeva\u2026_-_Generic_method_withi\u2026_(c19e9277cf9fafb5).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty…_-_Nested_formal_typeva…_-_Generic_method_withi…_(c19e9277cf9fafb5).snap",
           "size_bytes": 900,
           "source_hash": "91d46d0dcfb7b163a23efb11ac2f9f430e63b5add76fd9c8d83ed9288538905a"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty\u2026_-_Type_parameter_defau\u2026_-_Function_nested_in_c\u2026_(1a50b4ccb10b95dd).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty…_-_Type_parameter_defau…_-_Function_nested_in_c…_(1a50b4ccb10b95dd).snap",
           "size_bytes": 911,
           "source_hash": "ec95c6ab1d642834c1ef569f5503a1b709c9500c609406418a3a9d440cb7ffcb"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty\u2026_-_Type_parameter_defau\u2026_-_Legacy_TypeVar_in_me\u2026_(2ed4c18a38ed9090).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty…_-_Type_parameter_defau…_-_Legacy_TypeVar_in_me…_(2ed4c18a38ed9090).snap",
           "size_bytes": 1336,
           "source_hash": "458b405ab6447ad629f4543768d36d7244bf4d94612281f083096c09bec92c60"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty\u2026_-_Type_parameter_defau\u2026_-_Legacy_TypeVar_in_ne\u2026_(a1aca17ea750ffdd).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty…_-_Type_parameter_defau…_-_Legacy_TypeVar_in_ne…_(a1aca17ea750ffdd).snap",
           "size_bytes": 1107,
           "source_hash": "b22c9de787e8db26ad3fd801c818609833563315aacbcbbd9162f6d79fa320f0"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty\u2026_-_Type_parameter_defau\u2026_-_Legacy_TypeVar_order\u2026_(d075a45828c9dbc5).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty…_-_Type_parameter_defau…_-_Legacy_TypeVar_order…_(d075a45828c9dbc5).snap",
           "size_bytes": 2879,
           "source_hash": "ef7c4cb9d2cdc870d1397a9aa4cfe42db806b443d3dbec3e96f080dff7a6f1a8"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty\u2026_-_Type_parameter_defau\u2026_-_Legacy_TypeVar_with_\u2026_(ce8defbeaf54e06c).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty…_-_Type_parameter_defau…_-_Legacy_TypeVar_with_…_(ce8defbeaf54e06c).snap",
           "size_bytes": 1214,
           "source_hash": "69a7aba7536709f6853b1d4a07dfa8e1c9c05273d498e19fd1da99b713644871"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty\u2026_-_Type_parameter_defau\u2026_-_Nested_functions_(3f2ee9fa81da0177).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty…_-_Type_parameter_defau…_-_Nested_functions_(3f2ee9fa81da0177).snap",
           "size_bytes": 1071,
           "source_hash": "b47b7217ed5581e29f5be40e336e95bfc0f4e0b990850b7ca3981c53215fb652"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty\u2026_-_Type_parameter_defau\u2026_-_Type_alias_nested_in\u2026_(de027dcc5360f252).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/scoping.md_-_Scoping_rules_for_ty…_-_Type_parameter_defau…_-_Type_alias_nested_in…_(de027dcc5360f252).snap",
           "size_bytes": 932,
           "source_hash": "89b988bd7ff579c54ddba29f3ac0b0ce6a6f40b44f57696c78f18ef4b34f81ba"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/single_matching_over\u2026_-_Single_matching_over\u2026_-_Bound_method_overloa\u2026_(39e892ccb644ee63).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/single_matching_over…_-_Single_matching_over…_-_Bound_method_overloa…_(39e892ccb644ee63).snap",
           "size_bytes": 2141,
           "source_hash": "9d7284efdffc415199806becd741e78468145091b52d7cbf06fc56e8a6b1e9d3"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/single_matching_over\u2026_-_Single_matching_over\u2026_-_Call_to_function_wit\u2026_(8fdf5a06afc7d4fe).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/single_matching_over…_-_Single_matching_over…_-_Call_to_function_wit…_(8fdf5a06afc7d4fe).snap",
           "size_bytes": 7995,
           "source_hash": "0d72bc2d4605ee8ec48db3c467127e8a9668bc7c4be1d018c80d00dfd09a84a4"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/single_matching_over\u2026_-_Single_matching_over\u2026_-_Limited_number_of_ov\u2026_(93e9a157fdca3ab2).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/single_matching_over…_-_Single_matching_over…_-_Limited_number_of_ov…_(93e9a157fdca3ab2).snap",
           "size_bytes": 1064,
           "source_hash": "9c490f731321ef7a027e3afdb3f77c23cd4c8f0050b74ae6908e4ada56e0b370"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/special_form_attribu\u2026_-_Diagnostics_for_inva\u2026_(249d635e74a41c9e).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/special_form_attribu…_-_Diagnostics_for_inva…_(249d635e74a41c9e).snap",
           "size_bytes": 2688,
           "source_hash": "cffea2a6c72ab5b77ff38c8160d49afb3ef9b25a8487a8475af9c6b09b975e9b"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/string.md_-_String_annotations_-_Partially_deferred_a\u2026_-_Python_less_than_3.1\u2026_(5e6477d05ddea33f).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/string.md_-_String_annotations_-_Partially_deferred_a…_-_Python_less_than_3.1…_(5e6477d05ddea33f).snap",
           "size_bytes": 7090,
           "source_hash": "735e85069cfb67b2a49b3af40a45afb30abcd3a37186d8d6baee2a3a95b7c87f"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/super.md_-_Super_-_Basic_Usage_-_Explicit_Super_Objec\u2026_(b753048091f275c0).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/super.md_-_Super_-_Basic_Usage_-_Explicit_Super_Objec…_(b753048091f275c0).snap",
           "size_bytes": 6106,
           "source_hash": "1e3d5c6c989b0945e455964634f1dc0a9f82dce47f461fbe402cf3563a269d30"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/super.md_-_Super_-_Basic_Usage_-_Implicit_Super_Objec\u2026_(f9e5e48e3a4a4c12).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/super.md_-_Super_-_Basic_Usage_-_Implicit_Super_Objec…_(f9e5e48e3a4a4c12).snap",
           "size_bytes": 7493,
           "source_hash": "0ef9638e46646b340537acd0548a665f2cbca16bb2137fbcd53cdb40d3117350"
         },
@@ -60966,61 +61012,61 @@
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/super.md_-_Super_-_Invalid_Usages_-_Diagnostic_when_the_\u2026_(93e8ab913ead83b2).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/super.md_-_Super_-_Invalid_Usages_-_Diagnostic_when_the_…_(93e8ab913ead83b2).snap",
           "size_bytes": 931,
           "source_hash": "f0c5eb8c91063cf259346cd29263d93211d48b159ec1ad3771e6192fddeb6860"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/sync.md_-_With_statements_-_Context_expression_w\u2026_(3d4f2229d00f8d86).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/sync.md_-_With_statements_-_Context_expression_w…_(3d4f2229d00f8d86).snap",
           "size_bytes": 1221,
           "source_hash": "cc0ab028891f014473cf7e39a0aea3d99afb793a08a840d7e6356d1df840865b"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/sync.md_-_With_statements_-_Context_expression_w\u2026_(718dcfd7e6ed9829).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/sync.md_-_With_statements_-_Context_expression_w…_(718dcfd7e6ed9829).snap",
           "size_bytes": 1435,
           "source_hash": "753b6d1d74d890389e328a9781832bd8b428a234f64c5ae2e9f25f9cd4c952c9"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/sync.md_-_With_statements_-_Context_expression_w\u2026_(8686e7748a7c975).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/sync.md_-_With_statements_-_Context_expression_w…_(8686e7748a7c975).snap",
           "size_bytes": 1191,
           "source_hash": "85c4995e0dc38a1dc82d1421570a7302172bcdfc0dfbd7fde6db88079aac8b75"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/tuples.md_-_Comparison___Tuples_-_Chained_comparisons_\u2026_(f45f1da2f8ca693d).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/tuples.md_-_Comparison___Tuples_-_Chained_comparisons_…_(f45f1da2f8ca693d).snap",
           "size_bytes": 996,
           "source_hash": "cbdc8203a986b4a9d3fccdf560328cc98d19fdb12c78d142242d3a506a473961"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/tuples.md_-_Comparison___Tuples_-_Equality_with_elemen\u2026_(39b614d4707c0661).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/tuples.md_-_Comparison___Tuples_-_Equality_with_elemen…_(39b614d4707c0661).snap",
           "size_bytes": 1700,
           "source_hash": "86b8f25a752a3933c10d56009d08deeae41fbff53b7439d281fc362da98d907b"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/tuples.md_-_Comparison___Tuples_-_Heterogeneous_-_Value_Comparisons_-_Comparison_Unsupport\u2026_(966dd82bd3668d0e).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/tuples.md_-_Comparison___Tuples_-_Heterogeneous_-_Value_Comparisons_-_Comparison_Unsupport…_(966dd82bd3668d0e).snap",
           "size_bytes": 4633,
           "source_hash": "78d45f770d428d6612a73e3c3fe5a871513c9dfc366e0a364ceb4e2f9eb9be16"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/tuples.md_-_Comparison___Tuples_-_Homogeneous_-_Tuples_with_Prefixes\u2026_(c25079c01f6d8eb3).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/tuples.md_-_Comparison___Tuples_-_Homogeneous_-_Tuples_with_Prefixes…_(c25079c01f6d8eb3).snap",
           "size_bytes": 1366,
           "source_hash": "78c044e71b2cee9c2f3b23caf939e836e865c4e80238f03108954a3060ecbf33"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/tuples.md_-_Comparison___Tuples_-_Homogeneous_-_Unsupported_Comparis\u2026_(400a427b33d53e00).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/tuples.md_-_Comparison___Tuples_-_Homogeneous_-_Unsupported_Comparis…_(400a427b33d53e00).snap",
           "size_bytes": 4592,
           "source_hash": "83e9fc3c13552b3ed7fda0c94e003a85491e114625c7e4c98bf87ac9605f279e"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/typed_dict.md_-_`TypedDict`_-_Class_header_validat\u2026_(25381f371caa1401).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/typed_dict.md_-_`TypedDict`_-_Class_header_validat…_(25381f371caa1401).snap",
           "size_bytes": 5079,
           "source_hash": "287d3948d7403c5a3c40dc3b7cd5c0d9fa12ccc6e7b6886c6ec6067a95d85a3c"
         },
@@ -61032,241 +61078,241 @@
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/typed_dict.md_-_`TypedDict`_-_Error_cases_-_`typing.TypedDict`_i\u2026_(9df67eb93e3df341).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/typed_dict.md_-_`TypedDict`_-_Error_cases_-_`typing.TypedDict`_i…_(9df67eb93e3df341).snap",
           "size_bytes": 799,
           "source_hash": "d2c68e44c7009f4db9085661a93b9801f77e15fa7d929256cca28ebacc8e35d4"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/typed_dict.md_-_`TypedDict`_-_Function_syntax_with\u2026_(4b18755412dfaff1).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/typed_dict.md_-_`TypedDict`_-_Function_syntax_with…_(4b18755412dfaff1).snap",
           "size_bytes": 14369,
           "source_hash": "219e2b3c9ae11b447e6a64beb5f7ce853ae90020ce3fc22e99cc749acff23c95"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/typed_dict.md_-_`TypedDict`_-_Only_annotated_decla\u2026_(bef70731cae5b8af).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/typed_dict.md_-_`TypedDict`_-_Only_annotated_decla…_(bef70731cae5b8af).snap",
           "size_bytes": 1874,
           "source_hash": "23e4a780ee5dd56d95b8faf80e244624daf01529f91c92b358f1c724a4c51e1a"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/typed_dict.md_-_`TypedDict`_-_Redundant_cast_warni\u2026_(75ac240a2d1f7108).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/typed_dict.md_-_`TypedDict`_-_Redundant_cast_warni…_(75ac240a2d1f7108).snap",
           "size_bytes": 1366,
           "source_hash": "818ddf8d8ac204eda21da22d00fc940a1022ec7780e428aafc8f0032de8f4a26"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f\u2026_-_A_smaller_scale_exam\u2026_(c24ecd8582e5eb2f).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f…_-_A_smaller_scale_exam…_(c24ecd8582e5eb2f).snap",
           "size_bytes": 1472,
           "source_hash": "a70b802a3ad8ff8abed6e51a4a354c56725e90687e22e68c1c20625905fae3f1"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f\u2026_-_Multiple_variants_bu\u2026_(d840ac443ca8ec7f).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f…_-_Multiple_variants_bu…_(d840ac443ca8ec7f).snap",
           "size_bytes": 1101,
           "source_hash": "36d1659e3906166dcd607f6fff349550365182446f25b6327af6ab5c6d160fdb"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f\u2026_-_Try_to_cover_all_pos\u2026_-_Attribute_access_on_\u2026_(7bdb97302c27c412).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f…_-_Try_to_cover_all_pos…_-_Attribute_access_on_…_(7bdb97302c27c412).snap",
           "size_bytes": 2309,
           "source_hash": "bf108e4ac5dab3c8ef0d19f50b6c75ea291da6d04611069df72d12ab0b5009f1"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f\u2026_-_Try_to_cover_all_pos\u2026_-_Cover_keyword_argume\u2026_(ad1d489710ee2a34).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f…_-_Try_to_cover_all_pos…_-_Cover_keyword_argume…_(ad1d489710ee2a34).snap",
           "size_bytes": 1535,
           "source_hash": "d27836a2913cc57af98f993aa34c5a03bbd9dc36283f665a4009e3d2ef12eb65"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f\u2026_-_Try_to_cover_all_pos\u2026_-_Cover_non-keyword_re\u2026_(707b284610419a54).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f…_-_Try_to_cover_all_pos…_-_Cover_non-keyword_re…_(707b284610419a54).snap",
           "size_bytes": 6741,
           "source_hash": "a0132a20d2fb9b49bd914d6e43f96553507931c29b516ed243a6f9068628c2b3"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f\u2026_-_Try_to_cover_all_pos\u2026_-_Truncation_for_long_\u2026_(ec94b5e857284ef3).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f…_-_Try_to_cover_all_pos…_-_Truncation_for_long_…_(ec94b5e857284ef3).snap",
           "size_bytes": 1228,
           "source_hash": "16bd9faf5acb33c2eba88fb62e5baedbfaf38a7d182f42271ca7b5ddd1d73a58"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f\u2026_-_Union_with_overloade\u2026_(4408ade1316b97c0).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/union_call.md_-_Calling_a_union_of_f…_-_Union_with_overloade…_(4408ade1316b97c0).snap",
           "size_bytes": 1858,
           "source_hash": "fb4e746bea6624a0d7c009e6f3e0019db741a80699f01da61b10eb5ba41cf551"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unknown_argument.md_-_Unknown_argument_dia\u2026_(f419c2a8e2ce2412).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unknown_argument.md_-_Unknown_argument_dia…_(f419c2a8e2ce2412).snap",
           "size_bytes": 2164,
           "source_hash": "b3e94551e77b1f218149910b9c81ab881206317f6932d7e6752160f4f63a92bb"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_import.md_-_Unresolved_import_di\u2026_-_An_unresolvable_impo\u2026_(72d090df51ea97b8).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_import.md_-_Unresolved_import_di…_-_An_unresolvable_impo…_(72d090df51ea97b8).snap",
           "size_bytes": 923,
           "source_hash": "6ed0989eb001afc8f7468faaca77f320d1581b8265c0d9afc028ea5e2b9f4ab4"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_import.md_-_Unresolved_import_di\u2026_-_Using_`from`_with_a_\u2026_(12d4a70b7fc67cc6).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_import.md_-_Unresolved_import_di…_-_Using_`from`_with_a_…_(12d4a70b7fc67cc6).snap",
           "size_bytes": 757,
           "source_hash": "07b0233a288fbcf93187ab9949811fb2316ab94ba33cbec666c1e1c2c3cabdab"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_import.md_-_Unresolved_import_di\u2026_-_Using_`from`_with_an\u2026_(6cff507dc64a1bff).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_import.md_-_Unresolved_import_di…_-_Using_`from`_with_an…_(6cff507dc64a1bff).snap",
           "size_bytes": 966,
           "source_hash": "77b35848d4f90426d279d86535aa86dde1f1aa4d368535eba9bd58a769de9739"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_import.md_-_Unresolved_import_di\u2026_-_Using_`from`_with_an\u2026_(9da56616d6332a83).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_import.md_-_Unresolved_import_di…_-_Using_`from`_with_an…_(9da56616d6332a83).snap",
           "size_bytes": 935,
           "source_hash": "4687dcc0992675ffeef4721ae7fce1a3fbe9caafc4be55d9a6e8fef2006ee552"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_import.md_-_Unresolved_import_di\u2026_-_Using_`from`_with_an\u2026_(9fa713dfa17cc404).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_import.md_-_Unresolved_import_di…_-_Using_`from`_with_an…_(9fa713dfa17cc404).snap",
           "size_bytes": 928,
           "source_hash": "67241023715bb078dbd06e6e7c43d8a3c70a074dfae66eecd0be3c3e9325c16e"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_import.md_-_Unresolved_import_di\u2026_-_Using_`from`_with_to\u2026_(4b8ba6ee48180cdd).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_import.md_-_Unresolved_import_di…_-_Using_`from`_with_to…_(4b8ba6ee48180cdd).snap",
           "size_bytes": 1158,
           "source_hash": "30360efc2121b85be83b5bb0b17e95a02b25cc182439f1c3e53c43811c8a1162"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_reference\u2026_-_Diagnostics_for_unre\u2026_-_New_builtin_used_on_\u2026_(51edda0b1aebc2bf).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_reference…_-_Diagnostics_for_unre…_-_New_builtin_used_on_…_(51edda0b1aebc2bf).snap",
           "size_bytes": 797,
           "source_hash": "5dac9fe7a0136f2248f11e25e107ece769a84c6273fa418dbac3268aa230f8c5"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_reference\u2026_-_Diagnostics_for_unre\u2026_-_Typing_builtin_has_I\u2026_-_Info_not_present_bef\u2026_(41702a6f6d20b082).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_reference…_-_Diagnostics_for_unre…_-_Typing_builtin_has_I…_-_Info_not_present_bef…_(41702a6f6d20b082).snap",
           "size_bytes": 827,
           "source_hash": "944d1ffb9c29233dbe0b0f2ac969111433d8e9ddef7f6bd09592afcb52dc6967"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_reference\u2026_-_Diagnostics_for_unre\u2026_-_Typing_builtin_has_I\u2026_-_Info_present_in_Pyth\u2026_(1028a80959504fc9).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unresolved_reference…_-_Diagnostics_for_unre…_-_Typing_builtin_has_I…_-_Info_present_in_Pyth…_(1028a80959504fc9).snap",
           "size_bytes": 862,
           "source_hash": "36505add2e860e2106242986e953750ada5bdce947e0292dbc944284e3a6d102"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_base_dyn\u2026_-_Unsupported_base_for\u2026_-_Enum_base_(4873196c8b48364).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_base_dyn…_-_Unsupported_base_for…_-_Enum_base_(4873196c8b48364).snap",
           "size_bytes": 809,
           "source_hash": "56a6ff923cd703ef30cbaa1ea92a6af61c6b91d011d2a6a5ff508f5b4937cee9"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_base_dyn\u2026_-_Unsupported_base_for\u2026_-_Enum_with_members_(81bef9a8e1230854).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_base_dyn…_-_Unsupported_base_for…_-_Enum_with_members_(81bef9a8e1230854).snap",
           "size_bytes": 741,
           "source_hash": "1ce789e46dbdc2dfbb6a09d905b691de7ce6887006bc114874a34fa6de77a892"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_base_dyn\u2026_-_Unsupported_base_for\u2026_-_`@final`_class_(ea69d237256b3762).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_base_dyn…_-_Unsupported_base_for…_-_`@final`_class_(ea69d237256b3762).snap",
           "size_bytes": 750,
           "source_hash": "5ad370ff00db725bca5dfaea77ff7f744fc56a8f7cc5f7cb77ee6dfbc1c956d9"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_base_dyn\u2026_-_Unsupported_base_for\u2026_-_`Generic`_base_(d455f46a27cec685).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_base_dyn…_-_Unsupported_base_for…_-_`Generic`_base_(d455f46a27cec685).snap",
           "size_bytes": 849,
           "source_hash": "796f6c75d0849fea50c5c9188e70d4a762c6983dbe01cc659aa62435af29f8d9"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_base_dyn\u2026_-_Unsupported_base_for\u2026_-_`Protocol`_base_(99c9bde73664dd51).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_base_dyn…_-_Unsupported_base_for…_-_`Protocol`_base_(99c9bde73664dd51).snap",
           "size_bytes": 845,
           "source_hash": "513601ed43b2b28c1921aabcd692885c39c23087e60f256fa2ba7fa5dd63b940"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_base_dyn\u2026_-_Unsupported_base_for\u2026_-_`TypedDict`_base_(6f76171c88fc8760).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_base_dyn…_-_Unsupported_base_for…_-_`TypedDict`_base_(6f76171c88fc8760).snap",
           "size_bytes": 831,
           "source_hash": "b801516141498d27bb02672b241b06677d8bfbd02fbbc31568d224055ac92bf8"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_bool_con\u2026_-_Different_ways_that_\u2026_-_Has_a_`__bool__`_att\u2026_(2721d40bf12fe8b7).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_bool_con…_-_Different_ways_that_…_-_Has_a_`__bool__`_att…_(2721d40bf12fe8b7).snap",
           "size_bytes": 773,
           "source_hash": "50ab5aa7fb5a5d23fe662ca3b2830459d9e7ab49889592b8e9a960264f1e5634"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_bool_con\u2026_-_Different_ways_that_\u2026_-_Has_a_`__bool__`_met\u2026_(15636dc4074e5335).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_bool_con…_-_Different_ways_that_…_-_Has_a_`__bool__`_met…_(15636dc4074e5335).snap",
           "size_bytes": 980,
           "source_hash": "db9ebb6ef52f44ce967154359379953ea9f78ab370c19ef890817d3a11bfb52a"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_bool_con\u2026_-_Different_ways_that_\u2026_-_Has_a_`__bool__`_met\u2026_(ce8b8da49eaf4cda).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_bool_con…_-_Different_ways_that_…_-_Has_a_`__bool__`_met…_(ce8b8da49eaf4cda).snap",
           "size_bytes": 988,
           "source_hash": "060a2d3ad05d8fce425f1fdcfa60ecac4bd6a8e8d916a107f494267edb596062"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_bool_con\u2026_-_Different_ways_that_\u2026_-_Part_of_a_union_wher\u2026_(7cca8063ea43c1a).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/unsupported_bool_con…_-_Different_ways_that_…_-_Part_of_a_union_wher…_(7cca8063ea43c1a).snap",
           "size_bytes": 1074,
           "source_hash": "8b0dbb21f4a7c00728f75a23fa2e928f938bc419df9885549f1538341e91d030"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable\u2026_-_Type_variables_-_Invalid_defaults_-_A_constrained_defaul\u2026_(b62ed1f409042cc).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable…_-_Type_variables_-_Invalid_defaults_-_A_constrained_defaul…_(b62ed1f409042cc).snap",
           "size_bytes": 1295,
           "source_hash": "709c0278987d5743120724f3666388540366261d696cc402748b5bd016587953"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable\u2026_-_Type_variables_-_Invalid_defaults_-_A_constrained_defaul\u2026_(d9ffda7fd9cdf840).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable…_-_Type_variables_-_Invalid_defaults_-_A_constrained_defaul…_(d9ffda7fd9cdf840).snap",
           "size_bytes": 1568,
           "source_hash": "c4db762910ecdb891742e4b5907d797c3718a6570b030893c44b6625aba4762a"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable\u2026_-_Type_variables_-_Invalid_defaults_-_A_non-constrained_de\u2026_(ff24930259abfb3).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable…_-_Type_variables_-_Invalid_defaults_-_A_non-constrained_de…_(ff24930259abfb3).snap",
           "size_bytes": 1780,
           "source_hash": "79a0dd210ef36e2a87bb25ee22d8ca9dbc3321cdc685979458f7ffa735a25502"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable\u2026_-_Type_variables_-_Invalid_defaults_-_An_unbounded_default\u2026_(a2759fd9d2731a7d).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable…_-_Type_variables_-_Invalid_defaults_-_An_unbounded_default…_(a2759fd9d2731a7d).snap",
           "size_bytes": 1275,
           "source_hash": "87d78a6dddecf370059c139528befc0ba9d508faa36d437c4697326c56dd4760"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable\u2026_-_Type_variables_-_Invalid_defaults_-_Concrete_default_wit\u2026_(30284a6490652e58).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable…_-_Type_variables_-_Invalid_defaults_-_Concrete_default_wit…_(30284a6490652e58).snap",
           "size_bytes": 1773,
           "source_hash": "8c16506a7ba57f1fb7f7fc51bc86826c7b9401083e47d9c81002e7ec0815c228"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable\u2026_-_Type_variables_-_Invalid_defaults_-_Concrete_default_wit\u2026_(37f9b6583c0633f5).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable…_-_Type_variables_-_Invalid_defaults_-_Concrete_default_wit…_(37f9b6583c0633f5).snap",
           "size_bytes": 916,
           "source_hash": "57c09ee5bd85664728d9ea717f3cafc4f2ae5bee3d9008ae2ad4678bdce2fc59"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable\u2026_-_Type_variables_-_Invalid_defaults_-_Default_TypeVar's_bo\u2026_(fcd7ad5416c91629).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable…_-_Type_variables_-_Invalid_defaults_-_Default_TypeVar's_bo…_(fcd7ad5416c91629).snap",
           "size_bytes": 1497,
           "source_hash": "2579396a21c5c0f4fdf348b60fcedc4d11306de7d212f4d482de4602fba4ae56"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable\u2026_-_Type_variables_-_Shadowing_checks_use\u2026_(7e6bb178099059fe).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/variables.md_-_Legacy_type_variable…_-_Type_variables_-_Shadowing_checks_use…_(7e6bb178099059fe).snap",
           "size_bytes": 1960,
           "source_hash": "b7b6877a75e43ba3712808ba1b7186d5adf60f2781f1144de9305a3032035fcb"
         },
         {
           "language": "snap",
-          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/version_related_synt\u2026_-_Version-related_synt\u2026_-_`match`_statement_-_Before_3.10_(2545eaa83b635b8b).snap",
+          "repo_path": "crates/ty_python_semantic/resources/mdtest/snapshots/version_related_synt…_-_Version-related_synt…_-_`match`_statement_-_Before_3.10_(2545eaa83b635b8b).snap",
           "size_bytes": 905,
           "source_hash": "4b60902b08e6b95f785d9550a6dd316741e2518b4194c4a7888ccc6638ea0196"
         },
