@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-19
-Updated: 2026-07-19
-Relates-To: .10x/tickets/2026-07-19-return-retrieval-tags.md, .10x/specs/retrieval-tag-output.md, .10x/specs/explicit-multi-namespace-retrieval.md
+Updated: 2026-07-20
+Relates-To: .10x/tickets/done/2026-07-19-return-retrieval-tags.md, .10x/specs/retrieval-tag-output.md, .10x/specs/explicit-multi-namespace-retrieval.md
 
 # Return Retrieval Tags Implementation
 
@@ -135,7 +135,7 @@ Hosted PR #57 CI run `29720376822` then passed at head `5c5202e3fb1cc25dda6c01b2
 
 ## What this supports or challenges
 
-This supports every implementation and deterministic validation criterion in `.10x/tickets/2026-07-19-return-retrieval-tags.md`, including the PR #57 fallback-association blocker. It does not close the ticket: independent re-review remains a separate gate.
+This supports every implementation and deterministic validation criterion in `.10x/tickets/done/2026-07-19-return-retrieval-tags.md`, including the PR #57 fallback-association blocker. Evidence does not itself close a ticket; the later independent pass and closure mapping are recorded in `.10x/reviews/2026-07-20-return-retrieval-tags-review.md` and the done ticket.
 
 ## Handoff
 
@@ -145,4 +145,4 @@ Current `origin/develop` had no divergence before commit. Implementation commit 
 
 - Validation was entirely fake-backed/non-live. It proves request construction, fallback branching, conversion, serialization, rendering, and failure atomicity without contacting Turbopuffer.
 - No remote schema migration or backfill was performed or required.
-- The initial independent review blocker, its local remediation, and post-repair hosted CI are represented here; independent re-review remains required before closure.
+- The initial independent review blocker, its local remediation, and post-repair hosted CI are represented here. Independent final review subsequently passed in `.10x/reviews/2026-07-20-return-retrieval-tags-review.md`.
