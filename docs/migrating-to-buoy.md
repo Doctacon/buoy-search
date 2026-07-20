@@ -10,7 +10,7 @@ Use `buoy` for new commands:
 uv run buoy --help
 ```
 
-The deprecated `turbo-search` console alias remains available through 0.3 and prints a warning to stderr. It is scheduled for removal in 0.4.
+Buoy 0.4 removes the deprecated `turbo-search` console entry point. Update scripts and commands by replacing only the executable name `turbo-search` with `buoy`; arguments, parser behavior, output, and exit codes are unchanged by this removal. Package upgrades remove the package-owned launcher, but Buoy does not delete user-created shell aliases, copied launchers, wrappers, or caches.
 
 Python imports make a clean break: replace `turbo_search` with `buoy_search`. There is no old import shim.
 
@@ -21,7 +21,14 @@ uv run python -m buoy_search.autoresearch --help
 
 ## Environment variables
 
-Use `BUOY_EMBEDDING_MODEL` instead of `TURBO_SEARCH_EMBEDDING_MODEL`. Through 0.3, the old model and precision variables are accepted with warnings only when their corresponding `BUOY_*` variables are absent; they are scheduled for removal in 0.4. If an old and new variable are both set differently, Buoy stops rather than guessing.
+Before upgrading to Buoy 0.4.0, make both substitutions in shell profiles, CI configuration, service definitions, and task runners:
+
+```text
+TURBO_SEARCH_EMBEDDING_MODEL -> BUOY_EMBEDDING_MODEL
+TURBO_SEARCH_EMBEDDING_PRECISION -> BUOY_EMBEDDING_PRECISION
+```
+
+Buoy 0.4.0 rejects any actual command when either removed name is present, even when its value is empty or the corresponding new name has the same value. Rejection exits 2 with no stdout (including under `--json`) and one stderr diagnostic that names only the old-to-new mapping, never values. Help, version, and bare-command help remain available. The check happens before credentials, models, plans, state, artifacts, DuckDB, or remote services are accessed, and it does not migrate or delete local or remote data. Through 0.3, the old names were accepted under the deprecated fallback/conflict rules.
 
 Turbopuffer credentials and region remain unchanged:
 

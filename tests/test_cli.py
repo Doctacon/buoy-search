@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 
 from buoy_search.applied_state import AppliedStateRow, applied_state_paths, build_applied_state, save_applied_state
-from buoy_search.cli import OneLineProgress, build_parser, legacy_main, main, print_eval_text, print_retrieval_text
+from buoy_search.cli import OneLineProgress, build_parser, main, print_eval_text, print_retrieval_text
 from buoy_search.crawler import CrawlExecution, CrawlOptions
 from buoy_search.chunker import process_corpus
 from buoy_search.plan_artifacts import build_plan_artifacts, write_plan_artifacts
@@ -212,44 +212,30 @@ class CliTests(unittest.TestCase):
         self.assertEqual(parser.prog, "buoy")
         self.assertTrue(parser.format_help().startswith("usage: buoy"))
 
-    def test_legacy_cli_warns_on_stderr_without_contaminating_json_stdout(self) -> None:
+    def test_removed_embedding_environment_returns_two_with_clean_json_stdout(self) -> None:
         stdout = StringIO()
         stderr = StringIO()
-
-        with redirect_stdout(stdout), redirect_stderr(stderr):
-            result = legacy_main(
-                ["retrieve", "How does this work?", "--dry-run", "--namespace", "site-example-v1", "--json"]
-            )
-
-        self.assertEqual(result, 0)
-        self.assertEqual(json.loads(stdout.getvalue())["command"], "retrieve")
-        self.assertEqual(
-            stderr.getvalue(),
-            "Warning: `turbo-search` is deprecated; use `buoy` instead. It will be removed in 0.4.\n",
-        )
-
-    def test_legacy_embedding_environment_warning_keeps_json_stdout_clean(self) -> None:
-        stdout = StringIO()
-        stderr = StringIO()
-        with patch.dict(os.environ, {"TURBO_SEARCH_EMBEDDING_MODEL": "legacy/model"}, clear=True), redirect_stdout(
+        with patch.dict(os.environ, {"TURBO_SEARCH_EMBEDDING_MODEL": "removed/model"}, clear=True), redirect_stdout(
             stdout
         ), redirect_stderr(stderr):
             result = main(
                 ["retrieve", "How does this work?", "--dry-run", "--namespace", "site-example-v1", "--json"]
             )
 
-        self.assertEqual(result, 0)
-        self.assertEqual(json.loads(stdout.getvalue())["embedding_model"], "legacy/model")
-        self.assertIn("TURBO_SEARCH_EMBEDDING_MODEL is deprecated", stderr.getvalue())
-        self.assertIn("It will be removed in 0.4.", stderr.getvalue())
-        self.assertNotIn("Warning", stdout.getvalue())
+        self.assertEqual(result, 2)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertEqual(
+            stderr.getvalue(),
+            "Removed environment variable is not supported in Buoy 0.4.0: "
+            "TURBO_SEARCH_EMBEDDING_MODEL -> BUOY_EMBEDDING_MODEL\n",
+        )
 
-    def test_conflicting_embedding_environment_returns_two_with_clean_stdout(self) -> None:
+    def test_removed_embedding_environment_rejects_matching_current_value(self) -> None:
         stdout = StringIO()
         stderr = StringIO()
         with patch.dict(
             os.environ,
-            {"BUOY_EMBEDDING_MODEL": "current/model", "TURBO_SEARCH_EMBEDDING_MODEL": "legacy/model"},
+            {"BUOY_EMBEDDING_MODEL": "same/model", "TURBO_SEARCH_EMBEDDING_MODEL": "same/model"},
             clear=True,
         ), redirect_stdout(stdout), redirect_stderr(stderr):
             result = main(
@@ -258,7 +244,11 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(result, 2)
         self.assertEqual(stdout.getvalue(), "")
-        self.assertIn("conflicting BUOY_EMBEDDING_MODEL", stderr.getvalue())
+        self.assertEqual(
+            stderr.getvalue(),
+            "Removed environment variable is not supported in Buoy 0.4.0: "
+            "TURBO_SEARCH_EMBEDDING_MODEL -> BUOY_EMBEDDING_MODEL\n",
+        )
 
     def test_dual_implicit_state_roots_fail_before_plan_crawl(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

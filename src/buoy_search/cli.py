@@ -34,6 +34,7 @@ from buoy_search.config import (
     EMBEDDING_PRECISIONS,
     RuntimeConfigError,
     load_config,
+    removed_embedding_environment_error,
 )
 from buoy_search.crawler import (
     CRAWL_STRATEGIES,
@@ -2078,6 +2079,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not hasattr(args, "func"):
         parser.print_help()
         return 0
+    removed_environment_error = removed_embedding_environment_error()
+    if removed_environment_error is not None:
+        try:
+            print(removed_environment_error, file=sys.stderr)
+        except OSError:
+            pass
+        return 2
     try:
         return args.func(args)
     except RuntimeConfigError as exc:
@@ -2086,13 +2094,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         except OSError:
             pass
         return 2
-
-
-def legacy_main(argv: Sequence[str] | None = None) -> int:
-    """Run the compatibility alias retained through 0.3 with a bounded warning."""
-
-    print("Warning: `turbo-search` is deprecated; use `buoy` instead. It will be removed in 0.4.", file=sys.stderr)
-    return main(argv)
 
 
 if __name__ == "__main__":
