@@ -9,7 +9,244 @@
       "requests"
     ]
   },
+  "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
   "explicit_zero_judgment_count": 0,
+  "folds": [
+    {
+      "fold_id": "fold-01",
+      "held_out_repo_key": "black",
+      "training_repo_keys": [
+        "buoy",
+        "click",
+        "django",
+        "flask",
+        "httpx",
+        "mkdocs",
+        "pydantic",
+        "pytest",
+        "requests",
+        "rich",
+        "ruff",
+        "typer"
+      ]
+    },
+    {
+      "fold_id": "fold-02",
+      "held_out_repo_key": "buoy",
+      "training_repo_keys": [
+        "black",
+        "click",
+        "django",
+        "flask",
+        "httpx",
+        "mkdocs",
+        "pydantic",
+        "pytest",
+        "requests",
+        "rich",
+        "ruff",
+        "typer"
+      ]
+    },
+    {
+      "fold_id": "fold-03",
+      "held_out_repo_key": "click",
+      "training_repo_keys": [
+        "black",
+        "buoy",
+        "django",
+        "flask",
+        "httpx",
+        "mkdocs",
+        "pydantic",
+        "pytest",
+        "requests",
+        "rich",
+        "ruff",
+        "typer"
+      ]
+    },
+    {
+      "fold_id": "fold-04",
+      "held_out_repo_key": "django",
+      "training_repo_keys": [
+        "black",
+        "buoy",
+        "click",
+        "flask",
+        "httpx",
+        "mkdocs",
+        "pydantic",
+        "pytest",
+        "requests",
+        "rich",
+        "ruff",
+        "typer"
+      ]
+    },
+    {
+      "fold_id": "fold-05",
+      "held_out_repo_key": "flask",
+      "training_repo_keys": [
+        "black",
+        "buoy",
+        "click",
+        "django",
+        "httpx",
+        "mkdocs",
+        "pydantic",
+        "pytest",
+        "requests",
+        "rich",
+        "ruff",
+        "typer"
+      ]
+    },
+    {
+      "fold_id": "fold-06",
+      "held_out_repo_key": "httpx",
+      "training_repo_keys": [
+        "black",
+        "buoy",
+        "click",
+        "django",
+        "flask",
+        "mkdocs",
+        "pydantic",
+        "pytest",
+        "requests",
+        "rich",
+        "ruff",
+        "typer"
+      ]
+    },
+    {
+      "fold_id": "fold-07",
+      "held_out_repo_key": "mkdocs",
+      "training_repo_keys": [
+        "black",
+        "buoy",
+        "click",
+        "django",
+        "flask",
+        "httpx",
+        "pydantic",
+        "pytest",
+        "requests",
+        "rich",
+        "ruff",
+        "typer"
+      ]
+    },
+    {
+      "fold_id": "fold-08",
+      "held_out_repo_key": "pydantic",
+      "training_repo_keys": [
+        "black",
+        "buoy",
+        "click",
+        "django",
+        "flask",
+        "httpx",
+        "mkdocs",
+        "pytest",
+        "requests",
+        "rich",
+        "ruff",
+        "typer"
+      ]
+    },
+    {
+      "fold_id": "fold-09",
+      "held_out_repo_key": "pytest",
+      "training_repo_keys": [
+        "black",
+        "buoy",
+        "click",
+        "django",
+        "flask",
+        "httpx",
+        "mkdocs",
+        "pydantic",
+        "requests",
+        "rich",
+        "ruff",
+        "typer"
+      ]
+    },
+    {
+      "fold_id": "fold-10",
+      "held_out_repo_key": "requests",
+      "training_repo_keys": [
+        "black",
+        "buoy",
+        "click",
+        "django",
+        "flask",
+        "httpx",
+        "mkdocs",
+        "pydantic",
+        "pytest",
+        "rich",
+        "ruff",
+        "typer"
+      ]
+    },
+    {
+      "fold_id": "fold-11",
+      "held_out_repo_key": "rich",
+      "training_repo_keys": [
+        "black",
+        "buoy",
+        "click",
+        "django",
+        "flask",
+        "httpx",
+        "mkdocs",
+        "pydantic",
+        "pytest",
+        "requests",
+        "ruff",
+        "typer"
+      ]
+    },
+    {
+      "fold_id": "fold-12",
+      "held_out_repo_key": "ruff",
+      "training_repo_keys": [
+        "black",
+        "buoy",
+        "click",
+        "django",
+        "flask",
+        "httpx",
+        "mkdocs",
+        "pydantic",
+        "pytest",
+        "requests",
+        "rich",
+        "typer"
+      ]
+    },
+    {
+      "fold_id": "fold-13",
+      "held_out_repo_key": "typer",
+      "training_repo_keys": [
+        "black",
+        "buoy",
+        "click",
+        "django",
+        "flask",
+        "httpx",
+        "mkdocs",
+        "pydantic",
+        "pytest",
+        "requests",
+        "rich",
+        "ruff"
+      ]
+    }
+  ],
   "identities": [
     {
       "case_id": "mode-target-version-preview",
@@ -462,419 +699,294 @@
       "repo_key": "typer"
     }
   ],
+  "inventory_payload_sha256": "7c93ae8953e43aac2c2ed98d1ef846458329121453b2662a0d07d93c191c8c13",
   "judgment_count": 370,
   "repositories": [
     {
       "baseline_namespace": "github-psf-black-v1",
+      "baseline_namespace_status": "existing",
       "case_count": 5,
       "dataset_path": "src/buoy_search/data/black_repo_search_seed_evals.json",
       "dataset_sha256": "79606bd520ee0b5dac5bc323ea2f0d2891c9929f45bde266ba4e29cd3efcd7ef",
       "embedding_model": "BAAI/bge-small-en-v1.5",
-      "experiment_namespace_pattern": "github-<owner>-<repo>-exp-<experiment-slug>-<contract-hash-prefix>",
+      "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
       "explicit_zero_judgment_count": 0,
       "judgment_count": 18,
       "manifest_chunk_count": 2238,
       "missing_judgment_paths": [],
       "repo_key": "black",
       "repository": "psf/black",
-      "source_artifact_hash": "b92e6e99729af4ed86560fbf35f758f083cf792595f1b7ac8123e5fdd3b5f130",
+      "selected_corpus_artifact_hash": "b92e6e99729af4ed86560fbf35f758f083cf792595f1b7ac8123e5fdd3b5f130",
       "source_commit": "c4c9a93111309459a3f0e1e268160f7ef2159077",
-      "source_manifest_path": "artifacts/site-crawls/github-psf-black-v1-plan-20260628/manifest.json",
       "source_manifest_sha256": "20bc565b7877bdc8825a19e4e258377967ff43cd6ee0990261cc6c364df062ab",
-      "source_plan_path": "artifacts/site-crawls/github-psf-black-v1-plan-20260628/plan.json",
       "source_plan_sha256": "5a4ffd21545b08f3d6fc99a3d2504d53c953143abdb78899aa3a9037c3efe66c",
       "sufficient": true,
       "validated_judgment_paths": 18
     },
     {
-      "baseline_namespace": "github-doctacon-turbo-search-v2-clean",
+      "baseline_namespace": "github-doctacon-buoy-search-v1",
+      "baseline_namespace_status": "pending_approval",
       "case_count": 10,
       "dataset_path": "src/buoy_search/data/buoy_search_repo_search_seed_evals.json",
       "dataset_sha256": "605ac5b775a0b9ce2fc6adb78c4de9ee98a597ec9c8b4cd91e0712b2ed6e8eaf",
       "embedding_model": "BAAI/bge-small-en-v1.5",
-      "experiment_namespace_pattern": "github-<owner>-<repo>-exp-<experiment-slug>-<contract-hash-prefix>",
+      "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
       "explicit_zero_judgment_count": 0,
       "judgment_count": 33,
-      "manifest_chunk_count": 497,
+      "manifest_chunk_count": 903,
       "missing_judgment_paths": [
-        {
-          "composite_case_id": "buoy:github-url-routing",
-          "repo_path": "src/buoy_search/crawler.py"
-        },
-        {
-          "composite_case_id": "buoy:github-url-routing",
-          "repo_path": "src/buoy_search/github_repo.py"
-        },
-        {
-          "composite_case_id": "buoy:github-local-acquisition",
-          "repo_path": "src/buoy_search/github_repo.py"
-        },
-        {
-          "composite_case_id": "buoy:github-local-acquisition",
-          "repo_path": "src/buoy_search/crawler.py"
-        },
-        {
-          "composite_case_id": "buoy:repo-file-selection-corpus",
-          "repo_path": "src/buoy_search/github_repo.py"
-        },
-        {
-          "composite_case_id": "buoy:repo-file-selection-corpus",
-          "repo_path": "src/buoy_search/chunker.py"
-        },
-        {
-          "composite_case_id": "buoy:plan-command-local-only",
-          "repo_path": "src/buoy_search/cli.py"
-        },
-        {
-          "composite_case_id": "buoy:plan-command-local-only",
-          "repo_path": "src/buoy_search/plan_artifacts.py"
-        },
-        {
-          "composite_case_id": "buoy:apply-preflight-approved-safety",
-          "repo_path": "src/buoy_search/apply.py"
-        },
-        {
-          "composite_case_id": "buoy:apply-preflight-approved-safety",
-          "repo_path": "src/buoy_search/cli.py"
-        },
-        {
-          "composite_case_id": "buoy:apply-preflight-approved-safety",
-          "repo_path": "src/buoy_search/applied_state.py"
-        },
-        {
-          "composite_case_id": "buoy:plan-artifacts-github-metadata",
-          "repo_path": "src/buoy_search/plan_artifacts.py"
-        },
-        {
-          "composite_case_id": "buoy:plan-artifacts-github-metadata",
-          "repo_path": "src/buoy_search/github_repo.py"
-        },
-        {
-          "composite_case_id": "buoy:chunking-code-and-markdown",
-          "repo_path": "src/buoy_search/chunker.py"
-        },
-        {
-          "composite_case_id": "buoy:chunking-code-and-markdown",
-          "repo_path": "src/buoy_search/github_repo.py"
-        },
-        {
-          "composite_case_id": "buoy:retrieval-hybrid-command",
-          "repo_path": "src/buoy_search/retriever.py"
-        },
-        {
-          "composite_case_id": "buoy:retrieval-hybrid-command",
-          "repo_path": "src/buoy_search/cli.py"
-        },
-        {
-          "composite_case_id": "buoy:evals-composite-metrics",
-          "repo_path": "src/buoy_search/evals.py"
-        },
         {
           "composite_case_id": "buoy:evals-composite-metrics",
           "repo_path": ".10x/specs/repo-search-eval-autoresearch.md"
-        },
-        {
-          "composite_case_id": "buoy:evals-cli-safety",
-          "repo_path": "src/buoy_search/cli.py"
-        },
-        {
-          "composite_case_id": "buoy:evals-cli-safety",
-          "repo_path": "src/buoy_search/evals.py"
-        },
-        {
-          "composite_case_id": "buoy:evals-cli-safety",
-          "repo_path": "src/buoy_search/retriever.py"
         }
       ],
       "repo_key": "buoy",
-      "repository": "Doctacon/turbo-search",
-      "source_artifact_hash": "bdd5d6c4818dffc95f32eefc94117adcb30c828aad25f21a4d0e5292d7762b50",
-      "source_commit": "fd7f20cdc14f8d7769bf5305e2dd67eae415a8d2",
-      "source_manifest_path": "artifacts/site-crawls/github-doctacon-turbo-search-clean-20260628/manifest.json",
-      "source_manifest_sha256": "6a6e67b0b0ef1ea62ee52dfcfe8aa4b825603895b17d01efe70d04606f40b434",
-      "source_plan_path": "artifacts/site-crawls/github-doctacon-turbo-search-clean-20260628/plan.json",
-      "source_plan_sha256": "1669f4c3d5471e8f7bf879218c50ecaa6e621744398908169329c373e4cce918",
+      "repository": "Doctacon/buoy-search",
+      "selected_corpus_artifact_hash": "b6c5d128295f442fcae21472c9bcb037ecb44101ca648115e8f666ba59a6f0ce",
+      "source_commit": "fcb7abbe1652d2eab4ee23816b6d992d893603ac",
+      "source_manifest_sha256": "a8e82bd81e5303157691494dfb2f8de50955d072c21cef2e150ec31ae261079c",
+      "source_plan_sha256": "f1316f233857c59f6467071b95750638276ac364a6994f3b25a0a3a2c42d3b46",
       "sufficient": false,
-      "validated_judgment_paths": 11
+      "validated_judgment_paths": 32
     },
     {
-      "baseline_namespace": "github-pallets-click-v1",
+      "baseline_namespace": "github-pallets-click-v4-oversize-cards",
+      "baseline_namespace_status": "existing",
       "case_count": 10,
       "dataset_path": "src/buoy_search/data/click_repo_search_seed_evals.json",
       "dataset_sha256": "10f5b7fad2542b9fc30bda307787626f5d3de30060b78f0983aeb7727f377b8b",
       "embedding_model": "BAAI/bge-small-en-v1.5",
-      "experiment_namespace_pattern": "github-<owner>-<repo>-exp-<experiment-slug>-<contract-hash-prefix>",
+      "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
       "explicit_zero_judgment_count": 0,
       "judgment_count": 36,
-      "manifest_chunk_count": 1196,
-      "missing_judgment_paths": [
-        {
-          "composite_case_id": "click:command-group-decorators",
-          "repo_path": "src/click/core.py"
-        },
-        {
-          "composite_case_id": "click:command-context-invocation",
-          "repo_path": "src/click/core.py"
-        },
-        {
-          "composite_case_id": "click:option-argument-parser",
-          "repo_path": "src/click/core.py"
-        },
-        {
-          "composite_case_id": "click:option-argument-parser",
-          "repo_path": "tests/test_options.py"
-        },
-        {
-          "composite_case_id": "click:terminal-ui-prompts-progress-style",
-          "repo_path": "tests/test_termui.py"
-        },
-        {
-          "composite_case_id": "click:exceptions-usage-errors",
-          "repo_path": "tests/test_options.py"
-        },
-        {
-          "composite_case_id": "click:help-formatting-output",
-          "repo_path": "src/click/core.py"
-        }
-      ],
+      "manifest_chunk_count": 1215,
+      "missing_judgment_paths": [],
       "repo_key": "click",
       "repository": "pallets/click",
-      "source_artifact_hash": "42b669bd4cdeafeb9fd21068907996e6c36ae953b0ea0023939ec20584f68ef0",
-      "source_commit": "679a7a0eccbdded7a6e85680bdaaf08003765e01",
-      "source_manifest_path": "artifacts/site-crawls/github-pallets-click-plan-20260628/manifest.json",
-      "source_manifest_sha256": "e15e52d93139abcddc52f3630b2401696a735d57809dcd5e0e8bf22dcd866c63",
-      "source_plan_path": "artifacts/site-crawls/github-pallets-click-plan-20260628/plan.json",
-      "source_plan_sha256": "c93e028b8a8a3bb301cd33ec45faea695b8c357c70ff528dc20ce85aeddb9af5",
-      "sufficient": false,
-      "validated_judgment_paths": 29
+      "selected_corpus_artifact_hash": "8fa16f0cf991245e928b1d738c1e595bffc8e752f84797fd7f3066137b3d55fb",
+      "source_commit": "6ec99f89261b32f8a50848786eca055e1967659f",
+      "source_manifest_sha256": "9b24e0ee247a3bc475e47fe4a576c4f5927b638a64da2740b948524c7d2008de",
+      "source_plan_sha256": "e7daa6e9115c1da02cceee841eefd8008719ccbc46347bea3fc5689de1c0ba61",
+      "sufficient": true,
+      "validated_judgment_paths": 36
     },
     {
       "baseline_namespace": "github-django-django-v1",
+      "baseline_namespace_status": "existing",
       "case_count": 5,
       "dataset_path": "src/buoy_search/data/django_repo_search_seed_evals.json",
       "dataset_sha256": "852856a5cba5c00914be43bcd12b62b5a574c740542f167f9b7588cb7d8dd13e",
       "embedding_model": "BAAI/bge-small-en-v1.5",
-      "experiment_namespace_pattern": "github-<owner>-<repo>-exp-<experiment-slug>-<contract-hash-prefix>",
+      "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
       "explicit_zero_judgment_count": 0,
       "judgment_count": 21,
       "manifest_chunk_count": 36447,
       "missing_judgment_paths": [],
       "repo_key": "django",
       "repository": "django/django",
-      "source_artifact_hash": "71bae99cac03397ede42784aaf82a19a0e1258201ae8acb1713d3438c025df82",
+      "selected_corpus_artifact_hash": "71bae99cac03397ede42784aaf82a19a0e1258201ae8acb1713d3438c025df82",
       "source_commit": "54495840a6a8b09ec40c793495e6541a3c0d3d5b",
-      "source_manifest_path": "artifacts/site-crawls/github-django-django-v1-plan-20260628/manifest.json",
       "source_manifest_sha256": "ef2375de0180ae30468f31cc16861b89c4e2f252721139ed7d94670b58cbf001",
-      "source_plan_path": "artifacts/site-crawls/github-django-django-v1-plan-20260628/plan.json",
       "source_plan_sha256": "4433078fbfae6325fe699f2c08bd52f5845a72154c158a023bec2ad66cd4b510",
       "sufficient": true,
       "validated_judgment_paths": 21
     },
     {
       "baseline_namespace": "github-pallets-flask-v1",
+      "baseline_namespace_status": "existing",
       "case_count": 5,
       "dataset_path": "src/buoy_search/data/flask_repo_search_seed_evals.json",
       "dataset_sha256": "9f2dbb6ca3d131c68ee04d9cea3ac614ebb329a49d7c076de1f30a2c35a5194f",
       "embedding_model": "BAAI/bge-small-en-v1.5",
-      "experiment_namespace_pattern": "github-<owner>-<repo>-exp-<experiment-slug>-<contract-hash-prefix>",
+      "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
       "explicit_zero_judgment_count": 0,
       "judgment_count": 21,
       "manifest_chunk_count": 1341,
       "missing_judgment_paths": [],
       "repo_key": "flask",
       "repository": "pallets/flask",
-      "source_artifact_hash": "5f5945bdd050ede733a63f3a7b7da32844c0bc7869a231b48384470d1fd4e170",
+      "selected_corpus_artifact_hash": "5f5945bdd050ede733a63f3a7b7da32844c0bc7869a231b48384470d1fd4e170",
       "source_commit": "36e4a824f340fdee7ed50937ba8e7f6bc7d17f81",
-      "source_manifest_path": "artifacts/site-crawls/github-pallets-flask-v1-plan-20260628/manifest.json",
       "source_manifest_sha256": "7c896549caf74ee301746f03e966c1b9b71693c36404799b553a3b8b73a47042",
-      "source_plan_path": "artifacts/site-crawls/github-pallets-flask-v1-plan-20260628/plan.json",
       "source_plan_sha256": "f1cf012100a676b070ea9d1d6f0885dcadb95dfba5b76a5c0a0e5e50b4a3df0a",
       "sufficient": true,
       "validated_judgment_paths": 21
     },
     {
       "baseline_namespace": "github-encode-httpx-v1",
+      "baseline_namespace_status": "existing",
       "case_count": 5,
       "dataset_path": "src/buoy_search/data/httpx_repo_search_seed_evals.json",
       "dataset_sha256": "c9b224b88ca619aced7a027697bd4b761b614b9f8660fdafbd0009a9ac9b6f0d",
       "embedding_model": "BAAI/bge-small-en-v1.5",
-      "experiment_namespace_pattern": "github-<owner>-<repo>-exp-<experiment-slug>-<contract-hash-prefix>",
+      "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
       "explicit_zero_judgment_count": 0,
       "judgment_count": 20,
       "manifest_chunk_count": 963,
       "missing_judgment_paths": [],
       "repo_key": "httpx",
       "repository": "encode/httpx",
-      "source_artifact_hash": "c4985ada9138f22f07973314f19aa742140490beecc737eae1354c15167a1a7f",
+      "selected_corpus_artifact_hash": "c4985ada9138f22f07973314f19aa742140490beecc737eae1354c15167a1a7f",
       "source_commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
-      "source_manifest_path": "artifacts/site-crawls/github-encode-httpx-v1-plan-20260628/manifest.json",
       "source_manifest_sha256": "ec99afbf68d1032b065c5c31fa75268496206383c98610d7c1a540fd9c824578",
-      "source_plan_path": "artifacts/site-crawls/github-encode-httpx-v1-plan-20260628/plan.json",
       "source_plan_sha256": "a2de5c6266cc90b9493593f1131b4c95bb50069671c7e48a681ee086be472cfd",
       "sufficient": true,
       "validated_judgment_paths": 20
     },
     {
       "baseline_namespace": "github-mkdocs-mkdocs-v1",
+      "baseline_namespace_status": "existing",
       "case_count": 5,
       "dataset_path": "src/buoy_search/data/mkdocs_repo_search_seed_evals.json",
       "dataset_sha256": "cd32c7f1e119b8b0fbbb30ceed06b40e3c20d9b4d1de4dd8b6888390429286e5",
       "embedding_model": "BAAI/bge-small-en-v1.5",
-      "experiment_namespace_pattern": "github-<owner>-<repo>-exp-<experiment-slug>-<contract-hash-prefix>",
+      "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
       "explicit_zero_judgment_count": 0,
       "judgment_count": 22,
       "manifest_chunk_count": 1930,
       "missing_judgment_paths": [],
       "repo_key": "mkdocs",
       "repository": "mkdocs/mkdocs",
-      "source_artifact_hash": "c7ebf81a65f45d30bbeeb313ab61af86ffbc2dccf2339ec8d71f1b1ba37acd51",
+      "selected_corpus_artifact_hash": "c7ebf81a65f45d30bbeeb313ab61af86ffbc2dccf2339ec8d71f1b1ba37acd51",
       "source_commit": "2862536793b3c67d9d83c33e0dd6d50a791928f8",
-      "source_manifest_path": "artifacts/site-crawls/github-mkdocs-mkdocs-v1-plan-20260628/manifest.json",
       "source_manifest_sha256": "c8b81a99b3b75f774a2115ad521742af854132b96a62e21a323725c45ff06afc",
-      "source_plan_path": "artifacts/site-crawls/github-mkdocs-mkdocs-v1-plan-20260628/plan.json",
       "source_plan_sha256": "9f066a983ea4f4bffdd726dce0d84aebc751f4fdd38aed34119cd65d4cb59651",
       "sufficient": true,
       "validated_judgment_paths": 22
     },
     {
       "baseline_namespace": "github-pydantic-pydantic-v1",
+      "baseline_namespace_status": "existing",
       "case_count": 5,
       "dataset_path": "src/buoy_search/data/pydantic_repo_search_seed_evals.json",
       "dataset_sha256": "8ecc2c54a7a5e63ff424a67cdf357833dbc933b05147c4f4f5d59d9984fd3255",
       "embedding_model": "BAAI/bge-small-en-v1.5",
-      "experiment_namespace_pattern": "github-<owner>-<repo>-exp-<experiment-slug>-<contract-hash-prefix>",
+      "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
       "explicit_zero_judgment_count": 0,
       "judgment_count": 18,
       "manifest_chunk_count": 7377,
       "missing_judgment_paths": [],
       "repo_key": "pydantic",
       "repository": "pydantic/pydantic",
-      "source_artifact_hash": "12e7c4db8105e0722e91f7acd29c517c33cf2607c7e6904e6bd7ca436d805bc3",
+      "selected_corpus_artifact_hash": "12e7c4db8105e0722e91f7acd29c517c33cf2607c7e6904e6bd7ca436d805bc3",
       "source_commit": "080c741ecf4e113b9c7487de16ffbba5182f03bf",
-      "source_manifest_path": "artifacts/site-crawls/github-pydantic-pydantic-v1-plan-20260628/manifest.json",
       "source_manifest_sha256": "1f046e1a5d53e6634e07bbcdf7f8d8b1c8a00b940f97b8ccfbbe22fdf9f43c2e",
-      "source_plan_path": "artifacts/site-crawls/github-pydantic-pydantic-v1-plan-20260628/plan.json",
       "source_plan_sha256": "8c95c9d79e7863f62e53141d71bcecf9b7595114695861d5f8c3bb2a724cac1b",
       "sufficient": true,
       "validated_judgment_paths": 18
     },
     {
       "baseline_namespace": "github-pytest-dev-pytest-v1",
+      "baseline_namespace_status": "existing",
       "case_count": 10,
       "dataset_path": "src/buoy_search/data/pytest_repo_search_seed_evals.json",
       "dataset_sha256": "9d0640002bde44ba0cc1645b85de03ccd833a7a4f3b6387a3ef6d4a8aad24674",
       "embedding_model": "BAAI/bge-small-en-v1.5",
-      "experiment_namespace_pattern": "github-<owner>-<repo>-exp-<experiment-slug>-<contract-hash-prefix>",
+      "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
       "explicit_zero_judgment_count": 0,
       "judgment_count": 52,
       "manifest_chunk_count": 3493,
       "missing_judgment_paths": [],
       "repo_key": "pytest",
       "repository": "pytest-dev/pytest",
-      "source_artifact_hash": "b69bdc750c80bdcbfb09d85491423ee4e5d3cb03834ee6b13beccd69e8593e37",
+      "selected_corpus_artifact_hash": "b69bdc750c80bdcbfb09d85491423ee4e5d3cb03834ee6b13beccd69e8593e37",
       "source_commit": "1aa747de62dd9e9f395513c25298ba604f1724d0",
-      "source_manifest_path": "artifacts/site-crawls/github-pytest-dev-pytest-plan-20260628/manifest.json",
       "source_manifest_sha256": "7b7dd0310e30b393aaba245c5dbcb0796d1d4ec620892443ba4d5a1469eeab34",
-      "source_plan_path": "artifacts/site-crawls/github-pytest-dev-pytest-plan-20260628/plan.json",
       "source_plan_sha256": "50db24227eca82011ecf4dd3f08785c84ed4360fe10aaaaf3e967397da8b615e",
       "sufficient": true,
       "validated_judgment_paths": 52
     },
     {
       "baseline_namespace": "github-psf-requests-v1",
+      "baseline_namespace_status": "existing",
       "case_count": 10,
       "dataset_path": "src/buoy_search/data/requests_repo_search_seed_evals.json",
       "dataset_sha256": "34b83e35b3fbe5c222a7ec75826a1476223597496ea006ddc0025034308a64ca",
       "embedding_model": "BAAI/bge-small-en-v1.5",
-      "experiment_namespace_pattern": "github-<owner>-<repo>-exp-<experiment-slug>-<contract-hash-prefix>",
+      "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
       "explicit_zero_judgment_count": 0,
       "judgment_count": 30,
       "manifest_chunk_count": 729,
       "missing_judgment_paths": [],
       "repo_key": "requests",
       "repository": "psf/requests",
-      "source_artifact_hash": "56baa7d275e5293a2d1388bf4854f7198602cd975c71e20a2cd450b0a4ab5857",
+      "selected_corpus_artifact_hash": "56baa7d275e5293a2d1388bf4854f7198602cd975c71e20a2cd450b0a4ab5857",
       "source_commit": "4ed3d1b3204caa6806a36125a39589044a02e807",
-      "source_manifest_path": "artifacts/site-crawls/github-psf-requests-plan-20260628/manifest.json",
       "source_manifest_sha256": "856b00be507ea051f8cf457b51adb3164b9d22aea93ba164aa74cfe75015aecd",
-      "source_plan_path": "artifacts/site-crawls/github-psf-requests-plan-20260628/plan.json",
       "source_plan_sha256": "6a104745e689b18ed20de8d97deec0eb905136bd50899fcf230a2ed2c7a57d54",
       "sufficient": true,
       "validated_judgment_paths": 30
     },
     {
       "baseline_namespace": "github-textualize-rich-v1",
+      "baseline_namespace_status": "existing",
       "case_count": 5,
       "dataset_path": "src/buoy_search/data/rich_repo_search_seed_evals.json",
       "dataset_sha256": "2f46d8a768cc50741905a31433f4e79d27c4a472a63b4cd2feb7d47fbedbbf2d",
       "embedding_model": "BAAI/bge-small-en-v1.5",
-      "experiment_namespace_pattern": "github-<owner>-<repo>-exp-<experiment-slug>-<contract-hash-prefix>",
+      "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
       "explicit_zero_judgment_count": 0,
       "judgment_count": 26,
       "manifest_chunk_count": 4221,
       "missing_judgment_paths": [],
       "repo_key": "rich",
       "repository": "Textualize/rich",
-      "source_artifact_hash": "ae4704358090e9354db339459d5fb72fe1c1a9afec1a3dc566ea25a0a3fbc4c5",
+      "selected_corpus_artifact_hash": "ae4704358090e9354db339459d5fb72fe1c1a9afec1a3dc566ea25a0a3fbc4c5",
       "source_commit": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f",
-      "source_manifest_path": "artifacts/site-crawls/github-textualize-rich-v1-plan-20260628/manifest.json",
       "source_manifest_sha256": "a26d4dddc2b8b13dae149277dfca7d5c6d386ac7ab3a2c99e2380eb7c02128a5",
-      "source_plan_path": "artifacts/site-crawls/github-textualize-rich-v1-plan-20260628/plan.json",
       "source_plan_sha256": "0b0a4f139ff2421dadc5310dc96a0894b1403c46b1c7e82a133c3156f58297d8",
       "sufficient": true,
       "validated_judgment_paths": 26
     },
     {
       "baseline_namespace": "github-astral-sh-ruff-v1",
+      "baseline_namespace_status": "existing",
       "case_count": 5,
       "dataset_path": "src/buoy_search/data/ruff_repo_search_seed_evals.json",
       "dataset_sha256": "2e4e96a66890a57d363da885fb7a3ada3ef5ed86f96df4094298ccfd44aa8bc1",
       "embedding_model": "BAAI/bge-small-en-v1.5",
-      "experiment_namespace_pattern": "github-<owner>-<repo>-exp-<experiment-slug>-<contract-hash-prefix>",
+      "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
       "explicit_zero_judgment_count": 0,
       "judgment_count": 20,
       "manifest_chunk_count": 56407,
       "missing_judgment_paths": [],
       "repo_key": "ruff",
       "repository": "astral-sh/ruff",
-      "source_artifact_hash": "048c550392b415fbb508fbc8ba8df603160995d8538d4d7b9f0b18914f90ff41",
+      "selected_corpus_artifact_hash": "048c550392b415fbb508fbc8ba8df603160995d8538d4d7b9f0b18914f90ff41",
       "source_commit": "e6856de97d72225196444b7d969b8fe084140503",
-      "source_manifest_path": "artifacts/site-crawls/github-astral-sh-ruff-v1-plan-20260628/manifest.json",
       "source_manifest_sha256": "f980d0e64617ee05ca7d6653b8683583f42ac1e72d890025f536608d960485d0",
-      "source_plan_path": "artifacts/site-crawls/github-astral-sh-ruff-v1-plan-20260628/plan.json",
       "source_plan_sha256": "4c11ca923b89f71c85d0c45851676d291fff53eefcf4f77c5f65e041b06455dd",
       "sufficient": true,
       "validated_judgment_paths": 20
     },
     {
       "baseline_namespace": "github-fastapi-typer-v1",
+      "baseline_namespace_status": "existing",
       "case_count": 10,
       "dataset_path": "src/buoy_search/data/typer_repo_search_seed_evals.json",
       "dataset_sha256": "4aafafbd0a4c4c427b680e53fbce93d5f1f9154b7762f0eb59c1e8a832165947",
       "embedding_model": "BAAI/bge-small-en-v1.5",
-      "experiment_namespace_pattern": "github-<owner>-<repo>-exp-<experiment-slug>-<contract-hash-prefix>",
+      "experiment_namespace_pattern": "github-{owner_slug}-{repo_slug}-exp-{experiment_slug}-{contract_sha256_12}-v{positive_integer}",
       "explicit_zero_judgment_count": 0,
       "judgment_count": 53,
       "manifest_chunk_count": 2512,
       "missing_judgment_paths": [],
       "repo_key": "typer",
       "repository": "fastapi/typer",
-      "source_artifact_hash": "1c4e8b790747191436582aaf336eba083624f5ec68313891026b67548eeab90f",
+      "selected_corpus_artifact_hash": "1c4e8b790747191436582aaf336eba083624f5ec68313891026b67548eeab90f",
       "source_commit": "b210c0e2376d99344f79f11fab3ad34cf890cc20",
-      "source_manifest_path": "artifacts/site-crawls/github-fastapi-typer-plan-20260628/manifest.json",
       "source_manifest_sha256": "bdea1a2c64ec928cacd4dbfbc7a00e56acdeefb1a0690632624c7b258d2fa83d",
-      "source_plan_path": "artifacts/site-crawls/github-fastapi-typer-plan-20260628/plan.json",
       "source_plan_sha256": "8ef2d1c89a6f7ee452c054d2c7a27ec028bd0bf8aad71a3fd9265121b94a996d",
       "sufficient": true,
       "validated_judgment_paths": 53
     }
   ],
   "schema_version": 1,
-  "source_manifest_bundle_sha256": "1bc90a7beaea69f4c380ab381e583766d32961d2c78aded08145b79778a2409e",
-  "source_plan_bundle_sha256": "d3298eb850499a6e55e5fb1b7869bbc8ca4a83d52d1b6fa9bf6a9347ee18187a",
+  "source_path_manifest_bundle_path": ".10x/evidence/.storage/2026-07-20-repo-ranking-source-path-manifests.json",
+  "source_path_manifest_bundle_sha256": "1af85ca5e1f282e18c4eaa3c634b3da9b0ffb30de09389c799bd34fe3513c697",
   "unique_composite_identity_count": 90,
   "validation_errors": [
-    "buoy: 22 judgment paths absent from manifest",
-    "click: 7 judgment paths absent from manifest"
+    "buoy: 1 judgment path absent from selected source-path manifest",
+    "buoy: same-source baseline namespace write pending explicit approval"
   ]
 }

@@ -75,7 +75,7 @@ C4, C6, C7, and C8 must each have evidence-backed terminal disposition or explic
 
 ## Blockers
 
-The parent is intentionally non-executable. Current child blockers are recorded on C3, C4, C5, C6, C7, C8, and C9. C1 and C2 are the only immediately executable children. C7/C8 are blocked both on dependencies and on distinct pre-registered user-ratified thresholds; C1 cannot supply or infer those thresholds.
+The parent is intentionally non-executable. Current child blockers are recorded on C1 and C3-C9. C1's Click corpus is repaired, but Buoy remains insufficient on one intentionally excluded internal path and its exact proposed 903-row same-source baseline namespace write remains separately approval-gated. C7/C8 are also blocked on distinct pre-registered user-ratified thresholds; C1 cannot supply or infer those thresholds.
 
 ## Explicit exclusions
 
@@ -138,6 +138,7 @@ Reopening completed reranker/metadata/aggregation/ranking-grid work; source/test
 - 2026-07-19: Closure review confirmed that the extensive completed experiments are well evidenced and current promoted defaults remain coherent with `.10x/decisions/namespace-ranking-defaults.md` and `.10x/decisions/repo-ranking-promotion-policy.md`. Closure is nevertheless unsupported because named heavy hypotheses remain unevaluated and the latest routed portfolio is not productized. The ticket remains active; no completed experiment was reclassified as failed implementation. Review: `.10x/reviews/2026-07-19-stale-ticket-status-closure-review.md`.
 - 2026-07-19: Decomposed this umbrella into the non-executable C1-C9 graph. Only C1 local contract freeze and C2 read-only research are immediately executable; C3/C4/C5/C6/C9 retain explicit gates, and C7/C8 share one dependency-gated offline cache. No completed history, labels, model, budget, syntax/product semantics, live operation, write, default, or promotion was changed. Research: `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`.
 - 2026-07-20: Repaired PR #56 review blockers: case uniqueness is composite `repo_key:case_id` while local IDs/labels remain intact; the three-repo rule is experiment escalation only; and C7/C8 are explicitly blocked on user-ratified pre-registered thresholds that C1 cannot invent.
+- 2026-07-20: C1 PR #59 repair checked in deterministic source-path authority plus automated validation, made Click path-complete on its existing compatible v4 corpus, and froze current post-rebrand Buoy at 64 selected paths/903 proposed baseline rows. C1 remains active: one internal Buoy judgment is outside the public corpus and `github-doctacon-buoy-search-v1` requires a separate write approval. No labels or remote state changed.
 
 ## Closure note
 

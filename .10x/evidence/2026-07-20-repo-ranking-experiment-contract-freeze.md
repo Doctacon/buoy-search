@@ -7,81 +7,52 @@ Relates-To: .10x/tickets/2026-07-19-freeze-repo-ranking-experiment-contract.md, 
 
 ## What was observed
 
-Local, read-only validation loaded exactly the 13 expected checked-in repo-search datasets under the active `buoy_search.evals` schema. The files contain exactly 90 unique composite `repo_key:case_id` identities and 370 judgments. Dataset-local IDs were preserved. The local ID `top-level-request-api` intentionally occurs in both HTTPX and Requests; the distinct composite identities are `httpx:top-level-request-api` and `requests:top-level-request-api`.
+The repaired contract loads exactly 13 checked-in repo-search datasets, 90 unique composite `repo_key:case_id` identities, and 370 judgments. Dataset bytes and labels are unchanged. The local ID `top-level-request-api` intentionally occurs in both HTTPX and Requests; its composite identities remain distinct.
 
-Every judgment path was checked against the corresponding pinned local plan manifest. There are no explicit-zero judgments in this basket. Of 370 nonzero judgment paths, 341 resolve and 29 do not. The unresolved paths affect only Buoy (22 paths) and Click (7 paths), so those two repositories are **insufficient** under C1's stop condition. The other 11 repositories are sufficient. No label, local ID, judgment, grade, reason, dataset, source artifact, or namespace was changed.
+A checked-in, deterministic source-path bundle now replaces dependence on 347 MB of ignored crawl artifacts: `.10x/evidence/.storage/2026-07-20-repo-ranking-source-path-manifests.json` (1,385,787 bytes; SHA-256 `1af85ca5e1f282e18c4eaa3c634b3da9b0ffb30de09389c799bd34fe3513c697`). For each repository it stores sorted distinct `repo_path` values plus repository, commit, namespace/status, original plan and manifest hashes, `selected_corpus_artifact_hash`, selected-path count, and selected-row count. The authoritative inventory is `.10x/evidence/.storage/2026-07-20-repo-ranking-experiment-contract-inventory.json` (whole-file SHA-256 `918bdbd152fb6627dfe08d1ea0de0904dc631749165ddb2e798520e192acbd2b`; canonical payload SHA-256 `7c93ae8953e43aac2c2ed98d1ef846458329121453b2662a0d07d93c191c8c13`).
 
-The machine-readable inventory is `.10x/evidence/.storage/2026-07-20-repo-ranking-experiment-contract-inventory.json` (SHA-256 `fbdb0723f928ca08ac6a9a9dba1878a0e7974bffc77843b9e97be157411c9f97`). It contains all 90 identity triples, every dataset/plan/manifest hash, exact missing paths, repository mappings, and validation status.
+Path validation now resolves 369 of 370 judgments. Click is sufficient after compatibility was established and its source pin was moved to the existing `github-pallets-click-v4-oversize-cards` plan at commit `6ec99f89261b32f8a50848786eca055e1967659f`: all 36 judgments are members of its 144-path/1,215-row selected corpus. The prior v1 manifest was commit `679a7a0e...`, contained 140 paths/1,196 rows, and omitted three distinct judged paths; it was not corpus-compatible and was not retained as Click's contract pin.
 
-The requested worktree-local `context.md` and `plan.md` were absent. The planner artifact named by the decomposition record was inspected at `/Users/crlough/Code/personal/turbo-search/.pi-subagents/artifacts/outputs/ede1dca0-7084-420f-a122-b9568444f19f/parallel-0/1-planner/plan.md`. The source plans/manifests are ignored local artifacts under `/Users/crlough/Code/personal/turbo-search/artifacts/site-crawls/`; they are pinned below by repository-relative path and SHA-256 rather than copied or modified.
+Buoy was replanned read-only from public `Doctacon/buoy-search` branch `develop` at commit `fcb7abbe1652d2eab4ee23816b6d992d893603ac`, post-rebrand, with oversize file cards and proposed namespace `github-doctacon-buoy-search-v1`. The local plan selected exactly 64 distinct repository paths and 903 rows. It resolves 32 of 33 judgments; `.10x/specs/repo-search-eval-autoresearch.md` remains absent because checked-in internal records are intentionally excluded from public Buoy artifacts. The proposed 903-row baseline namespace write remains pending a separate explicit approval gate. No namespace was created or written.
+
+The requested worktree-local `context.md` and `plan.md` were absent. The existing C1 ticket and records governed this repair.
 
 ## Procedure
 
-Read authority:
+Read the C1 ticket, parent, referenced research/specifications/decisions/evidence, all 13 datasets, and the original local plans/manifests. Generated the current Buoy plan with:
 
-- `.10x/tickets/2026-07-19-freeze-repo-ranking-experiment-contract.md`
-- `.10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md`
-- `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`
-- `.10x/decisions/repo-ranking-promotion-policy.md`
-- `.10x/decisions/namespace-ranking-defaults.md`
-- `.10x/specs/repo-search-eval-autoresearch.md`
-- `.10x/evidence/2026-06-28-expanded-repo-ranking-basket-validation.md`
-- the planner artifact named above
-- all 13 datasets, paired source plans, and paired source manifests
+```text
+PYTHONDONTWRITEBYTECODE=1 uv run buoy plan https://github.com/Doctacon/buoy-search/tree/develop --out-dir /tmp/buoy-c1-current-plan --state-root /tmp/buoy-c1-state --namespace github-doctacon-buoy-search-v1 --repo-oversize-file-cards --json --no-progress
+```
 
-Validation was performed with Python standard-library JSON and SHA-256 handling plus the active `buoy_search.evals.load_eval_cases` loader. `PYTHONDONTWRITEBYTECODE=1` prevented bytecode writes. No credential name was read, no model was imported or loaded, and no live command or provider client was invoked.
+This made one public read-only git clone and local temporary plan files. It read no credential, loaded no model, called no retrieval/provider/live namespace service, and made no namespace/catalog write or delete. `scripts/validate_ranking_contract.py` uses only the Python standard library and deterministically verifies the checked-in inventory, source-path bundle, dataset hashes/bundle hash, schemas, 90 identities, 370 judgments, path membership, folds, namespace pattern, and compatibility hashes. CI invokes it directly before the full unittest suite.
 
 ## Frozen dataset and source mapping
 
-The bundle hashes are SHA-256 over ordered UTF-8 rows of `relative_path + NUL + file_sha256 + LF`, in the repository order shown below:
+- dataset bundle SHA-256: `3eb31ab2ac0c4b4a23b4c755668cc4480aecbdfa905893caf822c5a2aefa656e`
+- source-path manifest bundle SHA-256: `1af85ca5e1f282e18c4eaa3c634b3da9b0ffb30de09389c799bd34fe3513c697`
 
-- dataset bundle: `3eb31ab2ac0c4b4a23b4c755668cc4480aecbdfa905893caf822c5a2aefa656e`
-- plan bundle: `d3298eb850499a6e55e5fb1b7869bbc8ca4a83d52d1b6fa9bf6a9347ee18187a`
-- manifest bundle: `1bc90a7beaea69f4c380ab381e583766d32961d2c78aded08145b79778a2409e`
+| `repo_key` | Repository | Cases | Judgments | Dataset SHA-256 | Baseline namespace | Source commit | Plan SHA-256 | Manifest SHA-256 | Paths | Rows | Status |
+|---|---|---:|---:|---|---|---|---|---|---:|---:|---|
+| `black` | `psf/black` | 5 | 18 | `79606bd520ee0b5dac5bc323ea2f0d2891c9929f45bde266ba4e29cd3efcd7ef` | `github-psf-black-v1` | `c4c9a93111309459a3f0e1e268160f7ef2159077` | `5a4ffd21545b08f3d6fc99a3d2504d53c953143abdb78899aa3a9037c3efe66c` | `20bc565b7877bdc8825a19e4e258377967ff43cd6ee0990261cc6c364df062ab` | 18/18 | 2238 | sufficient |
+| `buoy` | `Doctacon/buoy-search` | 10 | 33 | `605ac5b775a0b9ce2fc6adb78c4de9ee98a597ec9c8b4cd91e0712b2ed6e8eaf` | `github-doctacon-buoy-search-v1` | `fcb7abbe1652d2eab4ee23816b6d992d893603ac` | `f1316f233857c59f6467071b95750638276ac364a6994f3b25a0a3a2c42d3b46` | `a8e82bd81e5303157691494dfb2f8de50955d072c21cef2e150ec31ae261079c` | 32/33 | 903 | **insufficient / pending approval** |
+| `click` | `pallets/click` | 10 | 36 | `10f5b7fad2542b9fc30bda307787626f5d3de30060b78f0983aeb7727f377b8b` | `github-pallets-click-v4-oversize-cards` | `6ec99f89261b32f8a50848786eca055e1967659f` | `e7daa6e9115c1da02cceee841eefd8008719ccbc46347bea3fc5689de1c0ba61` | `9b24e0ee247a3bc475e47fe4a576c4f5927b638a64da2740b948524c7d2008de` | 36/36 | 1215 | sufficient |
+| `django` | `django/django` | 5 | 21 | `852856a5cba5c00914be43bcd12b62b5a574c740542f167f9b7588cb7d8dd13e` | `github-django-django-v1` | `54495840a6a8b09ec40c793495e6541a3c0d3d5b` | `4433078fbfae6325fe699f2c08bd52f5845a72154c158a023bec2ad66cd4b510` | `ef2375de0180ae30468f31cc16861b89c4e2f252721139ed7d94670b58cbf001` | 21/21 | 36447 | sufficient |
+| `flask` | `pallets/flask` | 5 | 21 | `9f2dbb6ca3d131c68ee04d9cea3ac614ebb329a49d7c076de1f30a2c35a5194f` | `github-pallets-flask-v1` | `36e4a824f340fdee7ed50937ba8e7f6bc7d17f81` | `f1cf012100a676b070ea9d1d6f0885dcadb95dfba5b76a5c0a0e5e50b4a3df0a` | `7c896549caf74ee301746f03e966c1b9b71693c36404799b553a3b8b73a47042` | 21/21 | 1341 | sufficient |
+| `httpx` | `encode/httpx` | 5 | 20 | `c9b224b88ca619aced7a027697bd4b761b614b9f8660fdafbd0009a9ac9b6f0d` | `github-encode-httpx-v1` | `b5addb64f0161ff6bfe94c124ef76f6a1fba5254` | `a2de5c6266cc90b9493593f1131b4c95bb50069671c7e48a681ee086be472cfd` | `ec99afbf68d1032b065c5c31fa75268496206383c98610d7c1a540fd9c824578` | 20/20 | 963 | sufficient |
+| `mkdocs` | `mkdocs/mkdocs` | 5 | 22 | `cd32c7f1e119b8b0fbbb30ceed06b40e3c20d9b4d1de4dd8b6888390429286e5` | `github-mkdocs-mkdocs-v1` | `2862536793b3c67d9d83c33e0dd6d50a791928f8` | `9f066a983ea4f4bffdd726dce0d84aebc751f4fdd38aed34119cd65d4cb59651` | `c8b81a99b3b75f774a2115ad521742af854132b96a62e21a323725c45ff06afc` | 22/22 | 1930 | sufficient |
+| `pydantic` | `pydantic/pydantic` | 5 | 18 | `8ecc2c54a7a5e63ff424a67cdf357833dbc933b05147c4f4f5d59d9984fd3255` | `github-pydantic-pydantic-v1` | `080c741ecf4e113b9c7487de16ffbba5182f03bf` | `8c95c9d79e7863f62e53141d71bcecf9b7595114695861d5f8c3bb2a724cac1b` | `1f046e1a5d53e6634e07bbcdf7f8d8b1c8a00b940f97b8ccfbbe22fdf9f43c2e` | 18/18 | 7377 | sufficient |
+| `pytest` | `pytest-dev/pytest` | 10 | 52 | `9d0640002bde44ba0cc1645b85de03ccd833a7a4f3b6387a3ef6d4a8aad24674` | `github-pytest-dev-pytest-v1` | `1aa747de62dd9e9f395513c25298ba604f1724d0` | `50db24227eca82011ecf4dd3f08785c84ed4360fe10aaaaf3e967397da8b615e` | `7b7dd0310e30b393aaba245c5dbcb0796d1d4ec620892443ba4d5a1469eeab34` | 52/52 | 3493 | sufficient |
+| `requests` | `psf/requests` | 10 | 30 | `34b83e35b3fbe5c222a7ec75826a1476223597496ea006ddc0025034308a64ca` | `github-psf-requests-v1` | `4ed3d1b3204caa6806a36125a39589044a02e807` | `6a104745e689b18ed20de8d97deec0eb905136bd50899fcf230a2ed2c7a57d54` | `856b00be507ea051f8cf457b51adb3164b9d22aea93ba164aa74cfe75015aecd` | 30/30 | 729 | sufficient |
+| `rich` | `Textualize/rich` | 5 | 26 | `2f46d8a768cc50741905a31433f4e79d27c4a472a63b4cd2feb7d47fbedbbf2d` | `github-textualize-rich-v1` | `9d8f9a372cc5916fd4781fec207ced7ddac2f08f` | `0b0a4f139ff2421dadc5310dc96a0894b1403c46b1c7e82a133c3156f58297d8` | `a26d4dddc2b8b13dae149277dfca7d5c6d386ac7ab3a2c99e2380eb7c02128a5` | 26/26 | 4221 | sufficient |
+| `ruff` | `astral-sh/ruff` | 5 | 20 | `2e4e96a66890a57d363da885fb7a3ada3ef5ed86f96df4094298ccfd44aa8bc1` | `github-astral-sh-ruff-v1` | `e6856de97d72225196444b7d969b8fe084140503` | `4c11ca923b89f71c85d0c45851676d291fff53eefcf4f77c5f65e041b06455dd` | `f980d0e64617ee05ca7d6653b8683583f42ac1e72d890025f536608d960485d0` | 20/20 | 56407 | sufficient |
+| `typer` | `fastapi/typer` | 10 | 53 | `4aafafbd0a4c4c427b680e53fbce93d5f1f9154b7762f0eb59c1e8a832165947` | `github-fastapi-typer-v1` | `b210c0e2376d99344f79f11fab3ad34cf890cc20` | `8ef2d1c89a6f7ee452c054d2c7a27ec028bd0bf8aad71a3fd9265121b94a996d` | `bdea1a2c64ec928cacd4dbfbc7a00e56acdeefb1a0690632624c7b258d2fa83d` | 53/53 | 2512 | sufficient |
 
-| `repo_key` | Repository | Cases | Judgments | Dataset SHA-256 | Baseline namespace | Source commit | Plan SHA-256 | Manifest SHA-256 | Paths | Status |
-|---|---|---:|---:|---|---|---|---|---|---:|---|
-| `black` | `psf/black` | 5 | 18 | `79606bd520ee0b5dac5bc323ea2f0d2891c9929f45bde266ba4e29cd3efcd7ef` | `github-psf-black-v1` | `c4c9a93111309459a3f0e1e268160f7ef2159077` | `5a4ffd21545b08f3d6fc99a3d2504d53c953143abdb78899aa3a9037c3efe66c` | `20bc565b7877bdc8825a19e4e258377967ff43cd6ee0990261cc6c364df062ab` | 18/18 | sufficient |
-| `buoy` | `Doctacon/turbo-search` | 10 | 33 | `605ac5b775a0b9ce2fc6adb78c4de9ee98a597ec9c8b4cd91e0712b2ed6e8eaf` | `github-doctacon-turbo-search-v2-clean` | `fd7f20cdc14f8d7769bf5305e2dd67eae415a8d2` | `1669f4c3d5471e8f7bf879218c50ecaa6e621744398908169329c373e4cce918` | `6a6e67b0b0ef1ea62ee52dfcfe8aa4b825603895b17d01efe70d04606f40b434` | 11/33 | **insufficient** |
-| `click` | `pallets/click` | 10 | 36 | `10f5b7fad2542b9fc30bda307787626f5d3de30060b78f0983aeb7727f377b8b` | `github-pallets-click-v1` | `679a7a0eccbdded7a6e85680bdaaf08003765e01` | `c93e028b8a8a3bb301cd33ec45faea695b8c357c70ff528dc20ce85aeddb9af5` | `e15e52d93139abcddc52f3630b2401696a735d57809dcd5e0e8bf22dcd866c63` | 29/36 | **insufficient** |
-| `django` | `django/django` | 5 | 21 | `852856a5cba5c00914be43bcd12b62b5a574c740542f167f9b7588cb7d8dd13e` | `github-django-django-v1` | `54495840a6a8b09ec40c793495e6541a3c0d3d5b` | `4433078fbfae6325fe699f2c08bd52f5845a72154c158a023bec2ad66cd4b510` | `ef2375de0180ae30468f31cc16861b89c4e2f252721139ed7d94670b58cbf001` | 21/21 | sufficient |
-| `flask` | `pallets/flask` | 5 | 21 | `9f2dbb6ca3d131c68ee04d9cea3ac614ebb329a49d7c076de1f30a2c35a5194f` | `github-pallets-flask-v1` | `36e4a824f340fdee7ed50937ba8e7f6bc7d17f81` | `f1cf012100a676b070ea9d1d6f0885dcadb95dfba5b76a5c0a0e5e50b4a3df0a` | `7c896549caf74ee301746f03e966c1b9b71693c36404799b553a3b8b73a47042` | 21/21 | sufficient |
-| `httpx` | `encode/httpx` | 5 | 20 | `c9b224b88ca619aced7a027697bd4b761b614b9f8660fdafbd0009a9ac9b6f0d` | `github-encode-httpx-v1` | `b5addb64f0161ff6bfe94c124ef76f6a1fba5254` | `a2de5c6266cc90b9493593f1131b4c95bb50069671c7e48a681ee086be472cfd` | `ec99afbf68d1032b065c5c31fa75268496206383c98610d7c1a540fd9c824578` | 20/20 | sufficient |
-| `mkdocs` | `mkdocs/mkdocs` | 5 | 22 | `cd32c7f1e119b8b0fbbb30ceed06b40e3c20d9b4d1de4dd8b6888390429286e5` | `github-mkdocs-mkdocs-v1` | `2862536793b3c67d9d83c33e0dd6d50a791928f8` | `9f066a983ea4f4bffdd726dce0d84aebc751f4fdd38aed34119cd65d4cb59651` | `c8b81a99b3b75f774a2115ad521742af854132b96a62e21a323725c45ff06afc` | 22/22 | sufficient |
-| `pydantic` | `pydantic/pydantic` | 5 | 18 | `8ecc2c54a7a5e63ff424a67cdf357833dbc933b05147c4f4f5d59d9984fd3255` | `github-pydantic-pydantic-v1` | `080c741ecf4e113b9c7487de16ffbba5182f03bf` | `8c95c9d79e7863f62e53141d71bcecf9b7595114695861d5f8c3bb2a724cac1b` | `1f046e1a5d53e6634e07bbcdf7f8d8b1c8a00b940f97b8ccfbbe22fdf9f43c2e` | 18/18 | sufficient |
-| `pytest` | `pytest-dev/pytest` | 10 | 52 | `9d0640002bde44ba0cc1645b85de03ccd833a7a4f3b6387a3ef6d4a8aad24674` | `github-pytest-dev-pytest-v1` | `1aa747de62dd9e9f395513c25298ba604f1724d0` | `50db24227eca82011ecf4dd3f08785c84ed4360fe10aaaaf3e967397da8b615e` | `7b7dd0310e30b393aaba245c5dbcb0796d1d4ec620892443ba4d5a1469eeab34` | 52/52 | sufficient |
-| `requests` | `psf/requests` | 10 | 30 | `34b83e35b3fbe5c222a7ec75826a1476223597496ea006ddc0025034308a64ca` | `github-psf-requests-v1` | `4ed3d1b3204caa6806a36125a39589044a02e807` | `6a104745e689b18ed20de8d97deec0eb905136bd50899fcf230a2ed2c7a57d54` | `856b00be507ea051f8cf457b51adb3164b9d22aea93ba164aa74cfe75015aecd` | 30/30 | sufficient |
-| `rich` | `Textualize/rich` | 5 | 26 | `2f46d8a768cc50741905a31433f4e79d27c4a472a63b4cd2feb7d47fbedbbf2d` | `github-textualize-rich-v1` | `9d8f9a372cc5916fd4781fec207ced7ddac2f08f` | `0b0a4f139ff2421dadc5310dc96a0894b1403c46b1c7e82a133c3156f58297d8` | `a26d4dddc2b8b13dae149277dfca7d5c6d386ac7ab3a2c99e2380eb7c02128a5` | 26/26 | sufficient |
-| `ruff` | `astral-sh/ruff` | 5 | 20 | `2e4e96a66890a57d363da885fb7a3ada3ef5ed86f96df4094298ccfd44aa8bc1` | `github-astral-sh-ruff-v1` | `e6856de97d72225196444b7d969b8fe084140503` | `4c11ca923b89f71c85d0c45851676d291fff53eefcf4f77c5f65e041b06455dd` | `f980d0e64617ee05ca7d6653b8683583f42ac1e72d890025f536608d960485d0` | 20/20 | sufficient |
-| `typer` | `fastapi/typer` | 10 | 53 | `4aafafbd0a4c4c427b680e53fbce93d5f1f9154b7762f0eb59c1e8a832165947` | `github-fastapi-typer-v1` | `b210c0e2376d99344f79f11fab3ad34cf890cc20` | `8ef2d1c89a6f7ee452c054d2c7a27ec028bd0bf8aad71a3fd9265121b94a996d` | `bdea1a2c64ec928cacd4dbfbc7a00e56acdeefb1a0690632624c7b258d2fa83d` | 53/53 | sufficient |
+The source-path bundle is the clean-checkout authority for path membership. The original plan/manifest hashes and deterministic selected-corpus artifact hashes retain provenance without checking in page/chunk content. `source_artifact_hash` is no longer an inventory field; the exact field is `selected_corpus_artifact_hash`.
 
-The dataset's `metadata.commit_sha` and `metadata.namespace`, where present, match the pinned manifest/plan. Buoy, Click, and Requests omit one or both values in dataset metadata; their mapping above is pinned from the ranking evidence and exact source plan/manifest instead.
+### Exact remaining blocker
 
-### Exact insufficient paths
-
-Buoy's dataset now names `src/buoy_search/*` paths, while its pinned ranking source manifest at commit `fd7f20c...` contains the pre-rename `src/turbo_search/*` corpus. The unresolved checked-in paths are:
-
-- `buoy:github-url-routing`: `src/buoy_search/crawler.py`, `src/buoy_search/github_repo.py`
-- `buoy:github-local-acquisition`: `src/buoy_search/github_repo.py`, `src/buoy_search/crawler.py`
-- `buoy:repo-file-selection-corpus`: `src/buoy_search/github_repo.py`, `src/buoy_search/chunker.py`
-- `buoy:plan-command-local-only`: `src/buoy_search/cli.py`, `src/buoy_search/plan_artifacts.py`
-- `buoy:apply-preflight-approved-safety`: `src/buoy_search/apply.py`, `src/buoy_search/cli.py`, `src/buoy_search/applied_state.py`
-- `buoy:plan-artifacts-github-metadata`: `src/buoy_search/plan_artifacts.py`, `src/buoy_search/github_repo.py`
-- `buoy:chunking-code-and-markdown`: `src/buoy_search/chunker.py`, `src/buoy_search/github_repo.py`
-- `buoy:retrieval-hybrid-command`: `src/buoy_search/retriever.py`, `src/buoy_search/cli.py`
-- `buoy:evals-composite-metrics`: `src/buoy_search/evals.py`, `.10x/specs/repo-search-eval-autoresearch.md`
-- `buoy:evals-cli-safety`: `src/buoy_search/cli.py`, `src/buoy_search/evals.py`, `src/buoy_search/retriever.py`
-
-Click's pinned default manifest omits these judged paths (including oversized or otherwise unselected files); they were not reinterpreted:
-
-- `click:command-group-decorators`: `src/click/core.py`
-- `click:command-context-invocation`: `src/click/core.py`
-- `click:option-argument-parser`: `src/click/core.py`, `tests/test_options.py`
-- `click:terminal-ui-prompts-progress-style`: `tests/test_termui.py`
-- `click:exceptions-usage-errors`: `tests/test_options.py`
-- `click:help-formatting-output`: `src/click/core.py`
-
-The inventory JSON is the authoritative exact machine-readable list. C1 does not repair these labels. Until source-compatible manifests are separately supplied without changing labels, the 13-repo basket, three-repo pilot (which includes Buoy), C3 capture, and every dependent comparison remain blocked.
+Only `buoy:evals-composite-metrics` -> `.10x/specs/repo-search-eval-autoresearch.md` is absent from the selected public corpus. C1 does not edit or reinterpret that label. Buoy also has no approved same-source remote baseline: the exact proposal is namespace `github-doctacon-buoy-search-v1`, source commit `fcb7abbe1652d2eab4ee23816b6d992d893603ac`, selected corpus artifact `b6c5d128295f442fcae21472c9bcb037ecb44101ca648115e8f666ba59a6f0ce`, and 903 rows. Any write requires a separate explicit approval; this repair grants none. Until both Buoy conditions are resolved, C3 and dependent comparisons remain blocked.
 
 ## Immutable comparison contract
 
@@ -183,8 +154,7 @@ schema_version
 contract_id
 contract_inventory_sha256
 dataset_bundle_sha256
-source_plan_bundle_sha256
-source_manifest_bundle_sha256
+source_path_manifest_bundle_sha256
 created_at_utc
 capture_tool_commit
 request_accounting
@@ -276,16 +246,15 @@ Cache lookup and every C7/C8 join MUST use `composite_case_id`; local `case_id` 
 ## Validation output
 
 ```text
-active schema load: 13 files; per-file counts 5/10 as expected; total 90
-composite identities: 90 total, 90 unique
-cross-repo duplicate local IDs: top-level-request-api -> httpx, requests (allowed)
-judgments: 370 total; 0 explicit zero
-manifest path checks: 341 resolved; 29 unresolved
-repository status: 11 sufficient; buoy and click insufficient
+$ PYTHONDONTWRITEBYTECODE=1 python3 scripts/validate_ranking_contract.py
+{"composite_identities": 90, "dataset_bundle_sha256": "3eb31ab2ac0c4b4a23b4c755668cc4480aecbdfa905893caf822c5a2aefa656e", "datasets": 13, "folds": 13, "insufficient_repositories": ["buoy"], "inventory_payload_sha256": "7c93ae8953e43aac2c2ed98d1ef846458329121453b2662a0d07d93c191c8c13", "inventory_sha256": "918bdbd152fb6627dfe08d1ea0de0904dc631749165ddb2e798520e192acbd2b", "judgments": 370, "pending_baseline_approval": ["buoy"], "source_path_manifest_bundle_sha256": "1af85ca5e1f282e18c4eaa3c634b3da9b0ffb30de09389c799bd34fe3513c697"}
+
+path membership: 369 resolved; 1 unresolved
+repository status: 12 path-complete; buoy insufficient and baseline approval pending
 models loaded/downloaded: 0
 credentials read: 0
-live/provider queries: 0
-remote/local namespace writes or deletes: 0
+retrieval/provider/live namespace queries: 0
+namespace/catalog writes or deletes: 0
 labels/datasets modified: 0
 ```
 
@@ -293,18 +262,18 @@ labels/datasets modified: 0
 
 Supports:
 
-- The 13 files and 90 composite identities are now hash-pinned without changing dataset-local identity or label bytes.
-- Eleven repositories have complete local source-manifest path reproduction.
-- Folds, metrics, paired baseline semantics, pilot escalation, promotion policy, raw artifact/cache identity, hashing, tolerance, redaction, and request accounting are explicit for later children.
+- A clean checkout can validate all dataset and path-membership claims without the ignored 347 MB crawl artifacts.
+- Click's v4 source commit and selected corpus are compatible with every existing Click judgment; no label was edited.
+- Buoy's post-rebrand selected corpus, exact 64-path/903-row counts, proposed namespace, and pending-write gate are explicit.
+- Folds, metrics, paired baseline semantics, pilot escalation, promotion policy, raw artifact/cache identity, hashing, tolerance, redaction, and request accounting remain explicit.
 
 Challenges:
 
-- Buoy's current renamed labels do not reproduce against the historical ranking manifest.
-- Click's manifest does not contain seven judged paths.
-- The source plans/manifests are ignored local artifacts, not checked-in files; their hashes and expected relative paths are durable, but a cold environment must restore exact matching artifacts before use.
+- Buoy's selected public corpus intentionally excludes the one judged internal `.10x` path, so Buoy and the full basket remain insufficient.
+- `github-doctacon-buoy-search-v1` has not been approved, created, or populated; same-source remote baseline compatibility is not established.
 - Historical plans do not record an immutable embedding-model revision, so index-changing experiments need a freshly paired baseline with a fully pinned model contract.
 - C7/C8 thresholds remain deliberately unresolved and user-gated.
 
 ## Limits
 
-This evidence proves local file/schema/hash/path observations and freezes a contract. It does not prove label quality, retrieval quality, model suitability, namespace existence/current contents, provider compatibility, promotion eligibility, or absence of defects. No C3+ work was performed. Independent review is still required; the C1 ticket remains active pending that review.
+This evidence proves checked-in schema/hash/path observations and a read-only public-source Buoy plan. It does not prove label quality, retrieval quality, model suitability, namespace existence/current contents, provider compatibility, promotion eligibility, or absence of defects. No C3+ work, live retrieval, namespace write, merge, or approval occurred. Independent review is still required; C1 remains active because Buoy is insufficient and its same-source baseline write is separately gated.
