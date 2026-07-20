@@ -21,7 +21,24 @@ The implementation worktree passed the focused syntax/repository/CLI suites, the
 
 `git diff --check` also passed. Test output contained only the suite's pre-existing temporary plan-cleanup warnings; no test failed.
 
-Hosted GitHub Actions run `29770845903` passed on PR #69 implementation commit `2e92103ad92d1c4aeb2e83899e06c6850629fe12`: Python 3.11 passed in 49 seconds, Python 3.13 passed in 45 seconds, and the dependent distribution build passed in 11 seconds. The subsequently appended evidence-only commit is required to pass the same exact-head checks before handoff.
+Hosted GitHub Actions run `29770845903` passed on PR #69 implementation commit `2e92103ad92d1c4aeb2e83899e06c6850629fe12`: Python 3.11 passed in 49 seconds, Python 3.13 passed in 45 seconds, and the dependent distribution build passed in 11 seconds. The evidence-only follow-up head also passed hosted run `29771166533`.
+
+## PR #69 review-blocker repair validation
+
+Review repair commit `b5588aa48c8d916e8ff50eb3d77a2ab4403bd0dc` makes explicit `current-default` fail closed unless generic `--max-chunks` output contains the complete expected generic chunk sequence—including exactly one unchanged first header—for every selected code file. Tests now exercise truncation immediately before a later code-file header, CRLF acquisition through `Path.read_text` into both syntax arms, and a bounded `buoy plan --repo-chunking-arm python-ast` command through written plan/manifest artifacts while the existing no-arm artifact assertion remains unchanged.
+
+| Runtime | Command | Result |
+|---|---|---|
+| CPython 3.11.5 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.11 python -m unittest tests.test_repo_syntax_chunking tests.test_github_repo tests.test_cli -q` | PASS, 72 tests |
+| CPython 3.11.5 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.11 python -m unittest discover -s tests -p 'test_*.py' -q` | PASS, 465 tests |
+| CPython 3.11.5 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.11 python scripts/validate_ranking_contract.py` | PASS, 13 datasets / 90 identities / 369 judgments / 13 folds |
+| CPython 3.13.0 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.13 python -m unittest tests.test_repo_syntax_chunking tests.test_github_repo tests.test_cli -q` | PASS, 72 tests |
+| CPython 3.13.0 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.13 python -m unittest discover -s tests -p 'test_*.py' -q` | PASS, 465 tests |
+| CPython 3.13.0 | `PYTHONDONTWRITEBYTECODE=1 uv run --python 3.13 python scripts/validate_ranking_contract.py` | PASS, 13 datasets / 90 identities / 369 judgments / 13 folds |
+| Build | `rm -rf /tmp/buoy-pr69-review-dist && uv build --out-dir /tmp/buoy-pr69-review-dist` | PASS, wheel and source distribution built outside the project |
+| Hosted CI | GitHub Actions run `29771927189` on commit `b5588aa48c8d916e8ff50eb3d77a2ab4403bd0dc` | PASS, Python 3.11 (52s), Python 3.13 (45s), distribution build (9s) |
+
+An initial attempt to launch both `uv run --python 3.11` and `uv run --python 3.13` validation concurrently failed because both commands replace the worktree's shared `.venv`. The same commands were rerun sequentially by runtime and passed as recorded above; the failure did not expose an implementation defect or alter tracked files.
 
 ## Coverage represented
 
