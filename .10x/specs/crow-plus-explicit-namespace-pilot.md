@@ -6,9 +6,9 @@ Updated: 2026-07-20
 
 ## Draft status and ratified direction
 
-The user ratified Crow-Plus at 768 dimensions as the first dynamic content-vector candidate; an explicit-namespace-only pilot with no namespace cards, catalog participation, or automatic routing; complete local staging and validation of every vector before the first remote content write; and separate approvals for bootstrap, bounded measurement, and indexing/write.
+The user ratified Crow-Plus at 768 dimensions as the first dynamic content-vector candidate; an explicit-namespace-only pilot with no namespace cards, catalog participation, or automatic routing; complete local staging and validation of every vector before the first remote content write; and five independent approvals in order for specification, bootstrap/download, bounded measurement load, implementation/source changes, and indexing/write. No phase approval or success implies the next.
 
-This specification remains **draft** because the exact resource-verification checkpoint in `.10x/specs/crow-plus-resource-verification-checkpoint.md` is proposed but not ratified. It MUST NOT authorize implementation, evaluation, model bootstrap/load/inference, or remote work. No executable implementation/evaluation ticket may be created until the checkpoint is approved and the governing focused specifications are active.
+This specification remains **draft** because the exact resource-verification checkpoint in `.10x/specs/crow-plus-resource-verification-checkpoint.md` is proposed but not ratified. It MUST NOT authorize implementation, evaluation, model bootstrap/download/load/inference, or remote work. No executable implementation/evaluation ticket may be created until the checkpoint is approved and the governing focused specifications are active.
 
 ## Purpose and scope
 
@@ -30,6 +30,8 @@ The pilot MUST bind all of these values in plans, staged artifacts, namespace id
 - canonical contract hash over every field above plus inference precision and loading strategy.
 
 A model/revision/dimension/prefix/pooling/normalization/precision/distance change MUST produce a different contract hash and a different new namespace. No conversion, projection, truncation, padding, or reuse of old vectors is permitted.
+
+The bounded measurement MUST use only the exact literal query and code/document inputs defined and hashed in `.10x/specs/crow-plus-resource-verification-checkpoint.md`. It MUST encode them sequentially as two separate batch-1 calls and receive two separate `[1,768]` outputs. Token IDs are recorded only after the pinned tokenizer is bootstrapped; neither input may be changed or truncated.
 
 ## Explicit namespace only
 
@@ -73,14 +75,15 @@ Any missing, duplicate, non-finite, wrong-dimension, out-of-norm, hash-mismatche
 
 ## Approval boundaries
 
-Four boundaries are independent and non-transitive:
+Five phases require five independent, non-transitive approvals in this fixed order. Approval or success of one phase authorizes only that phase and does not authorize, approve, or imply the next:
 
-1. **Specification/checkpoint approval** may activate the behavior contracts only; it authorizes no operation.
-2. **Bootstrap approval** authorizes only the exact immutable files, bytes, dedicated cache root, and disk bounds in the approved checkpoint. It authorizes no model construction, inference, source change, or remote operation.
-3. **Bounded measurement approval** authorizes only the exact cached model load/inference observations stated in the checkpoint. Measured values and output compliance gate any later implementation or indexing request.
-4. **Indexing/write approval** is requested only after implementation/tests/review and exact local plan/staging evidence exist. It names exact namespaces, rows, writes, storage, staged-artifact hash, and zero deletes. No prior approval implies it.
+1. **Specification approval** may activate the behavior contracts only; it authorizes no executable ticket or operation.
+2. **Bootstrap/download approval** authorizes only the exact immutable files, bytes, dedicated cache root, and disk bounds in the approved checkpoint. It authorizes no model construction, inference, source/test change, or remote operation.
+3. **Bounded measurement load approval** authorizes only the exact cached model load and two literal-input inference observations stated in the checkpoint. It authorizes no implementation/source change, staging, indexing, or remote operation.
+4. **Implementation/source changes approval** authorizes only the bounded implementation, test changes, and local plan/staging evidence named in its later executable ticket. It authorizes no remote client operation, namespace creation, indexing, or write.
+5. **Indexing/write approval** may be requested only after implementation, tests, review, and exact local plan/staging evidence exist. It must name exact namespaces, rows, writes, storage, staged-artifact hash, and zero deletes.
 
-Implementation approval, if separately granted after measurement, is also not indexing/write approval.
+A failed phase stops progression. A successful phase merely makes the next approval request eligible; it never grants that approval.
 
 ## Failure and recovery
 

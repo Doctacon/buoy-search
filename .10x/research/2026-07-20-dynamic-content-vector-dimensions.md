@@ -8,9 +8,9 @@ Updated: 2026-07-20
 
 How could Buoy support a 768- or 3,584-dimensional **content** embedding without changing the independent 384-dimensional namespace-card routing projection, silently mixing incompatible namespaces, migrating existing namespaces by default, or weakening offline/resource controls?
 
-The user ratified Crow-Plus at 768 dimensions as the first candidate, contained in an explicit-namespace-only pilot with no cards, catalog participation, or automatic routing. Every vector plus resource/output compliance must be staged and validated before the first remote content write. Bootstrap, bounded measurement, implementation, and indexing/write remain separate approval boundaries.
+The user ratified Crow-Plus at 768 dimensions as the first candidate, contained in an explicit-namespace-only pilot with no cards, catalog participation, or automatic routing. Every vector plus resource/output compliance must be staged and validated before the first remote content write. Five phases require five independent approvals in this fixed order: specification, bootstrap/download, bounded measurement load, implementation/source changes, and indexing/write. Approval or success of one phase does not authorize, approve, or imply the next.
 
-This selection does not supersede the active 384-dimensional default pipeline or C4's stop. It approves no download/load/inference/source change/test/remote operation. Exact resource thresholds remain unratified; focused draft specifications record the selected behavior and one exact conservative checkpoint for confirm-or-correct approval.
+This selection does not supersede the active 384-dimensional default pipeline or C4's stop. It approves no bootstrap/download, load/inference, source/test change, or remote operation. Exact resource thresholds remain draft and unratified; focused draft specifications record the selected behavior and one exact conservative checkpoint for confirm-or-correct approval.
 
 ## Authority and observed current boundary
 
@@ -69,12 +69,12 @@ For comparison, current raw `[384]f16` vector payload is exactly 768 bytes; `[76
 Read-only host inspection observed an Apple `Mac14,9` with M2 Pro, 17,179,869,184 bytes unified memory, macOS 26.5.1 (`25F80`), and 34,890,539,008 bytes available disk. `.10x/specs/crow-plus-resource-verification-checkpoint.md` proposes one exact host-specific checkpoint:
 
 - bootstrap the complete immutable 611,525,163-byte Crow-Plus tree into one absent dedicated cache root, with a 611,525,163-byte transfer ceiling, 805,306,368-byte allocated-cache ceiling, and 5-GiB start/4-GiB post-bootstrap disk floors;
-- measure only on that exact M2 Pro/MPS host and locked dependencies, constructing float32 then casting to float16, batch size 1, with exactly two sequential inputs (one token and exactly 1,024 tokens);
-- require `[1,768]`, all-finite, L2 norm `[0.999, 1.001]` outputs;
+- measure only on that exact M2 Pro/MPS host and locked dependencies, constructing float32 then casting to float16, with exactly two sequential batch-1 calls: the 51-byte UTF-8 query `Where does Buoy validate content vector dimensions?` with no final newline (SHA-256 `4f51d3b93aea75b1f2f58ae55eda6a74b112bb2d1e236549569d64132379d8cc`), then the 129-byte UTF-8 LF-terminated code/document fixed in the checkpoint (SHA-256 `a89366d7ffbd3e7816a58e297ebc2605d24dd4c98ae0f92627fc0c6cf2981260`); pinned tokenizer IDs/counts are recorded after bootstrap and both literals must fit within 1,024 tokens without truncation;
+- require a separate `[1,768]`, all-finite, L2 norm `[0.999, 1.001]` output from each call; a combined batch/output is prohibited;
 - start with at least 8 GiB available memory; hard-abort at 4 GiB child RSS, 2 GiB MPS current allocation, 3 GiB MPS driver allocation, 120 seconds load, or 300 seconds total;
 - sample external RSS/time and in-process MPS counters at most every 100 ms and fail on a sample gap over 200 ms; qualification additionally requires 3 GiB RSS, 1.5 GiB MPS-current, 2.25 GiB MPS-driver, 90-second load, and 225-second total ceilings.
 
-These exact values are a **proposal**, not ratified bounds. They resolve the prior circularity: bounds and observation/abort behavior are approved before measurement; measured values must then pass the qualification gate before implementation or indexing can be requested. Until a permitted measurement, construction peak, steady host RAM, and peak/steady device memory remain unknown blockers, not facts. C2's 2/24/48 GiB values remain analytical planning estimates only.
+These exact values are a **proposal**, not ratified bounds. They resolve the prior circularity: phase 1 must approve the bounds and observation/abort behavior before phase 2 bootstrap/download can be requested; phase 2 does not authorize phase 3 bounded measurement load; passing phase 3 does not authorize phase 4 implementation/source changes; and phase 4 does not authorize phase 5 indexing/write. Until a permitted measurement, construction peak, steady host RAM, and peak/steady device memory remain unknown blockers, not facts. C2's 2/24/48 GiB values remain analytical planning estimates only.
 
 ## Candidate-independent content contract
 
@@ -186,22 +186,23 @@ No new dependency is currently justified: immutable metadata indicates the locke
 
 Stop with no active pilot spec, executable implementation/evaluation ticket, download, load, inference, source/test change, or remote operation if any of the following remains unresolved:
 
-1. exact proposed resource checkpoint approval, including cache/disk/hardware/precision/load-time/host/device/batch/observation/abort/output thresholds;
-2. independent review of this repaired shaping output and draft specifications;
-3. separate bootstrap approval and exact immutable manifest evidence;
-4. separate bounded-measurement approval and passing measured resource/output evidence;
-5. later implementation authorization, active governing specs, and a bounded executable implementation ticket;
-6. exact new namespaces, rows, writes, storage, staged-artifact identity, and separate indexing/write approval;
-7. locked dependency compatibility/no-remote-code/offline-network behavior fails;
-8. any proposal changes existing namespaces/cards/catalog/defaults, invokes automatic routing, or requires migration.
+1. phase 1 specification approval of the exact proposed resource checkpoint, including cache/disk/hardware/precision/load-time/host/device/batch/input/observation/abort/output thresholds, after independent review of this repaired shaping output and draft specifications;
+2. phase 2 bootstrap/download approval and exact immutable manifest evidence;
+3. phase 3 bounded-measurement-load approval and passing measured resource/output evidence;
+4. phase 4 implementation/source-changes approval, active governing specs, and a bounded executable implementation ticket;
+5. phase 5 indexing/write approval naming exact new namespaces, rows, writes, storage, and staged-artifact identity;
+6. locked dependency compatibility/no-remote-code/offline-network behavior fails;
+7. any proposal changes existing namespaces/cards/catalog/defaults, invokes automatic routing, or requires migration.
+
+The five approvals are independent and non-transitive in that order. No phase approval or success implies the next.
 
 C4 remains blocked because its exact 384-dimensional candidate condition was not met. This selected dynamic pilot uses a separate contract and MUST NOT widen or execute C4.
 
 ## Exact confirm-or-correct checkpoint
 
-The candidate, explicit-only containment, complete staging-before-write rule, and separate approval boundaries are ratified. The remaining question is only the exact resource proposal in `.10x/specs/crow-plus-resource-verification-checkpoint.md`: dedicated empty cache; immutable 611,525,163-byte tree; 611,525,163-byte transfer and 768-MiB cache ceilings; 5-GiB/4-GiB disk floors; observed M2 Pro/MPS host; float32 construction then float16 inference; batch 1; two bounded inputs; 120-second load/300-second total hard deadlines; 4-GiB RSS/2-GiB MPS-current/3-GiB MPS-driver hard ceilings; 100-ms monitoring; tighter 75%-of-bound qualification values; immediate abort; and exact 768/finite/norm `[0.999,1.001]` output checks.
+The candidate, explicit-only containment, complete staging-before-write rule, and five independent phase boundaries are ratified. The remaining question is only the exact resource proposal in `.10x/specs/crow-plus-resource-verification-checkpoint.md`: dedicated empty cache; immutable 611,525,163-byte tree; 611,525,163-byte transfer and 768-MiB cache ceilings; 5-GiB/4-GiB disk floors; observed M2 Pro/MPS host; float32 construction then float16 inference; two sequential batch-1 calls using the exact 51-byte query (`4f51d3b9…d8cc`) then exact 129-byte LF-terminated code/document (`a89366d7…1260`), with separate `[1,768]` finite normalized outputs; 120-second load/300-second total hard deadlines; 4-GiB RSS/2-GiB MPS-current/3-GiB MPS-driver hard ceilings; 100-ms monitoring; tighter 75%-of-bound qualification values; and immediate abort.
 
-Confirm or correct those exact values before either draft spec is activated. No executable implementation/evaluation ticket may be created before that approval. Checkpoint approval activates records only; bootstrap and bounded measurement still require separate approvals.
+Confirm or correct those exact values before either draft spec is activated. The thresholds remain draft and unratified. Phase 1 specification approval activates records only; phases 2–5—bootstrap/download, bounded measurement load, implementation/source changes, and indexing/write—each require their own later approval, and no phase implies the next. No executable implementation/evaluation ticket may be created before phase 1 approval.
 
 ## Safety and limits
 
