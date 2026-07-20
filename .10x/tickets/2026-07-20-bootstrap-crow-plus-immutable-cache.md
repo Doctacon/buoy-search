@@ -1,4 +1,4 @@
-Status: blocked
+Status: active
 Created: 2026-07-20
 Updated: 2026-07-20
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
@@ -8,7 +8,7 @@ Depends-On: .10x/tickets/done/2026-07-20-shape-dynamic-content-vector-dimensions
 
 ## Outcome
 
-Own the next separate approval checkpoint for downloading and verifying the exact immutable Crow-Plus revision into one dedicated cache. This ticket is **blocked and not executable until the user separately approves phase 2**. Phase 1 specification ratification does not authorize any transfer or operation.
+Own the separately approved checkpoint for downloading and verifying the exact immutable Crow-Plus revision into one dedicated cache. The user separately approved phase 2 and that provenance was recorded before manifest retrieval or transfer. The bootstrap has completed within the approved bounds and the ticket remains active pending required independent review. Phase 1 specification ratification alone did not authorize this operation, and phase 2 success grants no phase 3 authority.
 
 ## Scope after separate approval
 
@@ -36,11 +36,11 @@ Own the next separate approval checkpoint for downloading and verifying the exac
 - Evidence records success or exact failure without model import/load/inference, source/test/lockfile mutation, credential access, live service access, namespace/card/catalog/default operation, indexing, or write.
 - Closure states explicitly that bootstrap success grants no phase 3 bounded-measurement-load authority.
 
-## Approval gate and blockers
+## Approval gate and review state
 
-Blocked on one explicit user approval of this exact phase 2 operation and its immutable revision/cache/transfer/cache-allocation/disk/telemetry/no-remote-code boundaries. The ticket MUST remain non-executable until that approval is separately given and recorded.
+The user separately approved this exact phase 2 operation and its immutable revision/cache/transfer/cache-allocation/disk/telemetry/no-remote-code boundaries. That approval was recorded in the progress log before the first manifest request or transfer. Execution evidence is recorded at `.10x/evidence/2026-07-20-crow-plus-phase-2-immutable-cache-bootstrap.md`.
 
-Phase 3 bounded measurement load, phase 4 implementation/source changes, and phase 5 indexing/write remain blocked under the active specifications. They have no executable owners because no prior phase has made their approval checkpoint eligible.
+The ticket remains active pending required independent review; it MUST NOT be closed or merged from execution evidence alone. Phase 3 bounded measurement load is now eligible only for a future separate user approval and remains unauthorized. Phase 4 implementation/source changes and phase 5 indexing/write also remain blocked under the active specifications. No downstream operation has transitive authority from phase 2 success.
 
 ## Explicit exclusions
 
@@ -61,3 +61,5 @@ Approval provenance; pre-transfer immutable manifest; exact command/environment 
 ## Progress and notes
 
 - 2026-07-20: Opened blocked after phase 1 ratification as the smallest next durable owner. No phase 2 approval exists. No download, model import/load/inference, source/test/lockfile change, credential access, live operation, namespace/card/catalog/default operation, indexing, or write occurred.
+- 2026-07-20: The user explicitly approved execution of this exact phase 2 ticket for `Shuu12121/CodeSearch-ModernBERT-Crow-Plus@96ff525a7aa3bf8bfa90d77337c2b24bd45229af`, including the dedicated absent cache root, exact 611,525,163-byte manifest/transfer ceiling, 805,306,368-byte allocated-cache ceiling, 5-GiB pre/4-GiB post free-disk floors, public no-token/no-credential access, telemetry/update controls, complete regular-file hashing, failure cleanup limited to the dedicated incomplete cache, and all phase 2 exclusions. Ticket activated before any manifest request or transfer. Phase 3 remains unauthorized.
+- 2026-07-20: Reproduced the complete 14-file immutable manifest before transfer at exactly 611,525,163 bytes, then transferred and twice hashed every regular file in the previously absent dedicated cache. Observed 34,815,438,848 free bytes at transfer start, exactly 611,525,163 received bytes, 626,688,000 final allocated cache bytes, and 34,192,142,336 post-transfer free bytes. Public raw HTTPS used no authorization header or Hub/model import; telemetry/update controls were set and token variables removed without reading them. No dependency, model load/inference, source/test/lockfile, credential, Turbopuffer, namespace/card/catalog/default/state, staging, indexing, delete, or write operation occurred. Evidence: `.10x/evidence/2026-07-20-crow-plus-phase-2-immutable-cache-bootstrap.md`. Ticket remains active pending required independent review; phase 3 remains unauthorized.
