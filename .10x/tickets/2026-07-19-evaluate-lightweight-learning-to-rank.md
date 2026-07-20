@@ -45,8 +45,8 @@ Threshold ratification provenance; cache/hash and 90-composite-identity provenan
 
 ## Blockers
 
-- C1 is complete with Buoy explicitly insufficient; C3 remains blocked and incomplete.
-- The definition of a material weight and exact sign/order stability thresholds are not pre-registered or user-ratified.
+- C1 is complete and the ratified Buoy judgment removal preserves 13 repositories/90 composite identities with 369 judgments, but C3 remains blocked and incomplete because the Buoy baseline is unapproved/unverified and the retrieval-only checkpoint is unapproved.
+- `.10x/specs/lightweight-learning-to-rank-stability-thresholds.md` is a draft exact threshold proposal only. Its `ln(1.25)` material cutoff, `10/13` basket-material rule, `12/13` sign rule, and `ln(1.10)`/`10/13` pairwise order rule are not user-ratified.
 - C1 cannot infer these values or make C7 executable. The labels remain assistant-drafted and non-product-ratifying.
 
 ## Explicit exclusions
@@ -59,9 +59,11 @@ Live calls/writes; label review/editing; repository identity features; productio
 - `.10x/tickets/done/2026-07-19-freeze-repo-ranking-experiment-contract.md`
 - `.10x/tickets/2026-07-19-capture-current-repo-candidates-and-baselines.md`
 - `.10x/decisions/repo-ranking-promotion-policy.md`
+- `.10x/specs/lightweight-learning-to-rank-stability-thresholds.md` (draft; not ratified)
 
 ## Progress and notes
 
 - 2026-07-19: Opened as an offline dependency-gated child. No features, labels, model weights, cache, source, tests, or product behavior were created.
 - 2026-07-20: Marked explicitly blocked because material-weight/sign/order thresholds were never pre-registered or user-ratified; C1 completion alone cannot activate this child.
 - 2026-07-20: C1 closed with Buoy explicitly insufficient. C7 remains blocked on C3 and its independent threshold ratification; no fitting or scoring was authorized.
+- 2026-07-20: Shaped a draft pre-registration without fitting or inspecting outcomes. The proposal standardizes each feature from the 12 training repositories before fitting; uses `abs(w) >= ln(1.25)` in at least `10/13` folds for basket materiality; requires one nonzero sign in at least `12/13`; and requires every basket-material pair's strict-or-tied absolute-weight relation, with `ln(1.10)` deadband, in at least `10/13` folds and at most one direct strict reversal. Equality, absent/zero weights, equal repo fold voting, complete reporting, and failure/no-action behavior are explicit in the draft spec. C7 remains blocked pending exact user ratification and C3; no training, scoring, source, tests, live calls, labels, cache, or product behavior changed.
