@@ -1,6 +1,6 @@
 Status: active
 Created: 2026-06-28
-Updated: 2026-07-19
+Updated: 2026-07-20
 Depends-On: .10x/evidence/2026-06-28-repo-search-file-ranking-promotion-validation.md, .10x/research/2026-06-28-repo-search-precision-state-of-art.md
 
 # Repo Search Heavy Ranking Experiments
@@ -20,7 +20,7 @@ This is a non-executable parent plan. Execution belongs only to the bounded C1-C
 
 The existing progress log and evidence remain authoritative for completed local rerankers, file/page grouping and aggregation, current `repo_code` scoring, opt-in searchable path/symbol metadata and regex breadcrumbs, metadata/file-card/oversize ablations, 13-repo ranking grids, and distribution-safe promoted ranking changes. None are reopened by this graph.
 
-The known broad basket is 13 repositories and 90 assistant-drafted, source-backed cases: 10 each for Buoy, Requests, Click, pytest, and Typer; 5 each for Black, Ruff, Flask, Django, Pydantic, HTTPX, MkDocs, and Rich. The labels support calibration/experiment evidence, not a production-ground-truth claim.
+The known broad basket is 13 repositories and 90 unique composite `repo_key:case_id` identities: 10 each for Buoy, Requests, Click, pytest, and Typer; 5 each for Black, Ruff, Flask, Django, Pydantic, HTTPX, MkDocs, and Rich. Each dataset-local `case_id` and every label remain unchanged; local IDs need not be globally unique. The labels support calibration/experiment evidence, not a production-ground-truth claim.
 
 ## Child graph and sequence
 
@@ -30,20 +30,21 @@ The known broad basket is 13 repositories and 90 assistant-drafted, source-backe
 4. **C4 — blocked model/download/new-namespace pilot after C1+C2:** `.10x/tickets/2026-07-19-evaluate-code-aware-embedding-pilot.md`
 5. **C5 — local syntax implementation, blocked pending C1 and a ratified active focused syntax spec:** `.10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md`
 6. **C6 — blocked live syntax evaluation after C5 and exact write approval:** `.10x/tickets/2026-07-19-evaluate-python-syntax-chunking.md`
-7. **C7 — offline held-out ranker after C1+C3:** `.10x/tickets/2026-07-19-evaluate-lightweight-learning-to-rank.md`
-8. **C8 — offline routed-profile reproduction/generalization after C1+C3:** `.10x/tickets/2026-07-19-reproduce-and-generalize-routed-profile-selection.md`
+7. **C7 — blocked offline held-out ranker after C1+C3 and user-ratified material-weight/sign/order thresholds:** `.10x/tickets/2026-07-19-evaluate-lightweight-learning-to-rank.md`
+8. **C8 — blocked offline routed-profile reproduction/generalization after C1+C3 and a user-ratified oracle-gap measure/threshold:** `.10x/tickets/2026-07-19-reproduce-and-generalize-routed-profile-selection.md`
 9. **C9 — blocked productization after C8 and product ratification:** `.10x/tickets/2026-07-19-productize-routed-ranking-profile.md`
 
-C1 and C2 may run in parallel. C4 and eventual local C5 may proceed independently after their gates. C7 and C8 share the exact immutable C3 cache and MUST NOT issue duplicate retrieval calls. C9 remains blocked and has no active product spec until C8 plus the user checkpoint.
+C1 and C2 may run in parallel. C4 and eventual local C5 may proceed independently after their gates. C7 and C8 share the exact immutable C3 cache and MUST NOT issue duplicate retrieval calls, but both remain blocked after C1/C3 until their distinct experiment thresholds are pre-registered and user-ratified. C1 may freeze the shared contract but MUST NOT invent those thresholds or make C7/C8 executable. C9 remains blocked and has no active product spec until C8 plus the user checkpoint.
 
 ## Aggregate acceptance criteria
 
-- Every comparative child uses C1's frozen datasets, source snapshots, namespace/commit/model mapping, folds, metrics, and artifact schema.
+- Every comparative child uses C1's frozen datasets, all 90 composite `repo_key:case_id` identities, source snapshots, namespace/commit/model mapping, folds, metrics, and artifact schema while preserving dataset-local `case_id` values and labels.
 - Index-changing comparisons use paired current promoted defaults on the same source commit/corpus. `80.316` / P@5 `0.517` remains only a secondary routed-portfolio reference.
 - Proprietary model APIs are excluded. No model identity, revision, license conclusion, prefix contract, dimension exception, download/resource budget, or public surface is inferred before C2 and the exact checkpoint.
 - Every indexing experiment uses new namespaces only. Baseline namespaces are never mutated; stale/namespace deletes are forbidden; catalog/default changes require separate owners and approval.
-- C3 performs at most one approved raw retrieval pass per frozen case and exports separate ANN/BM25 candidates. C7/C8 are offline consumers of the same hash-addressed cache.
+- C3 performs at most one approved raw retrieval pass per frozen composite identity and exports separate ANN/BM25 candidates. Its schema and cache keys MUST carry `repo_key`, the unchanged dataset-local `case_id`, and the composite `repo_key:case_id`; C7/C8 are offline consumers of the same hash-addressed cache.
 - General-default candidates apply `.10x/decisions/repo-ranking-promotion-policy.md`: no repo score regression; no repo P@5 regression; positive score on at least 3 repos; largest gain share at most 70%; improved all-repo average score.
+- The three-repo no-regression/positive-average/two-improving-repo rule is only an experiment escalation gate for deciding whether to request a separately approved full-basket run. It is not active promotion policy and cannot authorize promotion.
 - Passing an experiment means promotion-candidate evidence only. Label confidence, product surface, default promotion, and catalog mutation remain separate checkpoints.
 - Any source implementation has focused/full tests, evidence, and independent review; no child is closed from plausible prose or a passing aggregate alone.
 
@@ -54,17 +55,19 @@ C1 and C2 may run in parallel. C4 and eventual local C5 may proceed independentl
 - Stop C3/C7/C8 if separate raw lists are unavailable or default replay mismatches C1 tolerance; do not recapture candidates for each child.
 - Stop C4/C6 on absent exact approval, failed pilot gate, incompatible contracts, or resource use beyond the approved bound.
 - Stop C5 before implementation/spec activation until exact syntax arms, AST boundaries, line coverage/citations, and fallback behavior are ratified.
-- Stop C7 on leakage, repository identity, incomplete folds, regressions, or unstable material weights.
-- Stop C8/C9 automatic selection if evidence supports only oracle/static per-repo mapping. Never ship a benchmark lookup table as generalization.
+- Stop C7 before execution until the definition of material weights and exact sign/order stability thresholds are pre-registered and user-ratified; afterward stop on leakage, repository identity, incomplete folds, regressions, or failure of those thresholds.
+- Stop C8 before execution until the oracle-gap measure and exact minimum materially-closed threshold are pre-registered and user-ratified. Stop C8/C9 automatic selection if evidence supports only oracle/static per-repo mapping. Never ship a benchmark lookup table as generalization.
 
 ## Exact user checkpoints
 
-1. C3: approve one retrieval-only pass for the exact C1 namespace/commit map and reported request/cost bound, with separate ANN/BM25 lists and zero writes/deletes/catalog changes.
-2. C4: approve the exact pinned model download bytes/RAM/device estimate and exact three-repo paired namespace rows/writes, with zero deletes and no catalog/default change.
+1. C3: approve one retrieval-only pass for all 90 frozen composite `repo_key:case_id` identities under the exact C1 namespace/commit map and reported request/cost bound, with preserved dataset-local IDs/labels, separate ANN/BM25 lists, and zero writes/deletes/catalog changes.
+2. C4: approve the exact pinned model download bytes/RAM/device estimate and exact three-repo paired namespace rows/writes, with zero deletes and no catalog/default change. Passing the pilot gate permits only a request for separately approved full-basket experimentation.
 3. C5: confirm or correct exact syntax arms, AST ownership, long-symbol subdivision, coverage/citation semantics, and syntax-error/non-Python fallback before an active spec is created.
 4. C6: approve exact per-arm rows/namespaces/writes/storage multiplier from passing local C5 plans.
-5. C9: after C8, confirm the recommended versioned explicit opt-in profile with `repo_code` unchanged, or explicitly authorize shaping an automatic selector from held-out evidence.
-6. Promotion: only for a learned/embedding default candidate, decide whether assistant-drafted labels suffice or whether bounded independent review is required.
+5. C7: pre-register and user-ratify the definition of material weights and exact allowed sign/order stability thresholds before fitting.
+6. C8: pre-register and user-ratify the oracle-gap measure and exact minimum materially-closed threshold before selector evaluation.
+7. C9: after C8, confirm the recommended versioned explicit opt-in profile with `repo_code` unchanged, or explicitly authorize shaping an automatic selector from held-out evidence.
+8. Promotion: only for a learned/embedding default candidate, decide whether assistant-drafted labels suffice or whether bounded independent review is required.
 
 ## Parent closure requirements
 
@@ -72,7 +75,7 @@ C4, C6, C7, and C8 must each have evidence-backed terminal disposition or explic
 
 ## Blockers
 
-The parent is intentionally non-executable. Current child blockers are recorded on C3, C4, C5, C6, and C9. C1 and C2 are the only immediately executable children; C7/C8 are dependency-gated offline work.
+The parent is intentionally non-executable. Current child blockers are recorded on C3, C4, C5, C6, C7, C8, and C9. C1 and C2 are the only immediately executable children. C7/C8 are blocked both on dependencies and on distinct pre-registered user-ratified thresholds; C1 cannot supply or infer those thresholds.
 
 ## Explicit exclusions
 
@@ -134,6 +137,7 @@ Reopening completed reranker/metadata/aggregation/ranking-grid work; source/test
 - 2026-07-02: Continued hypotheses toward another `+2.0` target from the `77.761` portfolio baseline. Tested production-source boosts, path-overlap boosts, filename-stem boosts, nested-test demotion, snapshot demotion, Rust crate-root boosts, and routed combinations. Universal variants caused regressions and were rejected. The passing routed-profile portfolio improved average score `77.761 -> 80.316` (`+2.555`) and P@5 `0.500 -> 0.517`, with positive gains on 11 repos, no score/P@5 regressions, and largest gain share 31.3%. No new namespaces were required for the passing result. Evidence: `.10x/evidence/2026-07-02-repo-routed-profile-portfolio-validation.md`.
 - 2026-07-19: Closure review confirmed that the extensive completed experiments are well evidenced and current promoted defaults remain coherent with `.10x/decisions/namespace-ranking-defaults.md` and `.10x/decisions/repo-ranking-promotion-policy.md`. Closure is nevertheless unsupported because named heavy hypotheses remain unevaluated and the latest routed portfolio is not productized. The ticket remains active; no completed experiment was reclassified as failed implementation. Review: `.10x/reviews/2026-07-19-stale-ticket-status-closure-review.md`.
 - 2026-07-19: Decomposed this umbrella into the non-executable C1-C9 graph. Only C1 local contract freeze and C2 read-only research are immediately executable; C3/C4/C5/C6/C9 retain explicit gates, and C7/C8 share one dependency-gated offline cache. No completed history, labels, model, budget, syntax/product semantics, live operation, write, default, or promotion was changed. Research: `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`.
+- 2026-07-20: Repaired PR #56 review blockers: case uniqueness is composite `repo_key:case_id` while local IDs/labels remain intact; the three-repo rule is experiment escalation only; and C7/C8 are explicitly blocked on user-ratified pre-registered thresholds that C1 cannot invent.
 
 ## Closure note
 

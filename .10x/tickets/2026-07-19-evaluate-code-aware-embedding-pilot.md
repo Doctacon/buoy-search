@@ -1,6 +1,6 @@
 Status: blocked
 Created: 2026-07-19
-Updated: 2026-07-19
+Updated: 2026-07-20
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
 Depends-On: .10x/tickets/2026-07-19-freeze-repo-ranking-experiment-contract.md, .10x/tickets/2026-07-19-research-code-aware-embedding-candidate.md
 
@@ -20,8 +20,8 @@ Pilot repositories are Buoy, pytest, and Ruff. Candidate and paired baseline use
 - Candidate and baseline plans use identical source commits/corpora/chunks and report exact rows, new namespaces, writes, model bytes, disk/RAM/device estimate, and embedding work before approval.
 - New namespaces only; zero stale/namespace deletes; no existing namespace mutation; no catalog/default change.
 - Primary metrics are per-repo score and P@5. Report NDCG@10, Recall@10, MRR@10, per-query deltas, embedding throughput, query p50/p95, model disk/RAM, and rows/storage without inventing pass thresholds for unratified budgets.
-- Pilot keep gate: no pilot repo score or P@5 regression, positive average score, and at least two of three repos improve.
-- Full-basket expansion requires a new exact ten-repo row/write forecast and separate approval. Full keep gate is the active distribution policy. Passing means promotion-candidate evidence only.
+- Pilot experiment-escalation gate: no pilot repo score or P@5 regression, positive average score, and at least two of three repos improve. Passing permits only a request for separately approved full-basket experimentation; this three-repo rule is not active promotion policy or promotion authority.
+- Full-basket expansion requires a new exact ten-repo row/write forecast and separate approval. Only the full-basket keep gate is governed by the active distribution policy. Passing means promotion-candidate evidence only.
 - Source changes, if authorized, have focused/full tests and wrong-dimension failure coverage before remote writes.
 
 ## Approval gate
@@ -62,3 +62,4 @@ Dynamic vector dimensions; default model/ranking changes; routing/catalog migrat
 ## Progress and notes
 
 - 2026-07-19: Opened blocked. No model identity, budget, surface, download, namespace, source, test, or promotion was authorized or created.
+- 2026-07-20: Clarified that the three-repo rule is an experiment escalation gate only, not active promotion policy.

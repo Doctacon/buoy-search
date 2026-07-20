@@ -1,6 +1,6 @@
 Status: blocked
 Created: 2026-07-19
-Updated: 2026-07-19
+Updated: 2026-07-20
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
 Depends-On: .10x/tickets/2026-07-19-implement-opt-in-python-syntax-chunking.md
 
@@ -15,9 +15,9 @@ After C5 has an active ratified spec, passing local implementation/tests, and ex
 - C5 is complete and exact per-arm namespace names, commits, row counts, storage multipliers, and write counts are reported before approval.
 - Every apply targets a new namespace; no stale or namespace delete occurs; baseline namespaces, catalog, defaults, and local applied state outside the new namespaces remain unchanged.
 - Live eval after approved applies is retrieval-only.
-- Primary metrics/gates match C4. Also report chunk-count multiplier, mean/p95 chunk tokens, symbol-boundary coverage, and fallback rate by language.
-- Stop an arm at the pilot if it regresses any repo score/P@5, exceeds an approved chunk/storage bound, or gains only from the already-completed global metadata preamble.
-- Full-basket expansion requires a separate exact ten-repo forecast and approval; full keep gate is the active distribution policy.
+- Primary metrics match C4. Also report chunk-count multiplier, mean/p95 chunk tokens, symbol-boundary coverage, and fallback rate by language.
+- The three-repo no-regression/positive-average/two-improving-repo rule is only an experiment escalation gate. Stop an arm at the pilot if it fails that gate, exceeds an approved chunk/storage bound, or gains only from the already-completed global metadata preamble. Passing permits only a request for separately approved full-basket experimentation; it is not promotion authority.
+- Full-basket expansion requires a separate exact ten-repo forecast and approval; only the full-basket keep gate is governed by the active distribution policy.
 - Passing means promotion-candidate evidence only; fixed-line behavior remains the default.
 
 ## Approval gate
@@ -57,3 +57,4 @@ Source implementation; behavior shaping; Tree-sitter; baseline mutation/deletion
 ## Progress and notes
 
 - 2026-07-19: Opened blocked. No namespace names/counts, write budget, live call, or promotion was ratified.
+- 2026-07-20: Clarified that the three-repo rule is an experiment escalation gate only, not active promotion policy.

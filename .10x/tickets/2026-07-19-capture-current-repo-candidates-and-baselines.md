@@ -1,6 +1,6 @@
 Status: blocked
 Created: 2026-07-19
-Updated: 2026-07-19
+Updated: 2026-07-20
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
 Depends-On: .10x/tickets/2026-07-19-freeze-repo-ranking-experiment-contract.md
 
@@ -8,13 +8,13 @@ Depends-On: .10x/tickets/2026-07-19-freeze-repo-ranking-experiment-contract.md
 
 ## Scope
 
-After C1 freezes exact datasets, snapshots, mappings, request accounting, and artifact schema, make one approved retrieval-only pass over all 90 cases. Capture ANN and BM25 candidate lists separately, compute current-default fused/file-ranked baselines, and freeze one immutable hash-addressed cache for both C7 and C8.
+After C1 freezes exact datasets, snapshots, mappings, request accounting, and artifact schema, make one approved retrieval-only pass over all 90 unique composite `repo_key:case_id` identities. Preserve each dataset-local `case_id` and all labels. Capture ANN and BM25 candidate lists separately, compute current-default fused/file-ranked baselines, and freeze one immutable hash-addressed cache for both C7 and C8.
 
 ## Acceptance criteria
 
 - C1 is complete and the exact 13-repo namespace/source-commit map, expected request count, and any provider cost exposure are reported before approval.
-- One and only one live raw-candidate capture occurs per case; ANN and BM25 lists are exported separately rather than only server-side fused results.
-- Cache rows contain C1's namespace-qualified hit identity, path/content/section fields, ANN/BM25/fused ranks and scores, query/dataset identity, retrieval options, commit/namespace/model compatibility, and redacted request accounting.
+- One and only one live raw-candidate capture occurs per frozen composite identity; ANN and BM25 lists are exported separately rather than only server-side fused results.
+- Cache rows contain `repo_key`, unchanged dataset-local `case_id`, derived composite `repo_key:case_id`, C1's namespace-qualified hit identity, path/content/section fields, ANN/BM25/fused ranks and scores, retrieval options, commit/namespace/model compatibility, and redacted request accounting. Cache keys and joins use the composite identity and never assume local `case_id` is globally unique.
 - Current default offline replay matches direct current-default evaluation at deterministic equality or C1's declared tolerance.
 - The immutable cache hash and storage location are recorded. C7 and C8 consume this exact cache and MUST NOT issue duplicate retrieval calls.
 - No content, namespace, local applied state, catalog, source, tests, datasets, defaults, or labels are mutated.
@@ -23,7 +23,7 @@ After C1 freezes exact datasets, snapshots, mappings, request accounting, and ar
 
 Blocked pending C1 and this exact checkpoint with filled values:
 
-> Approve one retrieval-only raw-candidate pass for the 90 frozen cases across `<exact namespace/commit map>`, with separate ANN and BM25 lists, `<predicted request count/cost bound>`, zero writes/deletes/catalog changes, and one immutable cache shared by C7/C8?
+> Approve one retrieval-only raw-candidate pass for the 90 frozen composite `repo_key:case_id` identities across `<exact namespace/commit map>`, with separate ANN and BM25 lists, `<predicted request count/cost bound>`, zero writes/deletes/catalog changes, and one immutable cache shared by C7/C8?
 
 Past retrieval or namespace approvals do not authorize this pass.
 
@@ -36,7 +36,7 @@ Past retrieval or namespace approvals do not authorize this pass.
 
 ## Evidence expectations
 
-Approval provenance; exact request count; cache/schema/hash; direct-versus-replay comparison; no-write proof; redaction audit; limits.
+Approval provenance; exact request count; proof that the cache/schema contains all 90 composite identities plus preserved local IDs; cache hash; direct-versus-replay comparison; no-write proof; redaction audit; limits.
 
 ## Blockers
 
@@ -56,3 +56,4 @@ Namespace writes/deletes; candidate re-indexing; source/tests implementation bef
 ## Progress and notes
 
 - 2026-07-19: Opened blocked. No credentials, live calls, cache artifacts, source, or tests were created during decomposition.
+- 2026-07-20: Clarified that retrieval and cache identity use all 90 composite `repo_key:case_id` values while preserving dataset-local IDs and labels.
