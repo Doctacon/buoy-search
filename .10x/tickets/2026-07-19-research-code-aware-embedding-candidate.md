@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-19
 Updated: 2026-07-19
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
@@ -30,7 +30,7 @@ Authoritative URLs/revisions, inspected current source paths, compatibility tabl
 
 ## Blockers
 
-None. This child is executable as read-only research only.
+Independent review is pending. Research execution is complete; no implementation blocker was encountered.
 
 ## Explicit exclusions
 
@@ -40,6 +40,8 @@ Model download/inference; benchmark execution; dependency/source/test changes; p
 
 - `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`
 - `.10x/research/2026-06-28-repo-search-precision-state-of-art.md`
+- `.10x/research/2026-07-19-code-aware-embedding-candidate.md`
+- `.10x/evidence/2026-07-19-code-aware-embedding-feasibility-research.md`
 - `src/buoy_search/chunker.py`
 - `src/buoy_search/apply.py`
 - `src/buoy_search/catalog.py`
@@ -48,3 +50,5 @@ Model download/inference; benchmark execution; dependency/source/test changes; p
 ## Progress and notes
 
 - 2026-07-19: Opened as an independent read-only research child. No model identity, revision, budget, or download was ratified during decomposition.
+- 2026-07-19: Completed authoritative read-only screening. No credible native 384-dimensional candidate met all open-source/local/SentenceTransformer/no-remote-code constraints. Retained only `nomic-ai/nomic-embed-code@11114029805cee545ef111d5144b623787462a52` as a dynamic-dimension decision candidate, not as C4-compatible or approved; no fallback retained. Research: `.10x/research/2026-07-19-code-aware-embedding-candidate.md`; evidence: `.10x/evidence/2026-07-19-code-aware-embedding-feasibility-research.md`.
+- 2026-07-19: C4 must remain blocked under its 384-dimensional stop condition. This ticket remains active pending independent review; no model/dependency download/install, model load, inference, credentials, source/test/lockfile mutation, namespace/catalog operation, or live service call occurred.

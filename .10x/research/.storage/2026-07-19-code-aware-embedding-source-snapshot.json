@@ -1,0 +1,82 @@
+{
+  "observed_at": "2026-07-20T06:14:39Z",
+  "method": "Read-only Hugging Face model metadata/config/model-card/tree inspection; no weights or inference assets were downloaded.",
+  "search": {
+    "url": "https://huggingface.co/api/models?search=code&filter=sentence-transformers&limit=100&full=true",
+    "returned_models": 100,
+    "explicitly_code_tagged_models": 14
+  },
+  "retained_primary": {
+    "model": "nomic-ai/nomic-embed-code",
+    "revision": "11114029805cee545ef111d5144b623787462a52",
+    "model_api_url": "https://huggingface.co/api/models/nomic-ai/nomic-embed-code/revision/11114029805cee545ef111d5144b623787462a52",
+    "model_card_url": "https://huggingface.co/nomic-ai/nomic-embed-code/blob/11114029805cee545ef111d5144b623787462a52/README.md",
+    "license": "apache-2.0",
+    "library_name": "sentence-transformers",
+    "model_type": "qwen2",
+    "parameters": 7070619136,
+    "dimensions": 3584,
+    "max_seq_length": 32768,
+    "query_prompt": "Represent this query for searching relevant code: ",
+    "document_prompt": "",
+    "pooling": "last token",
+    "normalized_by_model_modules": true,
+    "requires_remote_code": false,
+    "weight_bytes": 28282512976,
+    "listed_repository_bytes": 28298426837,
+    "downloads_at_observation": 292015,
+    "likes_at_observation": 122,
+    "source_urls": {
+      "config": "https://huggingface.co/nomic-ai/nomic-embed-code/raw/11114029805cee545ef111d5144b623787462a52/config.json",
+      "sentence_transformer_config": "https://huggingface.co/nomic-ai/nomic-embed-code/raw/11114029805cee545ef111d5144b623787462a52/config_sentence_transformers.json",
+      "sentence_bert_config": "https://huggingface.co/nomic-ai/nomic-embed-code/raw/11114029805cee545ef111d5144b623787462a52/sentence_bert_config.json",
+      "pooling_config": "https://huggingface.co/nomic-ai/nomic-embed-code/raw/11114029805cee545ef111d5144b623787462a52/1_Pooling/config.json",
+      "modules": "https://huggingface.co/nomic-ai/nomic-embed-code/raw/11114029805cee545ef111d5144b623787462a52/modules.json",
+      "tree": "https://huggingface.co/api/models/nomic-ai/nomic-embed-code/tree/11114029805cee545ef111d5144b623787462a52?recursive=true&expand=false"
+    }
+  },
+  "screened_out": [
+    {
+      "model": "BAAI/bge-code-v1",
+      "revision": "bd67852057c5d7ddcc7b8234d9d6c410117ed851",
+      "dimensions": 1536,
+      "license": "apache-2.0",
+      "reason": "Not 384 dimensions; the authoritative SentenceTransformer example requires trust_remote_code=True."
+    },
+    {
+      "model": "nomic-ai/CodeRankEmbed",
+      "revision": "3c4b60807d71f79b43f3c4363786d9493691f8b1",
+      "dimensions": 768,
+      "license": "mit",
+      "reason": "Not 384 dimensions; model card and auto_map require trust_remote_code=True."
+    },
+    {
+      "model": "jinaai/jina-embeddings-v2-base-code",
+      "revision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
+      "dimensions": 768,
+      "license": "apache-2.0",
+      "reason": "Not 384 dimensions; model card and auto_map require trust_remote_code=True."
+    },
+    {
+      "model": "flax-sentence-embeddings/st-codesearch-distilroberta-base",
+      "revision": "65b0f39bfa41c59993f62b57447c942e371b7135",
+      "dimensions": 768,
+      "license": null,
+      "reason": "Not 384 dimensions; the immutable repository has no license field or license file, and its card calls the model preliminary and untested."
+    },
+    {
+      "model": "Salesforce/SFR-Embedding-Code-400M_R",
+      "revision": "cb950dc80d677c6fdc00f56c8ddd20ca2642c59e",
+      "dimensions": 1024,
+      "license": "cc-by-nc-4.0",
+      "reason": "Not 384 dimensions; noncommercial license is not OSI-compatible and repository uses custom code."
+    },
+    {
+      "model": "lightonai/LateOn-Code",
+      "revision": "734b659a57935ef50562d79581c3ff1f8d825c93",
+      "dimensions": 768,
+      "license": "apache-2.0",
+      "reason": "PyLate/ColBERT multi-vector model, not the current single-vector SentenceTransformer content path; not 384 dimensions."
+    }
+  ]
+}

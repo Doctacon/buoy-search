@@ -84,6 +84,8 @@ Reopening completed reranker/metadata/aggregation/ranking-grid work; source/test
 ## References
 
 - `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`
+- `.10x/research/2026-07-19-code-aware-embedding-candidate.md`
+- `.10x/evidence/2026-07-19-code-aware-embedding-feasibility-research.md`
 - `.10x/research/2026-06-28-repo-search-precision-state-of-art.md`
 - `.10x/research/2026-06-28-expanded-validation-ranking-hypotheses.md`
 - `.10x/decisions/repo-ranking-promotion-policy.md`
@@ -138,6 +140,7 @@ Reopening completed reranker/metadata/aggregation/ranking-grid work; source/test
 - 2026-07-19: Closure review confirmed that the extensive completed experiments are well evidenced and current promoted defaults remain coherent with `.10x/decisions/namespace-ranking-defaults.md` and `.10x/decisions/repo-ranking-promotion-policy.md`. Closure is nevertheless unsupported because named heavy hypotheses remain unevaluated and the latest routed portfolio is not productized. The ticket remains active; no completed experiment was reclassified as failed implementation. Review: `.10x/reviews/2026-07-19-stale-ticket-status-closure-review.md`.
 - 2026-07-19: Decomposed this umbrella into the non-executable C1-C9 graph. Only C1 local contract freeze and C2 read-only research are immediately executable; C3/C4/C5/C6/C9 retain explicit gates, and C7/C8 share one dependency-gated offline cache. No completed history, labels, model, budget, syntax/product semantics, live operation, write, default, or promotion was changed. Research: `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`.
 - 2026-07-20: Repaired PR #56 review blockers: case uniqueness is composite `repo_key:case_id` while local IDs/labels remain intact; the three-repo rule is experiment escalation only; and C7/C8 are explicitly blocked on user-ratified pre-registered thresholds that C1 cannot invent.
+- 2026-07-20: C2 completed read-only candidate research pending review. No credible native 384-dimensional code-aware model met the open-source/local/SentenceTransformer/no-remote-code boundary; C4 remains blocked and stopped. `nomic-ai/nomic-embed-code@11114029805cee545ef111d5144b623787462a52` is retained only as a 3,584-dimensional dynamic-content-dimension decision candidate, with no fallback. A separate user checkpoint is required before shaping any content schema/card/routing migration; no download, model load, source/default, namespace, catalog, credential, or live operation occurred.
 
 ## Closure note
 

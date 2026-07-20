@@ -45,7 +45,8 @@ Approval provenance, pinned model/license contract, local plans/preflights, exac
 
 ## Blockers
 
-- C1 and C2 are incomplete.
+- C1 is incomplete; C2 research is complete but pending review.
+- C2 found no credible native 384-dimensional code-aware candidate satisfying the open-source/local/SentenceTransformer/no-remote-code boundary. C4 is stopped until the user separately decides whether to shape dynamic content-vector dimensions; that migration is outside this ticket.
 - No model/download/resource/new-namespace approval exists.
 
 ## Explicit exclusions
@@ -57,9 +58,12 @@ Dynamic vector dimensions; default model/ranking changes; routing/catalog migrat
 - `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`
 - `.10x/tickets/2026-07-19-freeze-repo-ranking-experiment-contract.md`
 - `.10x/tickets/2026-07-19-research-code-aware-embedding-candidate.md`
+- `.10x/research/2026-07-19-code-aware-embedding-candidate.md`
+- `.10x/evidence/2026-07-19-code-aware-embedding-feasibility-research.md`
 - `.10x/decisions/repo-ranking-promotion-policy.md`
 
 ## Progress and notes
 
 - 2026-07-19: Opened blocked. No model identity, budget, surface, download, namespace, source, test, or promotion was authorized or created.
 - 2026-07-20: Clarified that the three-repo rule is an experiment escalation gate only, not active promotion policy.
+- 2026-07-20: C2 found no credible native 384-dimensional candidate within the approved boundary. C4 remains blocked and stopped; `nomic-ai/nomic-embed-code@11114029805cee545ef111d5144b623787462a52` is only a 3,584-dimensional decision candidate. A separate user decision is required before shaping dynamic content-vector schema/card/routing work. No C4 model, source, namespace, catalog, or live operation was authorized.
