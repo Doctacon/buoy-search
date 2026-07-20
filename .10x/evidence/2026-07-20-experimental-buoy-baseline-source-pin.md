@@ -27,6 +27,8 @@ The checked-in grant remained exactly 2,627 UTF-8 bytes with the pinned record h
 7. The same full unittest discovery under CPython 3.13 — passed, 495 tests.
 8. `uv build --python 3.13 --out-dir /tmp/buoy-source-pin-dist` — passed, producing the wheel and source distribution outside the repository.
 9. `git diff --check` — passed.
+10. Implementation commit `c7c644a6d74f22b9118086c124999e7668822a91` was pushed to `work/source-pin-baseline-approval` and opened as PR #73: `https://github.com/Doctacon/buoy-search/pull/73`.
+11. GitHub Actions run `29787994002` passed Python 3.11, Python 3.13, and Build distributions for implementation commit `c7c644a6d74f22b9118086c124999e7668822a91`.
 
 The full suites emitted the two previously recorded temporary plan-cleanup warning lines per interpreter and completed successfully.
 
@@ -36,8 +38,8 @@ No validation command invoked `execute_experimental_baseline`, read a credential
 
 ## What this supports
 
-This supports local Step 1 source-pin exactness and CI-equivalent validation. The exact branch head, pull request, hosted CI, and independent implementation review will be recorded after they exist.
+This supports Step 1 source-pin exactness, local CI-equivalent validation, and passing hosted CI on the exact implementation commit in PR #73. Independent implementation review and separate integration remain required.
 
 ## Limits
 
-This record does not establish independent review, hosted CI, integration into `develop`, execution authority from an integrated commit, a live attempt, baseline compatibility, Approval B, or C3 retrieval. Step 1 remains pending review and separate integration; Step 2 remains blocked and unperformed.
+This record does not establish independent review, integration into `develop`, execution authority from an integrated commit, a live attempt, baseline compatibility, Approval B, or C3 retrieval. Step 1 remains pending review and separate integration; Step 2 remains blocked and unperformed.
