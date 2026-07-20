@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-18
-Updated: 2026-07-18
-Relates-To: .10x/tickets/2026-07-18-restore-markitdown-control-character-normalization.md, .10x/specs/local-markitdown-document-source-ingestion.md, .10x/specs/local-pdf-source-ingestion.md
+Updated: 2026-07-20
+Relates-To: .10x/tickets/done/2026-07-18-restore-markitdown-control-character-normalization.md, .10x/specs/local-markitdown-document-source-ingestion.md, .10x/specs/local-pdf-source-ingestion.md
 
 # MarkItDown Control-Character Normalization Evidence
 
@@ -73,14 +73,15 @@ Result: `buoy_search-0.4.0-py3-none-any.whl` and `buoy_search-0.4.0.tar.gz` buil
 
 Implementation commit `403d4f9` was pushed on branch `work/restore-markitdown-normalization` and opened as PR #52: <https://github.com/Doctacon/buoy-search/pull/52>.
 
-GitHub Actions run `29713256945` passed:
+GitHub Actions run `29713256945` passed the implementation commit. At reviewed implementation/evidence head `2520170`, replacement run `29713311342` also passed:
 
 - Python 3.11: passed in 43 seconds;
-- Python 3.13: passed in 44 seconds;
+- Python 3.13: passed in 43 seconds;
 - distribution build: passed in 10 seconds.
 
 ## Limits
 
 - No OCR, semantic cleanup, converter change, live apply, Turbopuffer call, or external source crawl was performed.
-- Independent review remains required; this evidence does not close the active ticket.
+- Focused ingestion tests mock the PDF and non-PDF converter functions; they prove handling of converter-returned controls, not a real converter producing them. Independent review accepted this as a non-blocking limit because the sanitizer is directly tested at the shared post-conversion boundary.
+- Independent review passed in `.10x/reviews/2026-07-20-markitdown-control-character-normalization-review.md`.
 - The task worktree did not merge PR #52.

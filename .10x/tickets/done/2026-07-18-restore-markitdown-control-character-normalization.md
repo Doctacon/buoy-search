@@ -1,6 +1,6 @@
-Status: active
+Status: done
 Created: 2026-07-18
-Updated: 2026-07-18
+Updated: 2026-07-20
 Parent: None
 Depends-On: None
 
@@ -41,3 +41,15 @@ OCR, semantic cleanup, table/page repair, heading rewriting, converter changes, 
 - 2026-07-18: Implemented shared Unicode `Cc` removal before the existing `.strip()`, artifact write, and chunking path, while preserving newline, carriage return, and tab.
 - 2026-07-18: Added focused PDF, non-PDF, preservation, and normalization-produced-empty-output coverage. Focused and full non-live suites pass on Python 3.11 and 3.13.
 - 2026-07-18: Pushed implementation commit `403d4f9` and opened PR #52. GitHub Actions run `29713256945` passed Python 3.11, Python 3.13, and distribution build jobs. Ticket remains active pending independent review.
+- 2026-07-20: Independent review passed PR #52 at implementation/evidence head `2520170`; current hosted checks remained green, and reviewer reruns passed 4 focused plus 426 full non-live tests on Python 3.11 and 3.13. Review: `.10x/reviews/2026-07-20-markitdown-control-character-normalization-review.md`.
+
+## Closure mapping
+
+- PDF and non-PDF control removal: both source kinds converge on `crawl_local_document_with_plan()`, which normalizes converter output before the empty check, generated page write, and chunking; focused artifact/chunk tests cover each path.
+- Preserved Markdown content: the sanitizer test preserves newline, carriage return, tab, valid Unicode, emoji, headings, and ordinary text while removing representative C0/C1 controls.
+- Empty-output order: focused PDF and non-PDF cases prove control-only output reaches the existing clear extraction failure before output creation.
+- Validation and compatibility: 4 focused and 426 full non-live tests passed on both supported Python versions; PR #52 hosted Python 3.11, Python 3.13, and distribution checks passed; independent review found no scope widening or blocker.
+
+## Retrospective
+
+Placing normalization once at the shared post-conversion boundary kept PDF and non-PDF behavior aligned and made the ordering before empty handling, artifact writing, and chunking directly inspectable. The focused ingestion tests intentionally mock converter output, so they prove handling of converter-returned strings rather than real converter generation of controls; direct sanitizer coverage, shared-boundary integration, and full-suite/hosted validation make that a documented non-blocking limit rather than a reason to add converter-specific fixtures without evidence of such a regression.
