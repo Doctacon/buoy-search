@@ -1,4 +1,4 @@
-Status: blocked
+Status: open
 Created: 2026-07-19
 Updated: 2026-07-20
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
@@ -8,47 +8,38 @@ Depends-On: .10x/tickets/done/2026-07-19-freeze-repo-ranking-experiment-contract
 
 ## Scope
 
-Own a local-only, experiment-only Python syntax chunking implementation after an active focused specification defines exact behavior. Preserve fixed 80-line chunking as the default and preserve existing `--repo-search-metadata` output/behavior.
+Own a local-only, experiment-only Python syntax chunking implementation after an active focused specification defines exact behavior. Preserve the actual current default—fixed 80-entry repository sections followed by generic Markdown token splitting/overlap—and preserve existing `--repo-search-metadata` output/behavior.
 
-Existing records support evaluating syntax-aware chunks and lightweight Python breadcrumbs without Tree-sitter. They do not fully settle the exact AST boundary ownership, ancestor breadcrumbs, long-symbol subdivision, line coverage/citation rules, fallback behavior, or experiment arm names. This ticket is therefore not executable yet, and no active syntax experiment spec is created by the decomposition.
+The user ratified the complete seven-item syntax contract exactly as independently reviewed at PR #64 pre-ratification head `6f46ef9bb3b925400a6672e67f68dffc74f7872d`. `.10x/specs/repo-python-syntax-chunking-experiment.md` is active and settles the arm identifiers/control pairing, LF coordinates, AST/tokenizer decorator spans, breadcrumbs/ownership, treatment subdivision, common header, distinct control/treatment coverage and citations, fallback, compatibility, validation matrix, and local-only safety behavior. C5 has no unresolved semantic blocker and is executable within that authority.
 
-## Required syntax-contract checkpoint
+## Ratified syntax-contract checkpoint
 
-Before implementation, recommend the smallest standard-library Python experiment and ask the user to confirm or correct:
+All seven numbered items in the active specification were confirmed unchanged on 2026-07-20. Provenance: `.10x/evidence/2026-07-20-python-syntax-chunking-contract-ratification.md`. Review: `.10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md`.
 
-- exact comparison arms, including whether fixed/no-breadcrumb, fixed/breadcrumb-only, and Python-AST/ancestor-breadcrumb arms are required;
-- which AST nodes own decorators, module statements, nested definitions, and interstitial comments/blank lines;
-- maximum long-symbol window and overlap behavior;
-- complete, ordered, nonduplicated source-line coverage and citation-line semantics;
-- deterministic syntax-error and non-Python fallback;
-- whether path-token/global symbol preambles are excluded to isolate breadcrumbs from the completed metadata experiment.
-
-Only the ratified answers may be captured in `.10x/specs/repo-python-syntax-chunking-experiment.md` and used to activate this ticket.
-
-## Acceptance criteria after ratification
+## Acceptance criteria
 
 - An active focused syntax experiment spec exists and this ticket contains no unresolved behavior.
-- Implementation is explicit opt-in, local-plan-capable, standard-library-only unless a later decision says otherwise, and unchanged by default.
-- Existing metadata mode remains compatible and is not silently combined with isolated breadcrumb arms.
-- Tests cover every ratified boundary/fallback/coverage scenario and prove complete source-order coverage with no unintended omission or duplication.
-- Local paired plans record commit, selected files, chunks/rows, multipliers, and zero remote calls/writes.
+- Implementation is explicit opt-in, local-plan-capable, standard-library-only unless a later decision says otherwise, and unchanged by default; `current-default` exactly reproduces the pre-C5 80-entry renderer plus generic token split/overlap.
+- Each Python-aware arm is isolated from generic split/overlap and metadata/card treatments and is paired against `current-default` on the same commit/corpus.
+- Tests cover every ratified LF/AST/tokenizer/header/boundary/fallback/coverage scenario, distinguish control originating-section citations from exact treatment final-chunk citations, and prove complete treatment source-order coverage with no unintended omission or duplication.
+- Focused and full tests pass in the required CI matrix on CPython 3.11 and 3.13; one local runtime is not sufficient closure evidence.
+- Local paired plans record commit, selected files, header/source chunks and rows, multipliers, and zero remote calls/writes.
 - No namespace, catalog, applied state, dataset, label, or default changes occur.
 
 ## Stop conditions
 
-- Do not implement or create an active spec while the exact syntax behavior remains unratified.
-- Stop if deterministic complete source coverage and citation-line preservation cannot be specified and tested.
+- Implement only the exact active syntax contract; stop and return to shaping if implementation exposes a semantic gap or requires changing it.
+- Stop if exact current-default parity, LF-coordinate treatment coverage, tokenizer-owned decorator spans, mandatory common-header parity, or the distinct control/treatment citation contracts cannot be implemented and tested.
 - Do not add Tree-sitter or multilingual parser dependencies without a later explicit need and decision.
 - Do not live-apply from this child.
 
 ## Evidence expectations
 
-Ratification provenance, active focused spec, focused/full local tests, paired local plan/preflight summaries, diff review, and no-live-call proof.
+Ratification provenance, active focused spec, focused/full CPython 3.11/3.13 CI results, golden current-default parity, LF/AST/tokenizer/header coverage assertions, paired local plan/preflight summaries, diff review, and no-live-call proof.
 
 ## Blockers
 
-- Exact syntax experiment behavior is not fully record-backed or user-ratified.
-- `.10x/specs/repo-python-syntax-chunking-experiment.md` intentionally does not exist yet.
+None. The seven-item contract is user-ratified, independently reviewed, and active; C5 is open and executable with no unresolved semantics.
 
 ## Explicit exclusions
 
@@ -56,6 +47,9 @@ Live retrieval or writes; namespace/catalog/default mutation; Tree-sitter; multi
 
 ## References
 
+- `.10x/specs/repo-python-syntax-chunking-experiment.md`
+- `.10x/evidence/2026-07-20-python-syntax-chunking-contract-ratification.md`
+- `.10x/reviews/2026-07-20-python-syntax-chunking-contract-review.md`
 - `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`
 - `.10x/research/2026-06-28-repo-search-precision-state-of-art.md`
 - `.10x/research/2026-06-28-expanded-validation-ranking-hypotheses.md`
@@ -65,3 +59,6 @@ Live retrieval or writes; namespace/catalog/default mutation; Tree-sitter; multi
 
 - 2026-07-19: Opened blocked. Inspection found the hypothesis record-backed but the exact behavior insufficient for an active spec; no spec, source, tests, plans, or live operations were created.
 - 2026-07-20: C1 closed. C5 remains blocked only on its separately required exact syntax-contract ratification and active focused spec; C1 closure authorized no implementation.
+- 2026-07-20: Inspected the current 80-line repository renderer, regex metadata breadcrumbs, downstream token/overlap chunking, manifest citation fields, and CPython 3.11 AST spans. Drafted the exact seven-item recommended contract in `.10x/specs/repo-python-syntax-chunking-experiment.md`. No source, tests, plans, dependencies, model loads, live calls, writes, deletes, state, datasets, defaults, or parent-ticket content changed; C5 remains blocked.
+- 2026-07-20: Repaired PR #64's record-contract blockers: the paired control is now the actual current renderer plus generic split/overlap; treatment coordinates are LF-only with standard-library tokenizer-owned decorator introducers/spans; treatment final-chunk coverage is separated from control originating-section citations; the identical non-source repository header is mandatory and counted explicitly; and validation requires focused/full CPython 3.11/3.13 CI. The spec remains draft and C5 remains blocked; no implementation, tests, dependencies, plans, live operations, defaults, or product behavior changed.
+- 2026-07-20: Independent review passed PR #64 pre-ratification head `6f46ef9bb3b925400a6672e67f68dffc74f7872d`; the user then ratified all seven items exactly as reviewed. Activated the unchanged contract and moved C5 from blocked to open/executable with no unresolved semantics. No syntax source/tests, dependencies, local plans, model/credential access, live operations, writes/deletes, state, datasets, defaults, or product behavior changed.
