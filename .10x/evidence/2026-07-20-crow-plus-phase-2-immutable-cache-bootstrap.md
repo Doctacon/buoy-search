@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-20
 Updated: 2026-07-20
-Relates-To: .10x/tickets/2026-07-20-bootstrap-crow-plus-immutable-cache.md, .10x/specs/crow-plus-resource-verification-checkpoint.md, .10x/specs/crow-plus-explicit-namespace-pilot.md
+Relates-To: .10x/tickets/done/2026-07-20-bootstrap-crow-plus-immutable-cache.md, .10x/specs/crow-plus-resource-verification-checkpoint.md, .10x/specs/crow-plus-explicit-namespace-pilot.md
 
 # Crow-Plus Phase 2 Immutable Cache Bootstrap
 
