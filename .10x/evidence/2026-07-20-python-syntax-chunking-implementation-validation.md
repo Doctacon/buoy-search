@@ -21,6 +21,8 @@ The implementation worktree passed the focused syntax/repository/CLI suites, the
 
 `git diff --check` also passed. Test output contained only the suite's pre-existing temporary plan-cleanup warnings; no test failed.
 
+Hosted GitHub Actions run `29770845903` passed on PR #69 implementation commit `2e92103ad92d1c4aeb2e83899e06c6850629fe12`: Python 3.11 passed in 49 seconds, Python 3.13 passed in 45 seconds, and the dependent distribution build passed in 11 seconds. The subsequently appended evidence-only commit is required to pass the same exact-head checks before handoff.
+
 ## Coverage represented
 
 Focused tests cover:
@@ -40,4 +42,4 @@ Validation loaded no embedding model, read no service credential, contacted no r
 
 ## Limits
 
-These are local runtime results, not exact-head hosted GitHub Actions evidence or independent implementation review. C5 remains active pending that review gate. C6 remains blocked; this record authorizes no live apply, retrieval, namespace, catalog, state, dataset, label, default, or promotion action.
+The implementation commit has passing hosted GitHub Actions evidence; the evidence-only follow-up head must retain those checks. Independent implementation review remains outstanding, so C5 remains active pending that review gate. C6 remains blocked; this record authorizes no live apply, retrieval, namespace, catalog, state, dataset, label, default, or promotion action.
