@@ -10,20 +10,23 @@ Depends-On: .10x/tickets/done/2026-07-19-freeze-repo-ranking-experiment-contract
 
 Own a local-only, experiment-only Python syntax chunking implementation after an active focused specification defines exact behavior. Preserve fixed 80-line chunking as the default and preserve existing `--repo-search-metadata` output/behavior.
 
-Existing records support evaluating syntax-aware chunks and lightweight Python breadcrumbs without Tree-sitter. They do not fully settle the exact AST boundary ownership, ancestor breadcrumbs, long-symbol subdivision, line coverage/citation rules, fallback behavior, or experiment arm names. This ticket is therefore not executable yet, and no active syntax experiment spec is created by the decomposition.
+Existing records support evaluating syntax-aware chunks and lightweight Python breadcrumbs without Tree-sitter. They do not fully settle the exact AST boundary ownership, ancestor breadcrumbs, long-symbol subdivision, line coverage/citation rules, fallback behavior, or experiment arm names. This ticket is therefore not executable yet.
+
+`.10x/specs/repo-python-syntax-chunking-experiment.md` now contains one exact draft recommendation based on the current source boundary and standard-library AST capabilities. Its `draft` status does not ratify the proposed semantics.
 
 ## Required syntax-contract checkpoint
 
-Before implementation, recommend the smallest standard-library Python experiment and ask the user to confirm or correct:
+Before implementation, ask the user to confirm all seven numbered items in the draft spec or correct the affected item explicitly:
 
-- exact comparison arms, including whether fixed/no-breadcrumb, fixed/breadcrumb-only, and Python-AST/ancestor-breadcrumb arms are required;
-- which AST nodes own decorators, module statements, nested definitions, and interstitial comments/blank lines;
-- maximum long-symbol window and overlap behavior;
-- complete, ordered, nonduplicated source-line coverage and citation-line semantics;
-- deterministic syntax-error and non-Python fallback;
-- whether path-token/global symbol preambles are excluded to isolate breadcrumbs from the completed metadata experiment.
+1. the three arm identifiers and metadata/file-card isolation;
+2. AST grammar/node/decorator and fixed-window breadcrumb semantics;
+3. innermost-symbol/module/nesting/trivia ownership;
+4. an 80-source-line maximum, deterministic subdivision, zero overlap, and fail-closed oversize handling;
+5. exact source reconstruction and `Lines S-E`/unchanged-blob citation behavior;
+6. whole-file syntax-error and non-Python fallback;
+7. default compatibility, supported-runtime parity, standard-library-only locality, and zero side effects.
 
-Only the ratified answers may be captured in `.10x/specs/repo-python-syntax-chunking-experiment.md` and used to activate this ticket.
+Only explicit confirmation or corrections may activate the spec and unblock this ticket.
 
 ## Acceptance criteria after ratification
 
@@ -47,8 +50,8 @@ Ratification provenance, active focused spec, focused/full local tests, paired l
 
 ## Blockers
 
-- Exact syntax experiment behavior is not fully record-backed or user-ratified.
-- `.10x/specs/repo-python-syntax-chunking-experiment.md` intentionally does not exist yet.
+- The seven-item exact checkpoint in `.10x/specs/repo-python-syntax-chunking-experiment.md` is recommended but not user-ratified.
+- The focused spec remains `draft`; C5 cannot become executable until confirmed/corrected semantics are reflected in an `active` spec.
 
 ## Explicit exclusions
 
@@ -56,6 +59,7 @@ Live retrieval or writes; namespace/catalog/default mutation; Tree-sitter; multi
 
 ## References
 
+- `.10x/specs/repo-python-syntax-chunking-experiment.md`
 - `.10x/research/2026-07-19-repo-search-heavy-ranking-experiment-decomposition.md`
 - `.10x/research/2026-06-28-repo-search-precision-state-of-art.md`
 - `.10x/research/2026-06-28-expanded-validation-ranking-hypotheses.md`
@@ -65,3 +69,4 @@ Live retrieval or writes; namespace/catalog/default mutation; Tree-sitter; multi
 
 - 2026-07-19: Opened blocked. Inspection found the hypothesis record-backed but the exact behavior insufficient for an active spec; no spec, source, tests, plans, or live operations were created.
 - 2026-07-20: C1 closed. C5 remains blocked only on its separately required exact syntax-contract ratification and active focused spec; C1 closure authorized no implementation.
+- 2026-07-20: Inspected the current 80-line repository renderer, regex metadata breadcrumbs, downstream token/overlap chunking, manifest citation fields, and CPython 3.11 AST spans. Drafted the exact seven-item recommended contract in `.10x/specs/repo-python-syntax-chunking-experiment.md`. No source, tests, plans, dependencies, model loads, live calls, writes, deletes, state, datasets, defaults, or parent-ticket content changed; C5 remains blocked.
