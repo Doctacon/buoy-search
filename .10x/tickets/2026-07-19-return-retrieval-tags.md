@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-19
 Updated: 2026-07-19
 Parent: .10x/tickets/done/2026-07-15-reconcile-retrieval-tag-output.md
@@ -67,3 +67,4 @@ None. The user ratified the output-only contract on 2026-07-19, and `.10x/specs/
 
 - 2026-07-19: Opened as the bounded executable child of the completed retrieval-tag shaping ticket after inspection of current JSON/text conventions, ranking propagation, `repo_path` schema fallback, and the active multi-namespace contract. No source, user documentation, tests, live operation, or external resource changed in this record-only turn.
 - 2026-07-19: Ready for independent review and subsequent implementation on a separate `work/*` branch after this record-only change integrates into `develop`.
+- 2026-07-19: Implemented the active retrieval-tag contract on `work/return-retrieval-tags`: requested stored tags, added always-list `SearchHit` JSON, conditional ordered text output, representative-group preservation, and bounded missing-`tags`/`repo_path` fallback in either successive order. Added focused single/grouped/explicit/routed multi and failure-atomicity tests and updated `docs/retrieval.md`. Fake-backed focused suites passed 74 tests on Python 3.11 and 3.13; full suites passed 431 tests on each; the Python 3.13 package build and `git diff --check` passed. No live Turbopuffer read/write, filter, ranking, default, schema, or migration operation occurred. Evidence: `.10x/evidence/2026-07-19-return-retrieval-tags-implementation.md`. Ticket remains active pending the required independent review.

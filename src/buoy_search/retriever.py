@@ -37,10 +37,11 @@ RETRIEVAL_ATTRIBUTES = [
     "content",
     "path",
     "repo_path",
+    "tags",
     "doc_kind",
     "chunk_index",
 ]
-SCHEMA_PORTABLE_RETRIEVAL_ATTRIBUTES = [attribute for attribute in RETRIEVAL_ATTRIBUTES if attribute != "repo_path"]
+OPTIONAL_RETRIEVAL_ATTRIBUTES = ("repo_path", "tags")
 
 
 def namespace_uses_website_defaults(namespace: str) -> bool:
@@ -114,6 +115,7 @@ class SearchHit:
     content: str = ""
     path: str = ""
     repo_path: str = ""
+    tags: list[str] = field(default_factory=list)
     score_info: dict[str, object] = field(default_factory=dict)
     doc_kind: str = ""
     chunk_index: int | None = None
@@ -127,6 +129,7 @@ class SearchHit:
             "section_path": self.section_path,
             "path": self.path,
             "repo_path": self.repo_path,
+            "tags": list(self.tags),
             "score_info": self.score_info,
         }
         if include_content:
@@ -375,28 +378,31 @@ class HybridRetriever:
     ) -> RetrievalResult:
         """Query one namespace with an already-computed query vector."""
 
-        subqueries = build_multi_query_subqueries(
-            query=query,
-            query_vector=query_vector,
-            candidates=options.candidates,
-            doc_kind=options.doc_kind,
-        )
-        try:
-            response, fusion = run_multi_query(self._namespace, subqueries)
-        except Exception as exc:  # pragma: no cover - SDK/network/schema failure paths are integration-tested.
-            if not is_missing_attribute_error(exc, "repo_path"):
-                raise RuntimeError(user_friendly_query_error(exc)) from exc
-            portable_subqueries = build_multi_query_subqueries(
+        include_attributes = list(RETRIEVAL_ATTRIBUTES)
+        while True:
+            subqueries = build_multi_query_subqueries(
                 query=query,
                 query_vector=query_vector,
                 candidates=options.candidates,
                 doc_kind=options.doc_kind,
-                include_attributes=SCHEMA_PORTABLE_RETRIEVAL_ATTRIBUTES,
+                include_attributes=include_attributes,
             )
             try:
-                response, fusion = run_multi_query(self._namespace, portable_subqueries)
-            except Exception as fallback_exc:  # pragma: no cover - requires SDK/network failure.
-                raise RuntimeError(user_friendly_query_error(fallback_exc)) from fallback_exc
+                response, fusion = run_multi_query(self._namespace, subqueries)
+                break
+            except Exception as exc:  # pragma: no cover - SDK/network/schema failure paths are integration-tested.
+                missing_attributes = [
+                    attribute
+                    for attribute in OPTIONAL_RETRIEVAL_ATTRIBUTES
+                    if attribute in include_attributes and is_missing_attribute_error(exc, attribute)
+                ]
+                if not missing_attributes:
+                    raise RuntimeError(user_friendly_query_error(exc)) from exc
+                include_attributes = [
+                    attribute
+                    for attribute in include_attributes
+                    if attribute not in missing_attributes
+                ]
 
         result_lists = extract_result_lists(response)
         if not result_lists:
@@ -817,6 +823,7 @@ def hit_with_ranking_info(
         content=hit.content,
         path=hit.path,
         repo_path=hit.repo_path,
+        tags=list(hit.tags),
         score_info=score_info,
         doc_kind=hit.doc_kind,
         chunk_index=hit.chunk_index,
@@ -1383,10 +1390,23 @@ def row_to_hit(row: object, *, score_info: Mapping[str, object] | None = None) -
         content=str(attrs.get("content") or ""),
         path=str(attrs.get("path") or ""),
         repo_path=str(attrs.get("repo_path") or ""),
+        tags=row_tags(attrs),
         doc_kind=str(attrs.get("doc_kind") or ""),
         chunk_index=chunk_index if isinstance(chunk_index, int) else None,
         score_info=base_score_info,
     )
+
+
+def row_tags(attrs: Mapping[str, object]) -> list[str]:
+    value = attrs.get("tags")
+    if value is None:
+        return []
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
+        raise RuntimeError("retrieval row tags must be a list of strings")
+    tags = list(value)
+    if not all(isinstance(tag, str) for tag in tags):
+        raise RuntimeError("retrieval row tags must be a list of strings")
+    return tags
 
 
 def row_attributes(row: object) -> dict[str, object]:
