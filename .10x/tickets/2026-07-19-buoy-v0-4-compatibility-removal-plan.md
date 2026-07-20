@@ -16,8 +16,9 @@ This parent is an aggregate plan and is not executable.
 
 - `.10x/tickets/2026-07-19-remove-buoy-v0-4-console-alias.md` owns the package entry point, dedicated legacy hook, candidate version metadata needed for the 0.4.0 wheel, console migration guidance, and clean/upgrade wheel validation.
 - `.10x/tickets/2026-07-19-remove-buoy-v0-4-environment-aliases.md` owns the pre-dispatch environment gate, exact diagnostics, complete command/help/version matrix, configuration migration guidance, and no-side-effect validation.
+- `.10x/tickets/2026-07-19-exclude-internal-records-from-buoy-v0-4-artifacts.md` owns the post-assembly packaging repair that retains repository `.10x/**` records while excluding exactly those records from both artifacts, proving controlled record-only artifact stability, and rerunning aggregate install/upgrade validation.
 
-The children have no semantic dependency and their implementation/review work may proceed in parallel in separate task worktrees. They intentionally share the 0.4.0 boundary and MUST be reconciled into one aggregate candidate before integration: neither removal may land on `develop` without the other, and the 0.4.0 version metadata MUST agree across package/module/lock artifacts. Documentation/changelog conflicts are reconciled without broadening either child's behavior.
+The compatibility-removal children have no semantic dependency and their implementation/review work proceeded in parallel in separate task worktrees. They intentionally share the 0.4.0 boundary and MUST be reconciled into one aggregate candidate before integration: neither removal may land on `develop` without the other, and the 0.4.0 version metadata MUST agree across package/module/lock artifacts. Documentation/changelog conflicts are reconciled without broadening either child's behavior. The packaging child depends on the assembled candidate evidence and now blocks aggregate acceptance.
 
 ## Aggregate acceptance criteria
 
@@ -26,6 +27,7 @@ The children have no semantic dependency and their implementation/review work ma
 - Help/version and parsed no-handler help remain available with removed variables present; parser failures remain parser failures.
 - Clean candidate installation and same-environment upgrade from the immutable, digest-verified released GitHub 0.3.0 wheel prove primary-launcher continuity and old package-owned launcher removal.
 - Focused/full supported-Python tests, wheel/sdist build and inspection, docs/changelog/reference checks, independent child reviews, aggregate review, and hosted checks pass.
+- Repository `.10x/**` records remain tracked but neither wheel nor sdist contains a `.10x` entry; under controlled deterministic conditions, adding only `.10x/**` evidence leaves corresponding wheel and sdist bytes and SHA-256 digests unchanged.
 - `.turbo-search` state fallback, old plans, flags, source aliases, migration commands, current `BUOY_*`/`TURBOPUFFER_*`, direct-command defaults, IDs, artifacts, local data, and remote identity/behavior remain unchanged.
 - No validation publishes packages, creates tags/releases, uses live Turbopuffer, or mutates user state/data.
 
@@ -37,19 +39,21 @@ The two stale retrieval-mode and apply-namespace statements in `.pi/skills/turbo
 
 ## Blockers
 
-None. The user ratified all execution-critical semantics on 2026-07-19.
+Aggregate acceptance is blocked by the candidate sdist containing `.10x/**`, which makes record-only evidence alter the artifact. The user ratified the exact exclusion boundary on 2026-07-19, and `.10x/tickets/2026-07-19-exclude-internal-records-from-buoy-v0-4-artifacts.md` owns the executable repair, controlled determinism proof, aggregate install/upgrade rerun, independent review, and exact-head hosted checks. The parent and all children remain active.
 
 ## Explicit exclusions
 
-Any compatibility beyond the three named aliases; arbitrary user-owned launchers; state/data migration or deletion; remote reads/writes; PyPI publication; Git tags; GitHub Release creation; stale skill-reference corrections; unrelated parser/config/refactoring work.
+Any compatibility beyond the three named aliases; any artifact exclusion beyond repository-root `.10x/**`; removal or relocation of repository records; runtime/package-code, bundled-data, or user-documentation changes for the packaging repair; arbitrary user-owned launchers; state/data migration or deletion; remote reads/writes; PyPI publication; Git tags; GitHub Release creation; stale skill-reference corrections; unrelated parser/config/refactoring work.
 
 ## References
 
 - `.10x/specs/buoy-v0-4-console-alias-removal.md`
 - `.10x/specs/buoy-v0-4-environment-alias-removal.md`
+- `.10x/specs/buoy-v0-4-internal-record-artifact-exclusion.md`
 - `.10x/decisions/buoy-product-identity-and-compatibility-v0-3.md`
 - `.10x/research/2026-07-19-v0-4-compatibility-removal-inventory.md`
 - `.10x/reviews/2026-07-19-v0-4-compatibility-removal-shaping-review-response.md`
+- `.10x/reviews/2026-07-19-buoy-v0-4-aggregate-packaging-blocker-review.md`
 - `.10x/tickets/done/2026-07-18-shape-v0-4-compatibility-removal.md`
 
 ## Progress and notes
@@ -57,3 +61,4 @@ Any compatibility beyond the three named aliases; arbitrary user-owned launchers
 - 2026-07-19: User ratified the reviewer's exact recommended command boundary, diagnostics, console deletion, upgrade procedure, retained compatibility, and no-side-effect contract. Opened two bounded implementation children; no implementation began.
 - 2026-07-19: Aggregate candidate commit `68477fdca5a5b5f7b890d059c484739f02fc1dd8` non-fast-forward merged both full reviewed child tips onto `31b355a`. Resolved only the shared changelog and CLI-test conflict by retaining both active-spec contracts; automatic shared docs/CLI/release-test reconciliation also retained both child diffs. Local Python 3.11/3.13 suites, exhaustive gate tests, wheel/sdist inspection, clean install, digest-verified released-0.3.0 same-environment upgrade, launcher absence, and diff/reference/history checks passed. Evidence: `.10x/evidence/2026-07-19-buoy-v0-4-compatibility-removal-candidate.md`. Independent aggregate review remains pending; this non-executable plan stays active.
 - 2026-07-19: Opened aggregate PR #49 against `develop` without merging. Hosted workflow `29708550897` passed Python 3.11 (`88249318152`), Python 3.13 (`88249318150`), and distribution (`88249388732`) jobs on pushed evidence head `6d4a24c27c215cc40ddcb9e8d4d66211ed2d445d`. A record-only follow-up documents hosted results; exact final-head checks remain visible on PR #49.
+- 2026-07-19: Aggregate packaging review found that the recorded 536-entry candidate sdist contains 441 `.10x` entries while the 45-entry wheel contains none. The user ratified excluding exactly repository-root `.10x/**` from both artifacts while retaining the records, plus a controlled record-only determinism proof and aggregate clean-install/upgrade rerun. Opened the focused active spec and executable packaging child; no exclusion was implemented. Parent and all children remain active and aggregate acceptance is blocked pending that child.

@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-19
 Updated: 2026-07-19
-Relates-To: .10x/tickets/2026-07-19-buoy-v0-4-compatibility-removal-plan.md, .10x/tickets/2026-07-19-remove-buoy-v0-4-console-alias.md, .10x/tickets/2026-07-19-remove-buoy-v0-4-environment-aliases.md, .10x/specs/buoy-v0-4-console-alias-removal.md, .10x/specs/buoy-v0-4-environment-alias-removal.md
+Relates-To: .10x/tickets/2026-07-19-buoy-v0-4-compatibility-removal-plan.md, .10x/tickets/2026-07-19-remove-buoy-v0-4-console-alias.md, .10x/tickets/2026-07-19-remove-buoy-v0-4-environment-aliases.md, .10x/tickets/2026-07-19-exclude-internal-records-from-buoy-v0-4-artifacts.md, .10x/specs/buoy-v0-4-console-alias-removal.md, .10x/specs/buoy-v0-4-environment-alias-removal.md, .10x/specs/buoy-v0-4-internal-record-artifact-exclusion.md
 
 # Buoy 0.4 Compatibility Removal Aggregate Candidate
 
@@ -41,10 +41,11 @@ SHA-256 6863591298ef822a2f934a16f06ed98f440654b696b3ac7b40b258264332255c
 
 `uv build` succeeded, and `scripts/release_checks.py tag --tag v0.4.0` plus `assets --dist` passed. Direct archive inspection observed:
 
-- wheel: 45 files, distribution `buoy-search` version `0.4.0`, 19 `buoy_search/data` files;
+- wheel: 45 files, distribution `buoy-search` version `0.4.0`, 19 `buoy_search/data` files, and zero `.10x` entries;
 - wheel `entry_points.txt` exactly `[console_scripts]\nbuoy = buoy_search.cli:main\n`;
 - no `turbo_search` package and no `legacy_main` in bundled CLI source;
-- sdist: 536 files, 0.4.0 project metadata, no console alias/hook, and the aggregate environment-gate test present.
+- sdist: 536 files, 0.4.0 project metadata, no console alias/hook, and the aggregate environment-gate test present;
+- subsequent direct inventory of these recorded artifacts found 441 `.10x` entries in the sdist. This blocks the newly ratified both-artifact packaging boundary and makes record-only evidence capable of changing the sdist.
 
 ## Clean candidate install
 
@@ -82,11 +83,15 @@ No package was published; no tag or GitHub Release was created; no registry writ
 
 ## What this supports
 
-This supports aggregate source, history, version, console removal, exact environment gate, retained compatibility, focused/full test, distribution, clean-install, released-wheel same-environment upgrade, migration-guidance, and bounded-side-effect acceptance at implementation commit `68477fdca5a5b5f7b890d059c484739f02fc1dd8`.
+This supports aggregate source, history, version, console removal, exact environment gate, retained compatibility, focused/full test, clean-install, released-wheel same-environment upgrade, migration-guidance, and bounded-side-effect acceptance at implementation commit `68477fdca5a5b5f7b890d059c484739f02fc1dd8`.
+
+It does not support final aggregate artifact acceptance under `.10x/specs/buoy-v0-4-internal-record-artifact-exclusion.md`: the recorded sdist contains 441 `.10x` entries, no controlled record-only byte/digest stability proof exists, and aggregate install/upgrade validation must be rerun after the exclusion is implemented.
 
 ## Limits and residual risk
 
 - Local build/install/upgrade validation ran on macOS/Python 3.13; complete source suites separately passed on Python 3.11 and 3.13.
 - Normal 0.3.0-to-0.4.0 upgrade reconciled the candidate's reviewed `scrapling==0.4.9` pin and related transitive versions; neither child changed that dependency contract.
 - No live remote behavior was exercised; gate safety is supported by sentinel/non-dispatch tests and existing non-live suites.
-- Hosted aggregate checks pass. Independent aggregate review remains pending. Parent and children remain active and must not close until that review gate is satisfied.
+- Hosted aggregate checks passed for the pre-exclusion candidate, but do not resolve the `.10x/**` artifact blocker.
+- `.10x/tickets/2026-07-19-exclude-internal-records-from-buoy-v0-4-artifacts.md` must implement the exact exclusion, prove both-artifact controlled determinism across a record-only delta, rerun aggregate install/upgrade validation, and pass independent review plus exact-head hosted checks.
+- Independent final aggregate review remains pending. Parent and all children remain active and must not close while the packaging child is incomplete.

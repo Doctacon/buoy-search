@@ -1,0 +1,62 @@
+Status: open
+Created: 2026-07-19
+Updated: 2026-07-19
+Parent: .10x/tickets/2026-07-19-buoy-v0-4-compatibility-removal-plan.md
+Depends-On: .10x/evidence/2026-07-19-buoy-v0-4-compatibility-removal-candidate.md
+
+# Exclude Internal Records from Buoy 0.4 Artifacts
+
+## Scope
+
+Implement `.10x/specs/buoy-v0-4-internal-record-artifact-exclusion.md` as one bounded packaging repair on the assembled Buoy 0.4 candidate:
+
+- configure wheel and sdist construction to exclude repository-root `.10x/**` and no other path;
+- preserve the repository's `.10x/**` records;
+- add only focused packaging validation needed to prove the wheel/sdist inventory and deterministic record-only boundary;
+- rerun the aggregate candidate clean install and digest-verified released-0.3.0 same-environment upgrade validation.
+
+The implementation surface is limited to build configuration, focused packaging validation, and `.10x` ticket/evidence/review records. It MUST NOT modify runtime/package code, bundled package data, or user documentation.
+
+## Acceptance criteria
+
+- Repository-root `.10x/**` remains present and tracked in the repository.
+- Fresh Buoy 0.4 wheel and sdist inventories contain zero `.10x` entries, with sdist member paths evaluated after stripping the archive's single distribution-root directory.
+- The build configuration introduces exactly the `.10x/**` exclusion and no other exclusion.
+- With identical controlled inputs outside `.10x/**`, the same interpreter/platform/locked build dependencies and command, fixed `SOURCE_DATE_EPOCH`, and fresh temporary output directories, adding only one `.10x/**` evidence record produces byte-for-byte identical wheel and sdist archives with equal corresponding SHA-256 digests.
+- Runtime/package code, bundled package data, tests outside the focused packaging validation, and user documentation are unchanged.
+- Aggregate clean candidate-wheel installation passes with `buoy` working and no package-owned `turbo-search` launcher.
+- Aggregate same-environment upgrade passes after verifying the released GitHub 0.3.0 wheel SHA-256 `048dba11df692a7efcd7ab7269fc2eec82f6b53e57573a3de113bbd051750bab`; 0.3.0 has both package-owned launchers before upgrade, and candidate 0.4.0 metadata plus complete launcher-directory inspection have only `buoy` after upgrade.
+- No package publication, tag, GitHub Release, live Turbopuffer operation, or user state/data mutation occurs.
+- Independent bounded review and exact-head hosted checks pass before this child can close.
+
+## Validation and evidence expectations
+
+Record:
+
+- the exact changed-file inventory and build-configuration diff;
+- complete wheel and sdist member inventories or durable machine-readable inventories, including explicit zero-`.10x` assertions;
+- the controlled build inputs, `SOURCE_DATE_EPOCH`, build commands, artifact names, byte-comparison results, and before/after SHA-256 digests;
+- proof that the comparison's only source-tree delta is one `.10x/**` evidence record;
+- aggregate clean-install and released-0.3.0 upgrade commands, verified release URL/digest, installed metadata/entry points, launcher-directory inventories, and primary CLI outputs;
+- diff checks proving runtime/package code, bundled package data, and user docs are unchanged;
+- exact-head hosted check identities and an explicit no-publication/no-tag/no-release/no-state/no-remote attestation.
+
+## Blockers
+
+None. The assembled candidate and aggregate evidence exist. The observed candidate sdist currently contains `.10x/**`, so parent acceptance and aggregate review are blocked until this executable repair is implemented and reviewed.
+
+## Explicit exclusions
+
+Any exclusion other than repository-root `.10x/**`; removal or relocation of repository records; runtime/package code or bundled-data changes; user-documentation changes; unrelated test changes; any additional compatibility removal; state/data migration or deletion; remote operations; PyPI publication; Git tag creation; GitHub Release creation; release publication.
+
+## References
+
+- `.10x/tickets/2026-07-19-buoy-v0-4-compatibility-removal-plan.md`
+- `.10x/specs/buoy-v0-4-internal-record-artifact-exclusion.md`
+- `.10x/specs/buoy-release-validation.md`
+- `.10x/evidence/2026-07-19-buoy-v0-4-compatibility-removal-candidate.md`
+- `.10x/reviews/2026-07-19-buoy-v0-4-aggregate-packaging-blocker-review.md`
+
+## Progress and notes
+
+- 2026-07-19: User ratified the exact packaging boundary: keep `.10x/**` in the repository, exclude only `.10x/**` from both Buoy 0.4 artifacts, prove deterministic stability across a record-only evidence delta, and rerun aggregate install/upgrade validation without publishing, tagging, or releasing. Ticket opened; no implementation performed.
