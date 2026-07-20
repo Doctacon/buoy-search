@@ -14,7 +14,7 @@ from buoy_search.crawler import CrawlOptions, parse_github_repo_url
 from buoy_search.chunker import parse_markdown_file, process_corpus
 from buoy_search.plan_artifacts import build_generic_site_row, build_plan_artifacts, write_plan_artifacts
 from buoy_search.plan_diff import diff_manifest_against_state
-from buoy_search.repo_syntax_chunking import RepoSyntaxChunkingError
+from buoy_search.repo_syntax_chunking import RepoSyntaxChunkingError, chunk_source, source_payload
 from buoy_search.github_repo import (
     GitHubRepoError,
     GitHubRepoMetadata,
@@ -213,6 +213,47 @@ class GitHubRepoAcquisitionTests(unittest.TestCase):
             plan = process_corpus(pages_dir)
             self.assertEqual(plan.stats.files_error, 0)
             self.assertGreaterEqual(plan.stats.chunks_generated, 2)
+
+    def test_acquired_crlf_python_is_lf_normalized_without_losing_source_semantics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            crlf_source = (
+                b"import os\r\n"
+                b"\r\n"
+                b"\fMODULE = 1\r\n"
+                b"class Outer:\r\n"
+                b"    def inner(self):\r\n"
+                b"        return MODULE"
+            )
+            remote = create_local_git_repo(root / "remote", files={"src/crlf.py": crlf_source})
+            acquisition = acquire_from_local_remote(root, remote)
+
+            corpus = build_github_repo_corpus(acquisition, root / "pages")
+
+            repo_file = corpus.selected_files[0]
+            expected = "import os\n\n\fMODULE = 1\nclass Outer:\n    def inner(self):\n        return MODULE"
+            self.assertIn(b"\r\n", repo_file.absolute_path.read_bytes())
+            self.assertFalse(repo_file.absolute_path.read_bytes().endswith(b"\n"))
+            self.assertEqual(repo_file.text, expected)
+            self.assertNotIn("\r", repo_file.text)
+            self.assertFalse(repo_file.text.endswith("\n"))
+            for arm in ("fixed-80-python-breadcrumbs", "python-ast"):
+                with self.subTest(arm=arm):
+                    chunking = chunk_source(repo_file.text, repo_file.repo_path, repo_file.language, arm)
+                    self.assertEqual(
+                        chunking.lines,
+                        ("import os", "", "\fMODULE = 1", "class Outer:", "    def inner(self):", "        return MODULE"),
+                    )
+                    self.assertEqual(
+                        "\n".join(source_payload(chunking, item) for item in chunking.ranges),
+                        expected,
+                    )
+                    self.assertIn("Outer > inner", {breadcrumb for item in chunking.ranges for breadcrumb in item.breadcrumbs})
+            ast_chunking = chunk_source(repo_file.text, repo_file.repo_path, repo_file.language, "python-ast")
+            self.assertEqual(
+                [(item.start, item.end, item.breadcrumbs) for item in ast_chunking.ranges],
+                [(1, 3, ()), (4, 4, ("Outer",)), (5, 6, ("Outer > inner",))],
+            )
 
     def test_build_corpus_can_include_large_file_with_search_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -499,6 +540,31 @@ class GitHubRepoAcquisitionTests(unittest.TestCase):
             self.assertEqual(default_page.normalized_body, control_page.normalized_body)
             self.assertEqual(default_page.source_hash, control_page.source_hash)
             self.assertTrue(all(chunk.section_path.startswith("src/app.py") for chunk in control.indexing_plan.chunks))
+
+    def test_explicit_current_default_fails_if_chunk_cap_omits_later_code_header(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            remote = create_local_git_repo(
+                root / "remote",
+                files={
+                    "a.py": "value = 'first'\n",
+                    "b.py": "value = 'second'\n",
+                },
+            )
+            acquisition = acquire_from_local_remote(root, remote)
+            options = CrawlOptions(
+                base_url=acquisition.source.base_url,
+                out_dir=root / "control",
+                max_chunks=2,
+                repo_chunking_arm="current-default",
+            )
+
+            with patch("buoy_search.github_repo.acquire_github_repo", return_value=acquisition):
+                with self.assertRaisesRegex(
+                    RepoSyntaxChunkingError,
+                    r"--max-chunks omitted part or all of b\.py",
+                ):
+                    crawl_github_repo_with_plan(acquisition.source, options)
 
     def test_python_aware_arms_emit_identical_header_and_exact_isolated_source_chunks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

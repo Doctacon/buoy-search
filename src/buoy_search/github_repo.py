@@ -769,8 +769,13 @@ def validate_and_count_control_chunks(
                 f"common repository header for {repo_file.repo_path} is not exactly one unchanged final chunk"
             )
         actual = [chunk for chunk in plan.chunks if chunk.url == repo_file.blob_url]
-        corpus.stats.repo_header_chunks += sum(chunk == headers[0] for chunk in actual)
-        corpus.stats.repo_source_chunks += sum(chunk.section_path != expected_section for chunk in actual)
+        if actual != document_chunks:
+            raise RepoSyntaxChunkingError(
+                "explicit current-default requires one header and complete source chunks for every selected "
+                f"code file; --max-chunks omitted part or all of {repo_file.repo_path}"
+            )
+        corpus.stats.repo_header_chunks += 1
+        corpus.stats.repo_source_chunks += len(actual) - 1
 
 
 def process_syntax_repo_corpus(
