@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-20
 Updated: 2026-07-20
-Relates-To: .10x/tickets/2026-07-19-freeze-repo-ranking-experiment-contract.md, .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md, .10x/decisions/repo-ranking-promotion-policy.md, .10x/specs/repo-search-eval-autoresearch.md
+Relates-To: .10x/tickets/done/2026-07-19-freeze-repo-ranking-experiment-contract.md, .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md, .10x/decisions/repo-ranking-promotion-policy.md, .10x/specs/repo-search-eval-autoresearch.md
 
 # Repo Ranking Experiment Contract Freeze
 
@@ -258,6 +258,8 @@ namespace/catalog writes or deletes: 0
 labels/datasets modified: 0
 ```
 
+Closure-only verification after adding review/status/reference records preserved the exact validator output above on both Python 3.11 and 3.13. `tests.test_ranking_contract` passed 4/4 on each interpreter; full locked unittest discovery passed 445/445 on each interpreter; and `uv build` produced the wheel and source distribution successfully. The finalization changed no source, test, dataset, inventory, manifest, or hash artifact.
+
 ## What this supports or challenges
 
 Supports:
@@ -276,4 +278,6 @@ Challenges:
 
 ## Limits
 
-This evidence proves checked-in schema/hash/path observations and a read-only public-source Buoy plan. It does not prove label quality, retrieval quality, model suitability, namespace existence/current contents, provider compatibility, promotion eligibility, or absence of defects. No C3+ work, live retrieval, namespace write, merge, or approval occurred. Independent review is still required; C1 remains active because Buoy is insufficient and its same-source baseline write is separately gated.
+This evidence proves checked-in schema/hash/path observations and a read-only public-source Buoy plan. It does not prove label quality, retrieval quality, model suitability, namespace existence/current contents, provider compatibility, promotion eligibility, or absence of defects. No C3+ work, live retrieval, namespace write, merge, or approval occurred. Independent review passed at PR #59 head `2d11a2e` in `.10x/reviews/2026-07-20-repo-ranking-experiment-contract-freeze-review.md`; C1 is done with Buoy's insufficiency frozen explicitly, while C3+ remains blocked.
+
+The user's subsequent ratification to remove only the grade-1 internal Buoy `.10x` judgment is owned by `.10x/tickets/2026-07-20-remove-buoy-internal-ranking-judgment.md`. It did not alter this evidence, the dataset, the recorded 370-judgment count, or any hash during C1 closure, and it does not establish Buoy baseline sufficiency.
