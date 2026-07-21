@@ -44,6 +44,7 @@ Post-repair validation observed:
 4. `scripts/c6_syntax_forecast.py validate` passed on both runtimes with unchanged blocked readiness `false`, forecast identity `d5199276c19ae89779287eaa90824ce1e1cc684a3f060899f02f65d976016243`, and tokenizer checkpoint `c3a1560e611114760909c110a118a3ce1a60f0527de08c769a85a20b263f4e0f`.
 5. `uv build --out-dir /tmp/buoy-pr79-exact-file-set-dist` passed, and bounded wheel inspection found exactly the four committed tokenizer files.
 6. `git diff --check` passed. Preserved forecast JSON, compressed tokenizer report, and validator hashes remain `4f40e8630438e1c1c2dead10c9587711652f695cab458a1f3efff68942ecb2bd`, `7adb1d6e05b2ce9f24ab69468758b867d6d7871221ba5d014090b3088e8fb808`, and `0c3c0dd5d9cda426f4018a5a42a0ef1c759e535dcd1771552839c3a13dac45f8` respectively.
+7. Hosted GitHub Actions run `29799849205` passed at repair commit `77016562cac82d34142cf64f03b17c33f0ca75af`: Python 3.11 in 2m03s, Python 3.13 in 1m36s, and distribution build in 12s.
 
 ## Preserved C6 checkpoint and local regeneration boundary
 
