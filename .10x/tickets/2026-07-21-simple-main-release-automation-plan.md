@@ -14,7 +14,7 @@ This parent is non-executable.
 
 ## Child sequence
 
-1. `.10x/tickets/2026-07-21-implement-simple-main-release-automation.md`
+1. `.10x/tickets/done/2026-07-21-implement-simple-main-release-automation.md`
 2. `.10x/tickets/2026-07-21-configure-simple-main-release-governance.md`
 
 The configuration child depends on reviewed integration of repository automation. The first real passing release-readiness run remains deferred to a future explicitly version-bumped release PR; no next version is invented here.
@@ -38,8 +38,9 @@ The configuration child depends on reviewed integration of repository automation
 
 ## Progress and notes
 
-- 2026-07-21: Repository implementation and local validation are complete on `work/implement-simple-release`, including the exact approved v0.4.0 provenance transition. Evidence: `.10x/evidence/2026-07-21-simple-main-release-automation-implementation.md`. Hosted CI and independent review remain before the implementation child can close; hosted configuration remains sequenced after reviewed integration.
+- 2026-07-21: Repository implementation passed independent final review, integrated through PR #89 as `7fa4bd726d09a671b76d408e7383e9fbc58c41de`, and passed develop push CI `29864439022`. Evidence: `.10x/evidence/2026-07-21-simple-main-release-automation-implementation.md`; review: `.10x/reviews/2026-07-21-simple-main-release-automation-final-review.md`.
+- 2026-07-21: Hosted configuration completed with exact main readback, unchanged develop protection, retired completed deployment, deleted release environment, and PR #87 closed unmerged. Evidence: `.10x/evidence/2026-07-21-simple-main-release-governance-configuration.md`.
 
 ## Blockers
 
-None for repository implementation. Hosted configuration remains blocked on integrated reviewed repository automation.
+Independent hosted-configuration review remains before the configuration child and parent can close.

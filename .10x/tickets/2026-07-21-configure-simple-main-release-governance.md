@@ -1,8 +1,8 @@
-Status: blocked
+Status: active
 Created: 2026-07-21
 Updated: 2026-07-21
 Parent: .10x/tickets/2026-07-21-simple-main-release-automation-plan.md
-Depends-On: .10x/tickets/2026-07-21-implement-simple-main-release-automation.md
+Depends-On: .10x/tickets/done/2026-07-21-implement-simple-main-release-automation.md
 
 # Configure Simple Main Release Governance
 
@@ -44,4 +44,11 @@ Exact before/after environment/deployment/protection/PR API state, mutation requ
 
 ## Blockers
 
-Blocked on reviewed integration of `.10x/tickets/2026-07-21-implement-simple-main-release-automation.md`.
+Independent review of hosted configuration evidence remains before closure.
+
+## Progress and notes
+
+- 2026-07-21: PR #89 integrated reviewed automation as develop `7fa4bd726d09a671b76d408e7383e9fbc58c41de`; push CI `29864439022` passed and integrated workflows contain zero environment references.
+- 2026-07-21: GitHub classified completed v0.4 deployment `5542522847` as active while its latest state was `success`. After exact release/run revalidation, authorization was narrowed to posting `inactive` only to that deployment; no other deployment or release state changed.
+- 2026-07-21: Deleted environment `release`; installed the exact four app-bound main readiness checks with strict=false; disabled last-push approval; retained existing main force-push allowance/admin/deletion settings; proved develop protection unchanged; closed PR #87 unmerged without branch deletion. API readback passed. Evidence: `.10x/evidence/2026-07-21-simple-main-release-governance-configuration.md`.
+- 2026-07-21: An initial review-policy PATCH failed with HTTP 422 because user-owned repositories do not support dismissal restrictions; it made no policy change. Retrying only supported exact fields succeeded.
