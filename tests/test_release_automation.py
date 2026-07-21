@@ -142,6 +142,7 @@ class ReleaseAutomationTests(unittest.TestCase):
         self.assertEqual(project["license"], "Apache-2.0")
         self.assertEqual(project["version"], "0.4.0")
         self.assertEqual(project["scripts"], {"buoy": "buoy_search.cli:main"})
+        self.assertIn("transformers==5.12.1", project["dependencies"])
         self.assertIn("Development Status :: 4 - Beta", project["classifiers"])
         self.assertIn("Programming Language :: Python :: 3.11", project["classifiers"])
         self.assertIn("Programming Language :: Python :: 3.13", project["classifiers"])

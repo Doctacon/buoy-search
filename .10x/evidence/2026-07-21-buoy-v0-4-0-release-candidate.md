@@ -9,7 +9,7 @@ Relates-To: .10x/tickets/2026-07-21-validate-buoy-v0-4-0-release-candidate.md, .
 
 Release candidate source began at integrated `develop` commit `a2142205cae8ccfce9ed5f4d3b4785413621812b`. Project, module, lock, wheel, and sdist metadata identify 0.4.0. The candidate moves the complete release notes from Unreleased to `## [0.4.0] - pending`, leaves Unreleased empty, and adds focused static assertions for the pending version and newly documented behavior.
 
-Both complete locked source suites passed 518 tests. The frozen ranking contract and intentionally blocked C6 forecast validators passed on both Python versions. Clean candidate artifacts, clean installation, and digest-verified released-0.3.0 same-environment upgrade validation passed.
+Both complete locked source suites passed 518 tests. The frozen ranking contract and intentionally blocked C6 forecast validators passed on both Python versions. Independent review of the initial candidate found that distributable metadata allowed a normal clean install to resolve `transformers==5.14.1` while the bundled tokenizer loader requires exactly `5.12.1`. The repaired candidate pins `transformers==5.12.1` directly in project/wheel/lock metadata. Clean candidate artifacts, actual bundled-tokenizer loading, clean installation, and digest-verified released-0.3.0 same-environment upgrade validation then passed.
 
 ## Procedure and results
 
@@ -28,12 +28,13 @@ Using separate disposable environments:
 
 `uv build --out-dir /tmp/buoy-v040-release-dist` built once from the candidate:
 
-- `buoy_search-0.4.0-py3-none-any.whl`: SHA-256 `9ef34c54f9bab924890bd48496e87755c135e1a22a5fe526768f206fb7786cbd`, 52 members.
-- `buoy_search-0.4.0.tar.gz`: SHA-256 `bb50cb08d216892107b0db04c69be0ab6990ffef7306e37b94f5beec43ec0625`, 109 members.
+- `buoy_search-0.4.0-py3-none-any.whl`: SHA-256 `89b84c6beba2979ab6ffd0d244d1d0f5c1af938cfbec021a89094a7109e5c4c8`, 52 members.
+- `buoy_search-0.4.0.tar.gz`: SHA-256 `9c0469d2fc03b8e03780b06793537736391c21f0ed07c43adab9e674988ffd3a`, 109 members.
 
 Inspection proved:
 
 - exact 0.4.0 metadata and names;
+- wheel metadata directly requires `transformers==5.12.1`;
 - wheel entry points are exactly `[console_scripts]` plus `buoy = buoy_search.cli:main`;
 - no `.10x/**` member exists in either artifact;
 - the wheel contains package code, bundled evaluation data, and the exact bundled offline treatment tokenizer files;
@@ -41,13 +42,13 @@ Inspection proved:
 
 ### Clean installation
 
-A fresh CPython 3.13 environment normally installed the candidate wheel. Installed metadata reported 0.4.0 and exactly one package console entry point, `buoy_search.cli:main`. `buoy --version` returned `buoy 0.4.0`; `buoy --help` and `python -m buoy_search --help` passed. The `buoy` launcher existed and `turbo-search` did not.
+A fresh CPython 3.13 environment normally installed the repaired candidate wheel and resolved exactly `transformers==5.12.1`. Installed metadata reported 0.4.0 and exactly one package console entry point, `buoy_search.cli:main`. The clean installation loaded the bundled slow `BertTokenizer`, verified its exact four-file identity and 512 maximum, and encoded a smoke payload with special tokens without network or model construction. `buoy --version` returned `buoy 0.4.0`; `buoy --help` and `python -m buoy_search --help` passed. The `buoy` launcher existed and `turbo-search` did not.
 
 ### Released 0.3.0 upgrade
 
 Downloaded only `https://github.com/Doctacon/buoy-search/releases/download/v0.3.0/buoy_search-0.3.0-py3-none-any.whl`. Its SHA-256 matched the immutable required value `048dba11df692a7efcd7ab7269fc2eec82f6b53e57573a3de113bbd051750bab` before installation.
 
-A fresh CPython 3.13 environment installed 0.3.0 and proved version 0.3.0 plus both package-owned `buoy` and `turbo-search` launchers. A normal same-environment upgrade to the candidate wheel produced version 0.4.0, retained working `buoy` and module help, exposed exactly the one `buoy` entry point, and removed the package-owned `turbo-search` launcher.
+A fresh CPython 3.13 environment installed 0.3.0 and proved version 0.3.0 plus both package-owned `buoy` and `turbo-search` launchers. A normal same-environment upgrade to the repaired candidate wheel produced version 0.4.0, changed the unconstrained 0.3 environment's Transformers 5.14.1 to exactly 5.12.1, successfully loaded the bundled tokenizer, retained working `buoy` and module help, exposed exactly the one `buoy` entry point, and removed the package-owned `turbo-search` launcher.
 
 ## What this supports
 

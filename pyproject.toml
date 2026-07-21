@@ -23,6 +23,7 @@ classifiers = [
 dependencies = [
     "turbopuffer",
     "sentence-transformers",
+    "transformers==5.12.1",
     "PyYAML",
     "scrapling[fetchers]==0.4.9",
     "markdownify>=1.2.0",
