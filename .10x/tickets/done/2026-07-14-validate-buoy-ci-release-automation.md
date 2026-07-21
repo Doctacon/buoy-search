@@ -24,7 +24,7 @@ Git mutation, GitHub configuration, workflow dispatch, tag/release creation, PyP
 
 ## References
 
-- `.10x/specs/buoy-ci-and-github-releases.md`
+- `.10x/specs/superseded/buoy-ci-and-github-releases.md`
 - `.10x/specs/buoy-public-project-surface.md`
 - `.10x/tickets/done/2026-07-14-add-buoy-ci-release-and-public-files.md`
 

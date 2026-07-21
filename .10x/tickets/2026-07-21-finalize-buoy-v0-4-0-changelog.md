@@ -2,7 +2,7 @@ Status: open
 Created: 2026-07-21
 Updated: 2026-07-21
 Parent: .10x/tickets/2026-07-21-buoy-v0-4-0-release-plan.md
-Depends-On: .10x/tickets/2026-07-21-create-buoy-v0-4-0-github-release.md
+Depends-On: .10x/tickets/done/2026-07-21-create-buoy-v0-4-0-github-release.md
 
 # Finalize Buoy v0.4.0 Changelog
 
@@ -34,7 +34,7 @@ Authoritative hosted date/URL/tag observations, exact changelog diff, link/versi
 
 ## Blockers
 
-Blocked on verified v0.4.0 GitHub Release publication.
+None. Verified v0.4.0 GitHub Release publication is complete.
 
 ## Progress and notes
 

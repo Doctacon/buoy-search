@@ -26,7 +26,7 @@ Force push, history rewrite, tag/release creation, PyPI publication, unrelated c
 
 - `.10x/tickets/done/2026-07-14-buoy-rebrand-plan.md`
 - `.10x/reviews/2026-07-14-buoy-rebrand-parent-closure-review.md`
-- `.10x/specs/buoy-ci-and-github-releases.md`
+- `.10x/specs/superseded/buoy-ci-and-github-releases.md`
 - `.10x/tickets/done/2026-07-14-validate-buoy-ci-release-automation.md`
 
 ## Evidence expectations

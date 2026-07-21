@@ -25,7 +25,7 @@ Changing the already-published tag/Release/assets, promoting this follow-up to m
 ## References
 
 - `docs/releasing.md`
-- `.10x/specs/buoy-ci-and-github-releases.md`
+- `.10x/specs/superseded/buoy-ci-and-github-releases.md`
 
 ## Evidence expectations
 

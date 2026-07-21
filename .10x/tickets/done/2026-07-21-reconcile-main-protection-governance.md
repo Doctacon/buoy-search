@@ -12,7 +12,7 @@ Record the user's exact decision to retain current hosted `main` protection duri
 
 ## Scope completed
 
-- Superseded the original governance decision with `.10x/decisions/protected-development-and-github-release-governance-v2.md` while preserving the original under `.10x/decisions/superseded/`.
+- Superseded the original governance decision with `.10x/decisions/superseded/protected-development-and-github-release-governance-v2.md` while preserving the original under `.10x/decisions/superseded/`.
 - Updated `.10x/specs/protected-github-branches.md` with exact branch-specific protection behavior.
 - Repaired references to the moved superseded decision and updated active release records to the v2 authority.
 - Recorded completed PR #83 ancestry integration, closed/stale PR #80 history, and the remaining mechanically required replacement release-PR gates.
