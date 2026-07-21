@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-21
 Updated: 2026-07-21
 Parent: .10x/tickets/2026-07-21-simple-main-release-automation-plan.md
@@ -45,3 +45,9 @@ Changed paths; exact workflow/check/state mechanics; deterministic artifacts; te
 ## Blockers
 
 None.
+
+## Progress and notes
+
+- 2026-07-21: Implemented the prospective-main release-readiness workflow, serialized main-push state machine, standard-Python policy/artifact/GitHub-state helpers, fail-closed publication adapter, deterministic build/smoke checks, simple-flow and self-hosted migration documentation, and v0.4.0 changelog finalization. No live configuration, environment, tag, Release, main, registry, or Turbopuffer state was accessed or mutated.
+- 2026-07-21: Applied the approved sole legacy no-op provenance exception for exact published v0.4.0. The exception pins tag, peeled commit, both subject names/digests, Release identity, repository, workflow, source commit, and historical `refs/tags/v0.4.0`; all future versions require `refs/heads/main`.
+- 2026-07-21: Focused release automation tests passed (24 tests). Final complete locked Python 3.11 and 3.13 validators and suites passed (531 tests on each interpreter). Two deterministic builds produced identical wheel/sdist digests, artifact inspection passed, and a normal clean-wheel install passed CLI/help and exact bundled-tokenizer smoke. Static YAML/state/forbidden-operation, lock, diff, and current-develop ref checks passed. Evidence: `.10x/evidence/2026-07-21-simple-main-release-automation-implementation.md`. Commit, hosted CI, and independent review remain before closure.

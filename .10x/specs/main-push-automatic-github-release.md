@@ -54,7 +54,15 @@ Serialization prevents workflow-owned overlap. A concurrent external creator bet
 
 ## Existing v0.4.0 transition
 
-Published v0.4.0 peels to `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`. Any different main commit retaining 0.4.0 fails readiness and automatic release. The next release requires an explicit stable version bump; this spec does not choose it.
+Published v0.4.0 is the sole legacy no-op exception. It MUST be accepted only when every normal exact-state field matches and all of these legacy pins match simultaneously:
+
+- tag `v0.4.0`, annotated and peeled to `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`;
+- Release name `Buoy v0.4.0`, tag/target `v0.4.0`, non-draft, non-prerelease, and exactly two assets;
+- wheel `buoy_search-0.4.0-py3-none-any.whl` SHA-256 `89b84c6beba2979ab6ffd0d244d1d0f5c1af938cfbec021a89094a7109e5c4c8`;
+- sdist `buoy_search-0.4.0.tar.gz` SHA-256 `9c0469d2fc03b8e03780b06793537736391c21f0ed07c43adab9e674988ffd3a`;
+- provenance repository `Doctacon/buoy-search`, workflow `release.yml`, source ref `refs/tags/v0.4.0`, source commit `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`, and the exact corresponding subject names/digests.
+
+This exception exists only because the already-published v0.4.0 provenance predates main-push automation. Any mismatch permanently fails. Every future version MUST require provenance source ref `refs/heads/main`; the legacy source-ref exception MUST NOT generalize. Any different main commit retaining 0.4.0 fails readiness and automatic release. The next release requires an explicit stable version bump; this spec does not choose it.
 
 ## Environment removal and supersession
 
