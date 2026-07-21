@@ -27,6 +27,7 @@ from buoy_search.chunker import (
     IndexingPlan,
     IndexingStats,
     MarkdownChunk,
+    MarkdownDocument,
     chunk_document,
     clean_markdown_inline,
     derive_doc_kind_and_tags,
@@ -40,8 +41,21 @@ from buoy_search.repo_syntax_chunking import (
     PYTHON_SYNTAX_ARMS,
     REPO_CHUNKING_ARMS,
     RepoSyntaxChunkingError,
+    SourceChunking,
+    SourceRange,
     chunk_source,
     source_payload,
+)
+from buoy_search.treatment_token_budget import (
+    MAX_EMBEDDING_TOKENS,
+    TOKENIZER_MODEL,
+    TOKENIZER_REVISION,
+    Tokenizer,
+    TreatmentTokenBudgetError,
+    UnsplittableSourceLine,
+    exact_token_count,
+    exhaustive_maximal_subdivision,
+    load_pinned_tokenizer,
 )
 from buoy_search.crawler import (
     DEFAULT_GITHUB_REPO_MAX_FILE_BYTES,
@@ -786,10 +800,11 @@ def process_syntax_repo_corpus(
     target_tokens: int,
     overlap_sentences: int,
 ) -> IndexingPlan:
-    """Build isolated exact source chunks for one Python-aware experiment arm."""
+    """Build one complete token-compatible Python-aware repository plan."""
 
     if arm not in PYTHON_SYNTAX_ARMS:
         raise ValueError(f"unsupported Python syntax chunking arm: {arm}")
+    tokenizer = load_pinned_tokenizer()
     corpus_dir = corpus.pages_dir.resolve()
     files = discover_markdown_files(corpus_dir)
     source_by_page = {
@@ -811,6 +826,7 @@ def process_syntax_repo_corpus(
                 target_tokens=target_tokens,
                 overlap_sentences=overlap_sentences,
             )
+            _require_compatible_rows(document_chunks, tokenizer, document, arm, "prose")
             if not document_chunks:
                 stats.files_skipped_empty += 1
             chunks.extend(document_chunks)
@@ -836,6 +852,7 @@ def process_syntax_repo_corpus(
                 f"common repository header for {repo_file.repo_path} is not exactly one unchanged final chunk"
             )
         header = headers[0]
+        _require_compatible_rows((header,), tokenizer, document, arm, "header")
         chunks.append(header)
         corpus.stats.repo_header_chunks += 1
 
@@ -851,40 +868,43 @@ def process_syntax_repo_corpus(
         fence = "`" * max(3, longest_backtick_run + 1)
         language = repo_file.language if repo_file.language != "text" else ""
         doc_kind, tags = derive_doc_kind_and_tags(document.url, document.relative_path)
-        for chunk_index, source_range in enumerate(source_chunking.ranges, start=1):
-            content_parts: list[str] = []
-            if source_range.breadcrumbs:
-                content_parts.extend(
-                    [f"Symbol breadcrumbs: {'; '.join(source_range.breadcrumbs)}", ""]
-                )
-            content_parts.extend(
-                [
-                    f"{fence}{language}",
-                    source_payload(source_chunking, source_range),
-                    fence,
-                ]
+
+        def render(source_range: SourceRange, chunk_index: int = 0) -> MarkdownChunk:
+            return render_syntax_source_chunk(
+                document=document,
+                source_chunking=source_chunking,
+                source_range=source_range,
+                expected_section=expected_section,
+                fence=fence,
+                language=language,
+                chunk_index=chunk_index,
+                doc_kind=doc_kind,
+                tags=tags,
             )
-            content = "\n".join(content_parts)
-            section_path = f"{expected_section} > Lines {source_range.start}-{source_range.end}"
-            chunks.append(
-                MarkdownChunk(
-                    id=deterministic_chunk_id(
-                        document.relative_path,
-                        chunk_index,
-                        document.source_hash,
-                        content,
-                    ),
-                    content=content,
-                    title=document.title,
-                    url=document.url,
-                    path=document.relative_path,
-                    section_path=section_path,
-                    chunk_index=chunk_index,
-                    doc_kind=doc_kind,
-                    tags=tags,
-                    source_hash=document.source_hash,
+
+        final_ranges: list[SourceRange] = []
+        for parent in source_chunking.ranges:
+            try:
+                final_ranges.extend(
+                    exhaustive_maximal_subdivision(
+                        parent,
+                        lambda candidate: render(candidate).embedding_text,
+                        lambda text: exact_token_count(tokenizer, text),
+                    )
                 )
-            )
+            except UnsplittableSourceLine as exc:
+                repository = document.metadata.get("repo_full_name", "unknown-repository")
+                raise TreatmentTokenBudgetError(
+                    f"repository={repository} arm={arm} path={repo_file.repo_path} "
+                    f"line={exc.line} tokens={exc.token_count} "
+                    f"tokenizer={TOKENIZER_MODEL}@{TOKENIZER_REVISION} max={MAX_EMBEDDING_TOKENS}"
+                ) from None
+
+        for chunk_index, source_range in enumerate(final_ranges, start=1):
+            chunk = render(source_range, chunk_index)
+            if exact_token_count(tokenizer, chunk.embedding_text) > MAX_EMBEDDING_TOKENS:
+                raise TreatmentTokenBudgetError("emitted source payload exceeds pinned token maximum")
+            chunks.append(chunk)
             corpus.stats.repo_source_chunks += 1
 
     if limit_chunks is not None and len(chunks) > limit_chunks:
@@ -899,6 +919,71 @@ def process_syntax_repo_corpus(
         stats=stats,
         limit_reached=False,
     )
+
+
+def render_syntax_source_chunk(
+    *,
+    document: MarkdownDocument,
+    source_chunking: SourceChunking,
+    source_range: SourceRange,
+    expected_section: str,
+    fence: str,
+    language: str,
+    chunk_index: int,
+    doc_kind: str,
+    tags: list[str],
+) -> MarkdownChunk:
+    """Render the production treatment source chunk used by counting and emission."""
+
+    content_parts: list[str] = []
+    if source_range.breadcrumbs:
+        content_parts.extend(
+            [f"Symbol breadcrumbs: {'; '.join(source_range.breadcrumbs)}", ""]
+        )
+    content_parts.extend(
+        [
+            f"{fence}{language}",
+            source_payload(source_chunking, source_range),
+            fence,
+        ]
+    )
+    content = "\n".join(content_parts)
+    return MarkdownChunk(
+        id=deterministic_chunk_id(
+            document.relative_path,
+            chunk_index,
+            document.source_hash,
+            content,
+        ),
+        content=content,
+        title=document.title,
+        url=document.url,
+        path=document.relative_path,
+        section_path=f"{expected_section} > Lines {source_range.start}-{source_range.end}",
+        chunk_index=chunk_index,
+        doc_kind=doc_kind,
+        tags=tags,
+        source_hash=document.source_hash,
+    )
+
+
+def _require_compatible_rows(
+    chunks: Sequence[MarkdownChunk],
+    tokenizer: Tokenizer,
+    document: MarkdownDocument,
+    arm: str,
+    row_class: str,
+) -> None:
+    for chunk in chunks:
+        token_count = exact_token_count(tokenizer, chunk.embedding_text)
+        if token_count > MAX_EMBEDDING_TOKENS:
+            repository = document.metadata.get("repo_full_name", "unknown-repository")
+            repo_path = document.metadata.get("repo_path", document.relative_path)
+            raise TreatmentTokenBudgetError(
+                f"repository={repository} arm={arm} path={repo_path} class={row_class} "
+                f"tokens={token_count} tokenizer={TOKENIZER_MODEL}@{TOKENIZER_REVISION} "
+                f"max={MAX_EMBEDDING_TOKENS}"
+            )
 
 
 def write_repo_markdown_page(

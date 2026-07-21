@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-20
 Updated: 2026-07-20
 Parent: .10x/tickets/2026-06-28-repo-search-heavy-ranking-experiments.md
@@ -69,3 +69,4 @@ Focused and full CPython 3.11/3.13 results; exact golden tokenizer/payload/bound
 ## Progress and notes
 
 - 2026-07-20: Opened after independent PASS and exact user ratification activated the source-only contract. This ticket owns only the bounded local source/test implementation. The 366 incompatible prose plan rows remain under a separate blocked shaping owner, C6 remains blocked, and no source/test implementation, artifact regeneration, model/live operation, or write occurred in the ratification turn.
+- 2026-07-20: Implemented the bounded source compatibility pass with the exact bundled tokenizer-only files, package/class/revision/file/max checks, production-rendered exhaustive maximal subdivision, sanitized complete-plan failure, and unchanged header/prose fail-closed checks. Added exact golden, property, mutation, isolation, failure, reconstruction, citation, breadcrumb, identity, and packaging tests. Full 516-test suites and both ranking/C6 validators passed on CPython 3.11 and 3.13; preserved C6 artifacts and validator script retained their exact hashes. Evidence: `.10x/evidence/2026-07-20-deterministic-token-budget-source-subdivision-implementation.md`. Ticket remains active pending independent implementation review; no C6 regeneration or live operation occurred.
