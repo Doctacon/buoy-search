@@ -710,10 +710,13 @@ class ReleaseAutomationTests(unittest.TestCase):
             with self.assertRaisesRegex(ReleaseError, "asset names mismatch"):
                 verify_artifacts(dist, root)
 
-    def test_current_changelog_records_verified_v0_4_release(self) -> None:
+    def test_current_changelog_records_pending_v0_4_1_and_verified_v0_4_0_release(self) -> None:
         changelog = (ROOT / "CHANGELOG.md").read_text()
-        self.assertIn("## [Unreleased]\n\n## [0.4.0] - 2026-07-21", changelog)
-        self.assertIn("[Unreleased]: https://github.com/Doctacon/buoy-search/compare/v0.4.0...HEAD", changelog)
+        self.assertIn("## [Unreleased]\n\n## [0.4.1] - pending", changelog)
+        self.assertIn("four prospective-merge readiness checks and deterministic automatic GitHub publication", changelog)
+        self.assertIn("## [0.4.0] - 2026-07-21", changelog)
+        self.assertIn("[Unreleased]: https://github.com/Doctacon/buoy-search/compare/v0.4.1...HEAD", changelog)
+        self.assertIn("[0.4.1]: https://github.com/Doctacon/buoy-search/compare/v0.4.0...v0.4.1", changelog)
         self.assertIn("[0.4.0]: https://github.com/Doctacon/buoy-search/releases/tag/v0.4.0", changelog)
 
     def test_release_docs_describe_simple_flow_and_self_hosted_mapping(self) -> None:
@@ -757,7 +760,7 @@ class ReleaseAutomationTests(unittest.TestCase):
             config = tomllib.load(handle)
         project = config["project"]
         self.assertEqual(project["license"], "Apache-2.0")
-        self.assertEqual(project["version"], "0.4.0")
+        self.assertEqual(project["version"], "0.4.1")
         self.assertEqual(project["scripts"], {"buoy": "buoy_search.cli:main"})
         self.assertIn("transformers==5.12.1", project["dependencies"])
         self.assertIn("Development Status :: 4 - Beta", project["classifiers"])
