@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tarfile
 import tomllib
+from datetime import date
 from typing import Any
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -30,7 +31,16 @@ LEGACY_V040_ASSETS = {
     "buoy_search-0.4.0-py3-none-any.whl": "89b84c6beba2979ab6ffd0d244d1d0f5c1af938cfbec021a89094a7109e5c4c8",
     "buoy_search-0.4.0.tar.gz": "9c0469d2fc03b8e03780b06793537736391c21f0ed07c43adab9e674988ffd3a",
 }
-VERSION_RE = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
+VERSION_RE = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)")
+RELEASE_POLICY_GLOBS = (
+    ".github/workflows/*.yml",
+    ".github/workflows/*.yaml",
+    "scripts/*release*.py",
+    "scripts/*release*.sh",
+)
+FORBIDDEN_RELEASE_SERVICES = re.compile(
+    rf"\b(?:{'py' + 'pi'}|{'turbo' + 'puffer'})\b", re.IGNORECASE
+)
 BOT = {
     "name": "github-actions[bot]",
     "email": "41898282+github-actions[bot]@users.noreply.github.com",
@@ -83,8 +93,26 @@ def validate_changelog(version: str, root: Path = ROOT) -> None:
     dated = re.compile(r"\[(\d+\.\d+\.\d+)\] - (\d{4}-\d{2}-\d{2})")
     released = [heading.group(1) for heading in headings if heading.group(1).startswith("[")]
     for heading in released[2:]:
-        if dated.fullmatch(heading) is None:
+        match = dated.fullmatch(heading)
+        if match is None:
             raise ReleaseError(f"older CHANGELOG release must have ISO date: {heading!r}")
+        try:
+            date.fromisoformat(match.group(2))
+        except ValueError as exc:
+            raise ReleaseError(f"older CHANGELOG release has invalid ISO date: {heading!r}") from exc
+
+
+def validate_release_policy(root: Path = ROOT) -> None:
+    relevant = sorted({path for pattern in RELEASE_POLICY_GLOBS for path in root.glob(pattern)})
+    violations = [
+        str(path.relative_to(root))
+        for path in relevant
+        if FORBIDDEN_RELEASE_SERVICES.search(path.read_text())
+    ]
+    if violations:
+        raise ReleaseError(
+            "release behavior references a forbidden publication service: " + ", ".join(violations)
+        )
 
 
 def validate_repository(root: Path = ROOT) -> str:
@@ -295,6 +323,7 @@ def validate_policy(
     if len(parents) != 3 or parents[1:] != [base_sha, head_sha]:
         raise ReleaseError("checkout is not GitHub's exact prospective merge commit")
     version = validate_repository(root)
+    validate_release_policy(root)
     if snapshot.get("tag") is not None or snapshot.get("release") is not None:
         raise ReleaseError(f"v{version} already has a tag or GitHub Release")
     return version

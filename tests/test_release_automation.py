@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import base64
 import copy
+import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -29,6 +32,7 @@ from scripts.release_automation import (
     make_plan,
     validate_changelog,
     validate_policy,
+    validate_release_policy,
     validate_versions,
     verify_artifacts,
     _normalize_provenance,
@@ -137,6 +141,110 @@ def valid_changelog() -> str:
 
 - Older.
 """
+
+
+def publication_plan(asset_payloads: dict[str, bytes]) -> dict[str, object]:
+    value = manifest()
+    value["assets"] = [
+        {"name": name, "sha256": hashlib.sha256(payload).hexdigest()}
+        for name, payload in asset_payloads.items()
+    ]
+    return make_plan({"tag": None, "release": None}, value, SHA)["plan"]
+
+
+def fake_gh(root: Path, plan: dict[str, object], *, partial_release: bool = False) -> tuple[Path, Path]:
+    binary = root / "bin" / "gh"
+    binary.parent.mkdir()
+    log = root / "gh.log"
+    assets = {"buoy_search-1.2.3-py3-none-any.whl": b"wheel", "buoy_search-1.2.3.tar.gz": b"sdist"}
+    hosted_assets = [
+        {"name": item["name"], "digest": f"sha256:{item['sha256']}"}
+        for item in plan["assets"]
+    ]
+    if partial_release:
+        hosted_assets.pop()
+    release = {
+        "tag_name": plan["tag"],
+        "name": plan["release_name"],
+        "draft": False,
+        "prerelease": False,
+        "assets": hosted_assets,
+    }
+    binary.write_text(
+        """#!/usr/bin/env python3
+import base64, json, os, pathlib, sys
+args = sys.argv[1:]
+with open(os.environ["FAKE_GH_LOG"], "a") as handle:
+    handle.write(json.dumps(args) + "\\n")
+joined = " ".join(args)
+if args[0] == "api" and "--method POST" in joined and "/git/tags" in joined:
+    print(json.dumps({"sha": "9" * 40}))
+elif args[0] == "api" and "--method POST" in joined and "/git/refs" in joined:
+    print("HTTP 422: Validation Failed", file=sys.stderr)
+    raise SystemExit(1)
+elif args[0] == "api" and "/git/ref/tags/" in joined:
+    print(json.dumps({"object": {"type": "tag", "sha": "8" * 40}}))
+elif args[0] == "api" and "/git/tags/" in joined:
+    print(json.dumps({"object": {"type": "commit", "sha": os.environ["FAKE_SHA"]}}))
+elif args[0] == "api" and "/releases/tags/" in joined:
+    print(os.environ["FAKE_RELEASE"])
+elif args[:2] == ["release", "download"]:
+    target = pathlib.Path(args[args.index("--dir") + 1])
+    target.mkdir(parents=True, exist_ok=True)
+    for name, payload in json.loads(os.environ["FAKE_ASSETS"]).items():
+        (target / name).write_bytes(base64.b64decode(payload))
+elif args[:2] == ["attestation", "verify"]:
+    pass
+else:
+    print(f"unexpected gh call: {args}", file=sys.stderr)
+    raise SystemExit(3)
+"""
+    )
+    binary.chmod(0o755)
+    environment = {
+        "FAKE_GH_LOG": str(log),
+        "FAKE_SHA": SHA,
+        "FAKE_RELEASE": json.dumps(release),
+        "FAKE_ASSETS": json.dumps(
+            {name: base64.b64encode(payload).decode() for name, payload in assets.items()}
+        ),
+    }
+    (root / "fake-env.json").write_text(json.dumps(environment))
+    return binary.parent, log
+
+
+def run_publication_step(
+    step_name: str, root: Path, plan: dict[str, object], *, partial_release: bool = False
+) -> tuple[subprocess.CompletedProcess[str], list[list[str]], str]:
+    publication = root / "publication"
+    publication.mkdir()
+    envelope = {"plan": plan}
+    encoded = json.dumps(plan, sort_keys=True, separators=(",", ":")).encode()
+    envelope["sha256"] = hashlib.sha256(encoded).hexdigest()
+    (publication / "release-plan.json").write_text(json.dumps(envelope))
+    bin_dir, log = fake_gh(root, plan, partial_release=partial_release)
+    environment = os.environ.copy()
+    environment.update(json.loads((root / "fake-env.json").read_text()))
+    environment.update(
+        {
+            "PATH": f"{bin_dir}:{environment['PATH']}",
+            "GITHUB_REPOSITORY": REPOSITORY,
+            "GITHUB_OUTPUT": str(root / "github-output"),
+        }
+    )
+    workflow = load_workflow("release.yml")
+    step = next(item for item in workflow["jobs"]["publish"]["steps"] if item["name"] == step_name)
+    completed = subprocess.run(
+        ["bash", "-euo", "pipefail", "-c", step["run"]],
+        cwd=root,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    calls = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
+    output_path = root / "github-output"
+    return completed, calls, output_path.read_text() if output_path.exists() else ""
 
 
 class ReleaseAutomationTests(unittest.TestCase):
@@ -248,10 +356,18 @@ class ReleaseAutomationTests(unittest.TestCase):
         self.assertIn('--target "$tag"', release)
         self.assertIn("HTTP 422", release)
         self.assertEqual(release.count("git/refs"), 1)
-        self.assertIn("--source-ref refs/heads/main", release)
-        self.assertIn('--source-digest "$sha"', release)
+        self.assertIn("gh release download", release)
+        self.assertNotIn("if [ \"$ACTION\" = noop ]", release)
+        self.assertEqual(release.count("--source-digest \"$sha\""), 2)
+        self.assertEqual(release.count('Path(os.environ["PUBLISHED"]).iterdir()'), 2)
         self.assertIn('Path("validated/dist").iterdir()', release)
         self.assertIn('asset["sha256"] for asset in plan["assets"]', release)
+        steps = load_workflow("release.yml")["jobs"]["publish"]["steps"]
+        attest = next(step for step in steps if step["name"] == "Attest exact validated distributions")
+        create = next(step for step in steps if step["name"] == "Create immutable GitHub Release")
+        expected_condition = "needs.state.outputs.action == 'create' && steps.tag_transition.outputs.resolved_action == 'create'"
+        self.assertEqual(attest["if"], expected_condition)
+        self.assertEqual(create["if"], expected_condition)
 
     def test_versions_require_exact_stable_agreement_across_project_module_lock(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -263,7 +379,16 @@ class ReleaseAutomationTests(unittest.TestCase):
                     write_release_root(root, values, valid_changelog())
                     with self.assertRaisesRegex(ReleaseError, "version mismatch"):
                         validate_versions(root)
-            for unstable in ("1.2", "v1.2.3", "1.2.3-rc.1", "1.2.3+build"):
+            for unstable in (
+                "1.2",
+                "v1.2.3",
+                "1.2.3-rc.1",
+                "1.2.3+build",
+                "01.2.3",
+                "1.02.3",
+                "1.2.03",
+                "00.0.0",
+            ):
                 with self.subTest(unstable=unstable):
                     write_release_root(root, (unstable,) * 3, valid_changelog())
                     with self.assertRaisesRegex(ReleaseError, "stable MAJOR.MINOR.PATCH"):
@@ -279,12 +404,90 @@ class ReleaseAutomationTests(unittest.TestCase):
                 "missing current": valid_changelog().replace("## [1.2.3] - pending", "## [1.2.4] - pending"),
                 "duplicate current": valid_changelog() + "\n## [1.2.3] - pending\n",
                 "undated older": valid_changelog().replace("## [1.2.2] - 2026-07-20", "## [1.2.2] - pending"),
+                "invalid calendar date": valid_changelog().replace("2026-07-20", "2026-02-30"),
+                "invalid month": valid_changelog().replace("2026-07-20", "2026-13-01"),
             }
             for name, text in mutations.items():
                 with self.subTest(name=name):
                     (root / "CHANGELOG.md").write_text(text)
                     with self.assertRaises(ReleaseError):
                         validate_changelog("1.2.3", root)
+
+    def test_policy_scans_all_workflows_and_release_helpers_for_forbidden_services(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workflows = root / ".github" / "workflows"
+            scripts = root / "scripts"
+            workflows.mkdir(parents=True)
+            scripts.mkdir()
+            (workflows / "ci.yml").write_text("name: CI\n")
+            (workflows / "nested.txt").write_text("publish to PyPI\n")
+            (scripts / "release_automation.py").write_text("# local GitHub release only\n")
+            (scripts / "release_checks.py").write_text("# local GitHub release only\n")
+            validate_release_policy(root)
+            for relative, text in (
+                (Path(".github/workflows/ci.yml"), "publish to PyPI\n"),
+                (Path(".github/workflows/other.yaml"), "deploy Turbopuffer\n"),
+                (Path("scripts/release_checks.py"), "PYPI upload\n"),
+                (Path("scripts/release_automation.py"), "turbopuffer release\n"),
+                (Path("scripts/future_release.sh"), "upload PYPI\n"),
+            ):
+                with self.subTest(path=relative):
+                    target = root / relative
+                    original = target.read_text() if target.exists() else None
+                    target.write_text(text)
+                    with self.assertRaisesRegex(ReleaseError, "forbidden publication service"):
+                        validate_release_policy(root)
+                    if original is None:
+                        target.unlink()
+                    else:
+                        target.write_text(original)
+
+    def test_422_transition_executably_accepts_only_exact_complete_state(self) -> None:
+        assets = {
+            "buoy_search-1.2.3-py3-none-any.whl": b"wheel",
+            "buoy_search-1.2.3.tar.gz": b"sdist",
+        }
+        plan = publication_plan(assets)
+        with tempfile.TemporaryDirectory() as directory:
+            completed, calls, output = run_publication_step(
+                "Create immutable annotated tag when absent", Path(directory), plan
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertEqual(output, "resolved_action=noop\n")
+            self.assertTrue(any(call[:2] == ["release", "download"] for call in calls))
+            self.assertEqual(sum(call[:2] == ["attestation", "verify"] for call in calls), 2)
+        with tempfile.TemporaryDirectory() as directory:
+            completed, calls, output = run_publication_step(
+                "Create immutable annotated tag when absent",
+                Path(directory),
+                plan,
+                partial_release=True,
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertEqual(output, "")
+            self.assertFalse(any(call[:2] == ["release", "download"] for call in calls))
+            self.assertFalse(any(call[:2] == ["attestation", "verify"] for call in calls))
+
+    def test_final_verification_executably_downloads_digests_and_checks_provenance(self) -> None:
+        assets = {
+            "buoy_search-1.2.3-py3-none-any.whl": b"wheel",
+            "buoy_search-1.2.3.tar.gz": b"sdist",
+        }
+        plan = publication_plan(assets)
+        for initial_action in ("create", "noop"):
+            with self.subTest(initial_action=initial_action), tempfile.TemporaryDirectory() as directory:
+                case_plan = copy.deepcopy(plan)
+                case_plan["action"] = initial_action
+                completed, calls, _ = run_publication_step(
+                    "Reinspect and verify exact published state", Path(directory), case_plan
+                )
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertTrue(any(call[:2] == ["release", "download"] for call in calls))
+                verifies = [call for call in calls if call[:2] == ["attestation", "verify"]]
+                self.assertEqual(len(verifies), 2)
+                self.assertTrue(all("--source-ref" in call and SOURCE_REF in call for call in verifies))
+                self.assertTrue(all("--source-digest" in call and SHA in call for call in verifies))
 
     def test_state_machine_create_and_exact_noop(self) -> None:
         self.assertEqual(evaluate_state({"tag": None, "release": None, "provenance": []}, manifest(), SHA), "create")

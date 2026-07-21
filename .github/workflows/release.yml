@@ -166,6 +166,7 @@ jobs:
           assert assets == {asset["name"]: asset["sha256"] for asset in plan["assets"]}
           PY
       - name: Create immutable annotated tag when absent
+        id: tag_transition
         if: needs.state.outputs.action == 'create'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -184,43 +185,16 @@ jobs:
             -f ref="refs/tags/$tag" -f sha="$tag_object_sha" 2>&1)"
           status=$?
           set -e
-          if [ "$status" -ne 0 ]; then
-            if ! grep -q 'HTTP 422' <<<"$response"; then
-              printf '%s\n' "$response" >&2
-              exit "$status"
-            fi
-            ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$tag")"
-            [ "$(jq -r '.object.type' <<<"$ref")" = tag ]
-            existing="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/$(jq -r '.object.sha' <<<"$ref")")"
-            [ "$(jq -r '.object.type' <<<"$existing")" = commit ]
-            [ "$(jq -r '.object.sha' <<<"$existing")" = "$sha" ]
-          fi
-      - name: Attest exact validated distributions
-        if: needs.state.outputs.action == 'create'
-        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
-        with:
-          subject-path: validated/dist/*
-      - name: Create immutable GitHub Release
-        if: needs.state.outputs.action == 'create'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          tag="$(jq -r '.plan.tag' publication/release-plan.json)"
-          name="$(jq -r '.plan.release_name' publication/release-plan.json)"
-          gh release create "$tag" validated/dist/* --repo "$GITHUB_REPOSITORY" \
-            --verify-tag --generate-notes --title "$name" --target "$tag"
-      - name: Verify exact hosted state or no-op
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ACTION: ${{ needs.state.outputs.action }}
-        run: |
-          plan=publication/release-plan.json
-          tag="$(jq -r '.plan.tag' "$plan")"
-          sha="$(jq -r '.plan.source_commit' "$plan")"
-          if [ "$ACTION" = noop ]; then
-            echo "Exact immutable tag, Release, assets, and provenance already exist."
+          if [ "$status" -eq 0 ]; then
+            echo 'resolved_action=create' >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          if ! grep -q 'HTTP 422' <<<"$response"; then
+            printf '%s\n' "$response" >&2
+            exit "$status"
+          fi
+
+          # A ref collision is authoritative only after one complete readback.
           ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$tag")"
           [ "$(jq -r '.object.type' <<<"$ref")" = tag ]
           object="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/$(jq -r '.object.sha' <<<"$ref")")"
@@ -232,11 +206,76 @@ jobs:
           [ "$(jq -r .draft <<<"$release")" = false ]
           [ "$(jq -r .prerelease <<<"$release")" = false ]
           jq -e --slurpfile plan "$plan" '
-            [.assets[] | {name, sha256: (.digest | sub("^sha256:"; ""))}] |
+            [.assets[] | {name, sha256: (.digest | strings | sub("^sha256:"; ""))}] |
             sort_by(.name) == ($plan[0].plan.assets | sort_by(.name))
           ' <<<"$release" >/dev/null
-          for asset in validated/dist/*; do
+          published="$(mktemp -d)"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "$published"
+          PUBLISHED="$published" PLAN="$plan" python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+
+          expected = {item["name"]: item["sha256"] for item in json.load(open(os.environ["PLAN"]))["plan"]["assets"]}
+          actual = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in Path(os.environ["PUBLISHED"]).iterdir() if path.is_file()}
+          assert actual == expected
+          PY
+          source_ref="$(jq -r '.plan.provenance | map(.source_ref) | unique | if length == 1 then .[0] else error("mixed provenance refs") end' "$plan")"
+          signer="$(jq -r '.plan.repository + "/.github/workflows/" + .plan.workflow' "$plan")"
+          for asset in "$published"/*; do
             gh attestation verify "$asset" --repo "$GITHUB_REPOSITORY" \
-              --signer-workflow Doctacon/buoy-search/.github/workflows/release.yml \
-              --source-ref refs/heads/main --source-digest "$sha" >/dev/null
+              --signer-workflow "$signer" --source-ref "$source_ref" \
+              --source-digest "$sha" >/dev/null
+          done
+          echo 'resolved_action=noop' >> "$GITHUB_OUTPUT"
+      - name: Attest exact validated distributions
+        if: needs.state.outputs.action == 'create' && steps.tag_transition.outputs.resolved_action == 'create'
+        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
+        with:
+          subject-path: validated/dist/*
+      - name: Create immutable GitHub Release
+        if: needs.state.outputs.action == 'create' && steps.tag_transition.outputs.resolved_action == 'create'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$(jq -r '.plan.tag' publication/release-plan.json)"
+          name="$(jq -r '.plan.release_name' publication/release-plan.json)"
+          gh release create "$tag" validated/dist/* --repo "$GITHUB_REPOSITORY" \
+            --verify-tag --generate-notes --title "$name" --target "$tag"
+      - name: Reinspect and verify exact published state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          plan=publication/release-plan.json
+          tag="$(jq -r '.plan.tag' "$plan")"
+          sha="$(jq -r '.plan.source_commit' "$plan")"
+          ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$tag")"
+          [ "$(jq -r '.object.type' <<<"$ref")" = tag ]
+          object="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/$(jq -r '.object.sha' <<<"$ref")")"
+          [ "$(jq -r '.object.type' <<<"$object")" = commit ]
+          [ "$(jq -r '.object.sha' <<<"$object")" = "$sha" ]
+          release="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/$tag")"
+          [ "$(jq -r .tag_name <<<"$release")" = "$tag" ]
+          [ "$(jq -r .name <<<"$release")" = "$(jq -r '.plan.release_name' "$plan")" ]
+          [ "$(jq -r .draft <<<"$release")" = false ]
+          [ "$(jq -r .prerelease <<<"$release")" = false ]
+          jq -e --slurpfile plan "$plan" '
+            [.assets[] | {name, sha256: (.digest | strings | sub("^sha256:"; ""))}] |
+            sort_by(.name) == ($plan[0].plan.assets | sort_by(.name))
+          ' <<<"$release" >/dev/null
+          published="$(mktemp -d)"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "$published"
+          PUBLISHED="$published" PLAN="$plan" python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+
+          expected = {item["name"]: item["sha256"] for item in json.load(open(os.environ["PLAN"]))["plan"]["assets"]}
+          actual = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in Path(os.environ["PUBLISHED"]).iterdir() if path.is_file()}
+          assert actual == expected
+          PY
+          source_ref="$(jq -r '.plan.provenance | map(.source_ref) | unique | if length == 1 then .[0] else error("mixed provenance refs") end' "$plan")"
+          signer="$(jq -r '.plan.repository + "/.github/workflows/" + .plan.workflow' "$plan")"
+          for asset in "$published"/*; do
+            gh attestation verify "$asset" --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$signer" --source-ref "$source_ref" \
+              --source-digest "$sha" >/dev/null
           done

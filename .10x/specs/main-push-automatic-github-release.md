@@ -18,8 +18,8 @@ Validation/build jobs use `contents: read`, no secrets. The final publication jo
 
 Before mutation the workflow MUST:
 
-1. require stable `MAJOR.MINOR.PATCH` agreement across project/module/lock;
-2. require empty Unreleased, current pending section, and dated older sections;
+1. require stable `MAJOR.MINOR.PATCH` agreement across project/module/lock, with no leading zero in any multi-digit core numeric identifier;
+2. require empty Unreleased, current pending section, and older sections whose `YYYY-MM-DD` values are real ISO calendar dates;
 3. run the same locked 3.11/3.13 validation as readiness;
 4. build wheel/sdist exactly once with `SOURCE_DATE_EPOCH=GITHUB_SHA commit timestamp`, `PYTHONHASHSEED=0`, `TZ=UTC`, `LC_ALL=C`, and locked backend;
 5. verify assets, metadata, inventory, clean install, CLI, and mandatory tokenizer smoke;
@@ -35,10 +35,10 @@ Only when both tag ref and Release are absent:
 
 - REST-create an annotated tag object with tag `TAG`, message `Buoy <version>`, fixed tagger `github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>`, and object `SHA` type `commit`;
 - REST-create `refs/tags/TAG` pointing to that tag object;
-- if ref creation returns 422, authoritatively reinspect once: continue only if exact annotated tag now peels to `SHA`; every other observation fails;
+- if ref creation returns 422, authoritatively reinspect tag, Release, downloaded assets, and provenance once: exact complete state becomes a no-op without attestation or Release mutation; every partial or mismatched observation permanently fails;
 - attest exact wheel/sdist digests with subject names, repository `Doctacon/buoy-search`, workflow `release.yml`, source ref `refs/heads/main`, and source commit `SHA`;
 - REST-create non-draft/non-prerelease Release `Buoy <version>` for `TAG`, target identity `TAG`, generated notes, and exactly the two already-built assets;
-- verify tag object/peel, Release/tag identity, downloaded/API names/digests, and provenance fields before success.
+- for both create and no-op outcomes, freshly reinspect tag object/peel and Release/tag identity, download the published assets and compare their exact names/digests, and verify provenance fields before success.
 
 ### No-op
 
@@ -70,7 +70,7 @@ After repository workflow integration proves zero `environment: release` referen
 
 ## Tests
 
-Repository-local dry tests cover triggers, job permissions, action pins, stable version/changelog rules, deterministic build variables, create/no-op/all mismatch states, annotated/lightweight tags, 422 reinspection, generated-note/tag target, asset/provenance fields, serialization, no environment/tag trigger/manual dispatch, and forbidden overwrite/delete/move/force-push/PyPI/Turbopuffer commands.
+Repository-local dry tests cover triggers, job permissions, action pins, strict stable version/real-date changelog rules, deterministic build variables, create/no-op/all mismatch states, annotated/lightweight tags, executable deterministic 422 full-reinspection behavior, executable final published-asset/provenance verification, generated-note/tag target, asset/provenance fields, serialization, no environment/tag trigger/manual dispatch, and forbidden overwrite/delete/move/force-push commands. Readiness Policy scans the bounded repository-wide release-behavior surface (all workflows and release helpers) and rejects PyPI or Turbopuffer behavior.
 
 ## Portability
 

@@ -65,6 +65,14 @@ A following record-only evidence commit requires the same checks to rerun at fin
 
 This supports local implementation and deterministic-validation acceptance for `.10x/tickets/2026-07-21-implement-simple-main-release-automation.md`, including the approved exact v0.4.0 transition. It also supports the source portion of v0.4.0 changelog finalization and hosted CI for the implementation commit.
 
+## PR #89 blocker repair
+
+Targeted repair after review tightened stable SemVer to reject leading-zero core identifiers and validates changelog dates as real calendar dates. Readiness Policy now scans the bounded release-behavior surface of every workflow plus both release helpers and rejects forbidden registry/backend behavior. The publication workflow's ref-creation 422 branch now performs one full authoritative tag, Release, API asset, downloaded digest, and provenance reinspection: exact complete state emits no-op so attestation and Release creation are skipped; partial or mismatched state fails. The unconditional final verifier now performs the same fresh hosted readback, download/digest comparison, and provenance verification for both initial no-op and create paths.
+
+Executable fake-`gh` tests ran the actual workflow shell for exact-complete and partial 422 fixtures and for both final-verification entry paths. Focused Python 3.13 release tests passed 27 tests. Full locked Python 3.11 and 3.13 suites each passed 534 tests; ranking and C6 validators retained their recorded hashes. Two clean deterministic builds had identical manifests: wheel `466c167fbc3a7c20d71baeee6f8f4f4bc8c440ab563044198635827c8dc088a4`, sdist `513483974f62ba48eae0a556f5efdab8b175131ae64eb47f1daf9604206032db`. Artifact inspection, normal clean-wheel CLI/help, and exact tokenizer count 9 passed. `uv lock --check`, workflow YAML parsing, repository policy scan, Python compilation, and `git diff --check` passed.
+
+The standalone current-tree `release_automation.py validate` command correctly failed because the already-released v0.4.0 section is dated rather than a future version's required pending section. This is not used by ordinary develop PR CI; a future develop-to-main release PR must bump to a new stable version and create its pending section as specified.
+
 ## Limits
 
-This evidence does not prove hosted workflow execution, GitHub protection/environment configuration, a future version-bumped prospective merge, tag/Release publication, or independent review. No live configuration, environment, tag, Release, main, PyPI, Turbopuffer, provider, namespace, or user state was read or mutated. Hosted PR checks and independent review remain closure gates for the implementation ticket.
+This evidence does not prove hosted workflow execution, GitHub protection/environment configuration, a future version-bumped prospective merge, tag/Release publication, or independent rereview. No live configuration, environment, tag, Release, main, registry, backend, provider, namespace, or user state was read or mutated. Hosted final-head PR checks and independent rereview remain closure gates for the implementation ticket.
