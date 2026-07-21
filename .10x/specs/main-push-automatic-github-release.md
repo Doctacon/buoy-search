@@ -1,92 +1,73 @@
-Status: draft
+Status: active
 Created: 2026-07-21
 Updated: 2026-07-21
 
 # Main-Push Automatic GitHub Release
 
-## Purpose and scope
+## Purpose and authority
 
-Replace manual annotated-tag creation and protected-environment approval with one fully automatic GitHub Action on every push to `main`. Successful validation of a new project version creates its annotated tag, provenance, and GitHub Release without a manual gate.
+Replace manual tag creation and release-environment approval with a fully automatic workflow on every push to `main`. The user ratified stable-SemVer, exact-state no-op/otherwise-permanent-failure, and no manual approval after independent review.
 
-## Trigger and permissions
+## Trigger, serialization, and permissions
 
-`.github/workflows/release.yml` MUST trigger only on pushes to `main`, never on tags or manual dispatch.
+`.github/workflows/release.yml` MUST trigger only on pushes to `main`, never tags or manual dispatch. Concurrency group is one repository-wide `release-main` with `cancel-in-progress: false`.
 
-Validation jobs MUST use read-only contents permissions and no secrets. The final publication job MAY use only the repository `GITHUB_TOKEN` with the minimum required permissions:
+Validation/build jobs use `contents: read`, no secrets. The final publication job receives only `contents: write`, `id-token: write`, `attestations: write`, and `actions: read` if artifact download requires it. It MUST NOT install dependencies or execute repository code after receiving write permission; it consumes immutable build artifacts and deterministic state-machine output only.
 
-- `contents: write` for annotated tag and GitHub Release;
-- `id-token: write` and `attestations: write` for provenance;
-- `actions: read` only if artifact retrieval requires it.
+## Validation and deterministic build
 
-It MUST NOT access repository service credentials or contact Turbopuffer.
+Before mutation the workflow MUST:
 
-## Validation and build
+1. require stable `MAJOR.MINOR.PATCH` agreement across project/module/lock;
+2. require empty Unreleased, current pending section, and dated older sections;
+3. run the same locked 3.11/3.13 validation as readiness;
+4. build wheel/sdist exactly once with `SOURCE_DATE_EPOCH=GITHUB_SHA commit timestamp`, `PYTHONHASHSEED=0`, `TZ=UTC`, `LC_ALL=C`, and locked backend;
+5. verify assets, metadata, inventory, clean install, CLI, and mandatory tokenizer smoke;
+6. produce a hash-addressed immutable state plan from authoritative GitHub tag/Release/provenance inspection.
 
-Before any tag or Release mutation, the workflow MUST:
+## Exact state machine
 
-1. verify project, module, lock, and pending changelog version agreement;
-2. run the same locked Python 3.11 and 3.13 validation commands as release readiness;
-3. build wheel and sdist exactly once;
-4. verify exact asset names, metadata, inventory, entry points, bundled data, normal clean installation, CLI smoke checks, and bundled-tokenizer loading;
-5. inspect authoritative remote tag and GitHub Release state for `v<version>`.
+For `TAG=v<version>` and exact `SHA=GITHUB_SHA`:
 
-No publication job may start unless every validation/build job passes.
+### Create
 
-## Collision and idempotency contract
+Only when both tag ref and Release are absent:
 
-The user selected **No-op or fail**:
+- REST-create an annotated tag object with tag `TAG`, message `Buoy <version>`, fixed tagger `github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>`, and object `SHA` type `commit`;
+- REST-create `refs/tags/TAG` pointing to that tag object;
+- if ref creation returns 422, authoritatively reinspect once: continue only if exact annotated tag now peels to `SHA`; every other observation fails;
+- attest exact wheel/sdist digests with subject names, repository `Doctacon/buoy-search`, workflow `release.yml`, source ref `refs/heads/main`, and source commit `SHA`;
+- REST-create non-draft/non-prerelease Release `Buoy <version>` for `TAG`, target identity `TAG`, generated notes, and exactly the two already-built assets;
+- verify tag object/peel, Release/tag identity, downloaded/API names/digests, and provenance fields before success.
 
-- **Neither tag nor Release exists:** create the annotated tag at exact `GITHUB_SHA`, attest the built assets, and create the GitHub Release.
-- **Both tag and Release exist and the annotated tag peels to exact `GITHUB_SHA`:** verify the Release's exact expected asset names/digests and provenance, then succeed as an idempotent no-op without rewriting anything.
-- **Only one exists, the tag is lightweight, the tag peels elsewhere, the Release targets conflicting state, assets differ, or provenance is absent/mismatched:** fail closed without create, overwrite, move, delete, or cleanup.
+### No-op
 
-A new release therefore requires a new version in the main commit. Existing tags and releases are immutable.
+Only when annotated tag and Release both exist and all of these match exact `SHA`: tag peel, Release tag/name/non-draft/non-prerelease identity, exact two asset names/digests, and provenance subject names/digests/repository/workflow/source ref/source commit. Then succeed without mutation.
 
-## Automatic publication
+### Permanent fail
 
-For the create path, the workflow MUST:
+Every other state—including lightweight tag, tag-only, Release-only, wrong peel, partial assets, digest/provenance mismatch, or conflicting target—fails without automated completion, overwrite, move, deletion, cleanup, or retry repair. Recovery requires a separately authorized operator decision or abandoning that version.
 
-1. create an annotated `v<version>` tag object whose peeled commit is exact `GITHUB_SHA`;
-2. push only that new tag with no branch mutation;
-3. attest the already-built wheel and sdist with SLSA provenance;
-4. create a non-draft, non-prerelease GitHub Release named `Buoy v<version>` with generated notes and exactly those two assets;
-5. verify authoritative tag metadata, Release identity, downloaded/API asset digests, and provenance before reporting success.
+## Race behavior
 
-There is no environment, deployment approval, wait timer, or manual approval step.
-
-## Failure and retry behavior
-
-- Validation failure performs no release mutation.
-- A failure after tag creation but before complete Release publication leaves partial immutable evidence and MUST fail. A rerun may continue only when the collision contract can prove the exact same commit/artifacts and complete missing state without overwriting; otherwise it fails for operator repair.
-- The workflow MUST never delete a tag/Release, move a tag, overwrite assets, force push, publish to PyPI, or mutate Turbopuffer/user state.
-- Diagnostics MUST identify the exact version, commit, observed tag/Release state, and failed stage without exposing tokens.
+Serialization prevents workflow-owned overlap. A concurrent external creator between inspection and mutation is handled only by the single 422 reinspection above. It can convert to exact continuation/no-op only when every authoritative identity matches; otherwise fail. No loop or repeated mutation attempt is permitted.
 
 ## Existing v0.4.0 transition
 
-The workflow will first land on `develop`, not `main`. Because v0.4.0 already exists at released main `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`, any future PR that attempts to merge unchanged version 0.4.0 into a different main commit MUST fail readiness. The next automatic release requires an explicit version bump; this specification does not choose that version.
+Published v0.4.0 peels to `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`. Any different main commit retaining 0.4.0 fails readiness and automatic release. The next release requires an explicit stable version bump; this spec does not choose it.
 
-The old `release` environment becomes unused. After the new main-push workflow is integrated and a dry/state test proves no environment reference remains, implementation SHOULD delete that unused GitHub environment. Deletion MUST occur only under the executable implementation ticket and be recorded; it MUST NOT affect an active deployment.
+## Environment removal and supersession
 
-## Required tests
+After repository workflow integration proves zero `environment: release` references and GitHub reports zero active/pending deployments, implementation MUST delete the unused `release` environment and verify 404/readback absence. It MUST supersede old tag-trigger/manual-approval release specs/decision, replace `docs/releasing.md`, close obsolete/open v0.4 release records truthfully, and preserve historical evidence.
 
-Static and deterministic tests MUST cover:
+## Tests
 
-- exact trigger/permissions/check commands/action pins;
-- valid absent-state creation planning;
-- exact existing-state no-op;
-- every partial/mismatched collision;
-- annotated versus lightweight tags;
-- version/changelog disagreement;
-- asset and provenance mismatch;
-- no PyPI/Turbopuffer/environment/manual-dispatch/tag-trigger behavior;
-- no overwrite/delete/move/force-push commands.
+Repository-local dry tests cover triggers, job permissions, action pins, stable version/changelog rules, deterministic build variables, create/no-op/all mismatch states, annotated/lightweight tags, 422 reinspection, generated-note/tag target, asset/provenance fields, serialization, no environment/tag trigger/manual dispatch, and forbidden overwrite/delete/move/force-push/PyPI/Turbopuffer commands.
 
-A local dry harness MUST exercise the state machine without GitHub mutation.
+## Portability
 
-## Open-source and portability boundary
-
-GitHub Actions is used because the user explicitly required it and release hosting already resides on GitHub. State-machine/version/asset validation MUST remain repository-local standard Python or shell logic with deterministic tests. Full-SHA-pinned open-source actions are preferred; artifacts remain standard wheel/sdist files and no proprietary package registry is introduced.
+GitHub is the user-required existing host. The state machine, version checks, build, hashes, and validation live in standard Python/shell. `docs/releasing.md` MUST map GitHub REST operations to portable Git operations plus generic forge release/attestation APIs so migration to self-hosted Git/CI reuses the same scripts and artifacts. GitHub integration is limited to a thin API adapter and pinned open-source actions; no proprietary registry or artifact format is introduced.
 
 ## Explicit exclusions
 
-Choosing the next version; product changes; PyPI; Turbopuffer; release-environment approval; manual tag push; tag-triggered workflow; tag/Release replacement; main/develop force push; ancestry-sync procedure.
+Choosing next version; product changes; PyPI; Turbopuffer; environment approval; manual tag push; tag-trigger/manual workflow; tag/Release replacement; force push; ancestry sync.

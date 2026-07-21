@@ -1,4 +1,4 @@
-Status: active
+Status: done
 Created: 2026-07-21
 Updated: 2026-07-21
 Parent: None
@@ -49,8 +49,11 @@ Workflow/source/test implementation; branch protection/environment mutation; PR 
 - `.github/workflows/release.yml`
 - `docs/releasing.md`
 - `.10x/specs/protected-github-branches.md`
-- `.10x/specs/buoy-ci-and-github-releases.md`
-- `.10x/decisions/protected-development-and-github-release-governance-v2.md`
+- `.10x/specs/superseded/buoy-ci-and-github-releases.md`
+- `.10x/decisions/simple-main-release-governance.md`
+- `.10x/reviews/2026-07-21-simple-main-release-automation-shaping-review.md`
+- `.10x/evidence/2026-07-21-simple-main-release-automation-ratification.md`
+- `.10x/tickets/2026-07-21-simple-main-release-automation-plan.md`
 
 ## Evidence expectations
 
@@ -58,8 +61,21 @@ Current workflow/governance inventory; user choices; independent review findings
 
 ## Blockers
 
-Pending independent review of exact check names/contents, collision/partial-failure behavior, branch protection transition, environment deletion, and supersession scope, followed by explicit user ratification.
+None. Independent review concerns were repaired through the exact reviewer checkpoint and the user ratified `Confirm simplest flow (Recommended)`.
 
 ## Progress and notes
 
 - 2026-07-21: User rejected the existing merge/deploy ceremony and requested a simpler model: CI checks representing whether develop can reasonably merge to main, then automatic release on main commit. Repository inspection found no release skill file; the removable surface is active governance/procedure plus the tag-triggered workflow. User selected removal of ceremony, exact-head no-op/otherwise-fail collision behavior, and fully automatic publication. Drafted two focused specs only. No workflow, docs, tests, branch protection, environment, tag, Release, PyPI, Turbopuffer, or product state changed.
+- 2026-07-21: Independent review identified ancestry, partial-state, determinism/race/REST, protection transition, supersession/record graph, environment deletion, external semantics, and portability blockers. The exact recommended repaired checkpoint dropped main strict freshness/last-push approval, validated prospective merge results, required stable SemVer/deterministic serialized builds/exact REST and provenance, made every partial state permanently fail, mandated environment deletion/supersession, and added self-hosted migration. The user confirmed `Confirm simplest flow (Recommended)`. Activated both focused specs, superseded the v2 decision and old release spec, updated branch protection authority, opened one non-executable implementation plan with repository and hosted-configuration children, and closed shaping. No implementation or external mutation occurred.
+
+## Closure mapping
+
+- Current inventory and upstream choices: `.10x/evidence/2026-07-21-simple-main-release-automation-shaping.md`.
+- Independent concerns: `.10x/reviews/2026-07-21-simple-main-release-automation-shaping-review.md`.
+- Exact ratification: `.10x/evidence/2026-07-21-simple-main-release-automation-ratification.md`.
+- Active behavior: `.10x/specs/develop-to-main-release-readiness.md`, `.10x/specs/main-push-automatic-github-release.md`, and `.10x/decisions/simple-main-release-governance.md`.
+- Execution ownership: `.10x/tickets/2026-07-21-simple-main-release-automation-plan.md` and its two children.
+
+## Retrospective
+
+Strict base freshness is not free: when release commits advance only main, it creates recurring ancestry work. Validating the prospective merge result and revalidating exact main shifts that safety property into CI without preserving the ceremony.

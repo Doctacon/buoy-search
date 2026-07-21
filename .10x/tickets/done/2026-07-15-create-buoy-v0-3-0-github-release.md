@@ -30,7 +30,7 @@ Additional source changes, changelog final-link follow-up, PyPI, replacing tags/
 
 ## References
 
-- `.10x/specs/buoy-ci-and-github-releases.md`
+- `.10x/specs/superseded/buoy-ci-and-github-releases.md`
 - `docs/releasing.md`
 - `.10x/tickets/done/2026-07-14-create-buoy-v0-2-1-github-release.md`
 

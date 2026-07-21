@@ -30,7 +30,7 @@ Main/develop ancestry changes; PR #80 merge; tag/Release creation; publication; 
 ## References
 
 - `.10x/specs/buoy-release-validation.md`
-- `.10x/specs/buoy-ci-and-github-releases.md`
+- `.10x/specs/superseded/buoy-ci-and-github-releases.md`
 - `docs/releasing.md`
 - `CHANGELOG.md`
 - `.10x/evidence/2026-07-21-buoy-v0-4-0-release-candidate.md`

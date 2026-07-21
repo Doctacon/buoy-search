@@ -8,7 +8,7 @@ Depends-On: None
 
 ## Scope
 
-Implement `.10x/specs/buoy-ci-and-github-releases.md` and `.10x/specs/buoy-public-project-surface.md`: pinned least-privilege workflows, truthful initial badges, changelog, contributing/security/releasing docs, package metadata, and automated workflow/static checks.
+Implement `.10x/specs/superseded/buoy-ci-and-github-releases.md` and `.10x/specs/buoy-public-project-surface.md`: pinned least-privilege workflows, truthful initial badges, changelog, contributing/security/releasing docs, package metadata, and automated workflow/static checks.
 
 ## Acceptance criteria
 
@@ -24,7 +24,7 @@ Commit/push, external environment configuration, tag/release creation, PyPI, bra
 
 ## References
 
-- `.10x/specs/buoy-ci-and-github-releases.md`
+- `.10x/specs/superseded/buoy-ci-and-github-releases.md`
 - `.10x/specs/buoy-public-project-surface.md`
 - `.10x/research/2026-07-14-buoy-github-release-automation.md`
 

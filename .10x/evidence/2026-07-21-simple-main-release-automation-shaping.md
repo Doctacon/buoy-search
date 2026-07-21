@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-21
 Updated: 2026-07-21
-Relates-To: .10x/tickets/2026-07-21-shape-simple-main-release-automation.md
+Relates-To: .10x/tickets/done/2026-07-21-shape-simple-main-release-automation.md
 
 # Simple Main Release Automation Shaping
 
@@ -11,7 +11,7 @@ Relates-To: .10x/tickets/2026-07-21-shape-simple-main-release-automation.md
 - Release ceremony currently lives in `.github/workflows/release.yml`, `docs/releasing.md`, active release/branch specifications and decisions, and temporal release tickets/evidence.
 - Current release workflow triggers on `v*` tags, validates/builds, waits on GitHub environment `release`, attests, and creates a GitHub Release.
 - Current CI runs Python 3.11, Python 3.13, and one distribution build for every PR and pushes to main/develop.
-- Main branch protection uses strict CI and last-push approval; develop uses strict CI. The user asked for release-specific develop-to-main readiness checks rather than conversational preflight.
+- Initial records described main last-push approval, but independent shaping review's hosted API readback found current `require_last_push_approval=false`. Main still used strict ordinary CI at shaping start; develop used strict ordinary CI. The ratified contract keeps main last-push approval false and replaces main strictness/checks only through the hosted configuration child.
 - Published v0.4.0 tag/Release exists at commit `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`, so an unchanged 0.4.0 future main commit must fail under the selected collision contract.
 
 ## User choices
@@ -21,7 +21,7 @@ The user selected release-ceremony removal, exact-head matching no-op versus all
 ## Proposed contract
 
 - Four explicit main-PR checks: Policy, Python 3.11, Python 3.13, Distribution.
-- Main protection requires those checks with strict freshness.
+- Main protection requires those checks with `strict=false`; they validate GitHub's prospective merge result, eliminating ancestry-sync ceremony.
 - Main-push release workflow repeats release-critical validation, builds once, creates annotated tag/provenance/Release only for absent state, and verifies exact matching state as a no-op.
 - Partial/mismatched states fail without overwrite/delete/move/cleanup.
 - The next release requires a version bump; no next version is invented.
