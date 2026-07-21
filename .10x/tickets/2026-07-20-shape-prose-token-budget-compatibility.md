@@ -34,7 +34,9 @@ The active source-only specification `.10x/specs/deterministic-treatment-token-b
 
 ## Blockers
 
-The user ratified only the reviewed source-only subdivision contract. No exact prose behavior or authorization to shape it was supplied. This ticket remains blocked until the user separately authorizes prose shaping; any later draft would still require independent review and explicit ratification before implementation.
+The user separately authorized shaping and exact read-only inspection, now recorded in `.10x/evidence/2026-07-20-prose-token-budget-compatibility-shaping.md`. The focused options remain inactive in `.10x/specs/deterministic-repository-prose-token-budget-compatibility.md` pending independent review and the draft's exact confirm-or-correct checkpoint.
+
+Execution remains blocked on explicit selection of no action, treatment-only splitting, all-arm/global splitting, or an integrated generic rewrite; any split selection must also settle exact boundary hierarchy, overlap, coverage/citations, atomic fallback, complete-plan failure, identity/order, and parity scope. No executable implementation ticket, source/test change, regeneration, C6 readiness claim, or write authority exists.
 
 ## Explicit exclusions
 
@@ -49,9 +51,12 @@ If shaping is later authorized: exact provenance-classified prose decomposition,
 - `.10x/tickets/2026-07-19-evaluate-python-syntax-chunking.md`
 - `.10x/specs/deterministic-treatment-token-budget-subdivision.md`
 - `.10x/evidence/2026-07-20-deterministic-token-budget-subdivision-shaping.md`
+- `.10x/evidence/2026-07-20-prose-token-budget-compatibility-shaping.md`
+- `.10x/specs/deterministic-repository-prose-token-budget-compatibility.md`
 - `.10x/evidence/.storage/2026-07-20-c6-python-syntax-tokenizer-preflight.json.gz`
 - `.10x/tickets/2026-07-20-implement-deterministic-token-budget-source-subdivision.md`
 
 ## Progress and notes
 
 - 2026-07-20: Opened blocked when the user ratified only the reviewed source-only subdivision contract. The exact 366 incompatible prose plan rows remain unchanged and fail closed. No prose semantics, specification, implementation/test, artifact regeneration, model/live operation, or write was authorized or performed.
+- 2026-07-20: Executed the separately authorized shaping-only inspection. Accounted for all 366 treatment occurrences as 183 unique parents across 57 paths, proved the same parents are identical in current-default, classified approximate-count/overlap/full-payload causes, and recorded no-action plus exact-cap options and locally projected deltas. Added an inactive focused draft with the exact confirm-or-correct checkpoint. No semantics were selected; this ticket remains blocked pending independent review and explicit ratification. No source/test/artifact/validator, model inference/provider operation, C6 status, namespace, or write changed.
