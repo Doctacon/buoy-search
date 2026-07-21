@@ -1,4 +1,4 @@
-Status: active
+Status: blocked
 Created: 2026-07-21
 Updated: 2026-07-21
 Parent: None
@@ -60,7 +60,7 @@ Exact source/destination commits; changed version/changelog paths; local command
 
 ## Blockers
 
-None.
+PR #93 is conflicting before GitHub can construct the prospective merge ref, so the four release-readiness checks cannot run. The inherited v0.4 squash topology requires either a user-ratified one-time protected content-neutral ancestry bridge or a separately ratified release-process redesign. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-1-prospective-merge-blocker.md`.
 
 ## Progress and notes
 
@@ -68,3 +68,4 @@ None.
 - 2026-07-21: Preparation began from exact current develop `99f7685469571cec6f3a23f95801dcb649924059` in isolated branch/worktree `work/prepare-v0-4-1`. Scope is limited to the ratified 0.4.1 version authorities, pending changelog, local validation evidence, and a protected pull request to develop; no main, release, registry, provider, or hosted-configuration mutation is authorized.
 - 2026-07-21: Project/module/lock now agree on stable 0.4.1; the changelog has empty Unreleased, the exact current pending section and ratified Changed meaning, and corrected comparison links. The initial complete 3.11 suite exposed two stale 0.4.0 static assertions; those were narrowly updated to the ratified current version/changelog while preserving verified 0.4.0 history. Release policy/version/changelog checks, lock check, complete locked 3.11 and 3.13 suites (534 tests each), deterministic byte-identical double build, repository artifact inspection, and clean-wheel CLI/help/exact-tokenizer smoke all pass. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-1-preparation.md`.
 - 2026-07-21: PR #92 exact-head CI `29870237282` passed all protected develop checks. Independent review passed exact head `2b008edd2618286bb56f7693ca9204959ed81edf` with no blockers. Review: `.10x/reviews/2026-07-21-buoy-v0-4-1-preparation-review.md`. No main/tag/Release/PyPI/Turbopuffer/configuration mutation occurred.
+- 2026-07-21: PR #92 squash-integrated to develop as `8694afc94984e6993730acd205af3bdca93c5c8b`. Exact `develop -> main` PR #93 was opened, but GitHub reports it conflicting before prospective-merge construction; only ordinary CI ran. Read-only merge-tree diagnosis attributes the conflict to the accepted v0.4 squash topology. Ticket blocked without merge/release mutation. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-1-prospective-merge-blocker.md`.
