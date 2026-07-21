@@ -2,7 +2,7 @@ Status: recorded
 Created: 2026-07-21
 Updated: 2026-07-21
 Target: PR #94 one-time v0.4 topology bridge governance
-Verdict: concerns
+Verdict: pass
 
 # v0.4 Topology Bridge Governance Review
 
@@ -24,9 +24,13 @@ It also noted that `.10x/decisions/simple-main-release-governance.md` should ack
 - Updated the release parent to delegate only this exception and to use the repository-required merge commit for `develop -> main` promotion.
 - Updated simple release governance to distinguish the pinned inherited migration from prohibited recurring sync ceremony.
 
+## Final rereview
+
+Independent final rereview confirmed both blockers resolved, no semantic weakening, exact-head PR #94 clean/mergeable, and hosted run `29872155658` passing Python 3.11, Python 3.13, and Build distributions.
+
 ## Verdict
 
-Concerns are addressed in the PR branch but require final independent rereview before integration.
+Pass. PR #94 is eligible for ordinary squash integration to develop. The merge-commit exception applies only to the separately owned bridge PR.
 
 ## Residual risk
 
