@@ -274,29 +274,22 @@ SLOTS: tuple[Slot, ...] = (
 @dataclass
 class _Ledger:
     attempts: dict[int, Attempt] = field(default_factory=dict)
-    observed_schemas_and_distances: JsonObject = field(default_factory=dict)
-    target_row_projections: JsonObject = field(default_factory=dict)
-    card_row_projections: JsonObject = field(default_factory=dict)
+    raw_schema_distance_projections: JsonObject = field(default_factory=dict)
+    raw_target_row_projections: JsonObject = field(default_factory=dict)
+    raw_card_row_projections: JsonObject = field(default_factory=dict)
     physical_attempts: int = 0
     write_row_positions: int = 0
     returned_row_positions: int = 0
     delete_attempts: int = 0
 
-    def record_schema_and_distance(
-        self, phase: str, *, schema: JsonObject | None, distance_metric: str | None,
-        namespace_absent: bool = False,
-    ) -> None:
-        self.observed_schemas_and_distances[phase] = {
-            "namespace_absent": namespace_absent,
-            "schema": schema,
-            "distance_metric": distance_metric,
-        }
+    def record_raw_schema_distance(self, phase: str, payload: Mapping[str, Any]) -> None:
+        self.raw_schema_distance_projections[phase] = _raw_schema_distance_projection(payload)
 
-    def record_target_rows(self, slot: int, rows: Sequence[JsonObject]) -> None:
-        self.target_row_projections[str(slot)] = [_target_row_projection(row) for row in rows]
+    def record_raw_target_rows(self, slot: int, rows: Sequence[object]) -> None:
+        self.raw_target_row_projections[str(slot)] = [_raw_row_projection(row) for row in rows]
 
-    def record_card(self, slot: int, card: NamespaceCard | None) -> None:
-        self.card_row_projections[str(slot)] = _card_row_projection(card)
+    def record_raw_card_rows(self, slot: int, rows: Sequence[object]) -> None:
+        self.raw_card_row_projections[str(slot)] = [_raw_row_projection(row) for row in rows]
 
     def invoke(
         self,
@@ -406,9 +399,9 @@ class _Ledger:
             "write_row_positions": self.write_row_positions,
             "returned_row_positions": self.returned_row_positions,
             "delete_attempts": self.delete_attempts,
-            "observed_schemas_and_distances": self.observed_schemas_and_distances,
-            "target_row_projections": self.target_row_projections,
-            "card_row_projections": self.card_row_projections,
+            "raw_schema_distance_projections": self.raw_schema_distance_projections,
+            "raw_target_row_projections": self.raw_target_row_projections,
+            "raw_card_row_projections": self.raw_card_row_projections,
             "slots": mapped,
         }
 
@@ -451,13 +444,17 @@ def validate_model_cache(cache_root: Path) -> CacheAttestation:
         manifest_sha256=manifest_hash,
         readme_sha256=hashlib.sha256(readme_bytes).hexdigest(),
         license="mit" if re.search(r"(?m)^license:\s*mit\s*$", readme_text) else "unknown",
-        license_statement_present=bool(re.search(
-            r"FlagEmbedding is licensed under the \[MIT License\]\([^)]+\)", readme_text
-        )),
+        license_statement_present=_readme_has_markdown_mit_statement(readme_text),
         file_count=len(entries),
     )
     validate_cache_attestation(attestation)
     return attestation
+
+
+def _readme_has_markdown_mit_statement(value: str) -> bool:
+    return bool(re.search(
+        r"FlagEmbedding is licensed under the \[MIT License\]\([^)]+\)", value
+    ))
 
 
 def validate_cache_attestation(value: CacheAttestation) -> None:
@@ -832,18 +829,12 @@ def _execute_locked(
             )
 
         metadata = ledger.invoke(21, lambda: provider.target.metadata())
-        target_schema = _validate_content_metadata(metadata, allow_absent=False)
-        ledger.record_schema_and_distance(
-            "target_postwrite",
-            schema={"id": {"type": "string", "filterable": True}, **target_schema},
-            distance_metric=str(metadata["distance_metric"]),
-        )
+        ledger.record_raw_schema_distance("target_postwrite", metadata)
+        _validate_content_metadata(metadata, allow_absent=False)
         first_rows = _target_verification_read(ledger, provider.target, 22)
         _validate_target_rows(first_rows, prepared.rows)
-        ledger.record_target_rows(22, first_rows)
         second_rows = _target_verification_read(ledger, provider.target, 23)
         _validate_target_rows(second_rows, prepared.rows)
-        ledger.record_target_rows(23, second_rows)
         if first_rows != second_rows:
             raise ExperimentalBaselineError("target verification order/content changed between strong reads")
 
@@ -1188,19 +1179,12 @@ def _observe_local_effects(
 
 def _target_preflight(ledger: _Ledger, resource: NamespaceResource) -> bool:
     metadata = ledger.invoke(1, lambda: resource.metadata())
+    ledger.record_raw_schema_distance("target_preflight", metadata)
     if metadata.get("namespace_absent") is True:
         if "schema" in metadata or "distance_metric" in metadata:
             raise ExperimentalBaselineError("target namespace absence result is ambiguous")
-        ledger.record_schema_and_distance(
-            "target_preflight", schema=None, distance_metric=None, namespace_absent=True
-        )
         return True
-    schema = _validate_content_metadata(metadata, allow_absent=False)
-    ledger.record_schema_and_distance(
-        "target_preflight",
-        schema={"id": {"type": "string", "filterable": True}, **schema},
-        distance_metric=str(metadata["distance_metric"]),
-    )
+    _validate_content_metadata(metadata, allow_absent=False)
     response = ledger.invoke(
         2,
         lambda: resource.query(
@@ -1217,14 +1201,10 @@ def _catalog_preflight(
     ledger: _Ledger, resource: NamespaceResource, intended: NamespaceCard
 ) -> NamespaceCard | None:
     metadata = ledger.invoke(3, lambda: resource.metadata())
-    schema = validate_remote_schema(metadata)
+    ledger.record_raw_schema_distance("catalog_preflight", metadata)
+    validate_remote_schema(metadata)
     if metadata.get("distance_metric") != DISTANCE_METRIC:
         raise ExperimentalBaselineError("catalog namespace distance_metric is missing or mismatched")
-    ledger.record_schema_and_distance(
-        "catalog_preflight",
-        schema={"id": {"type": "string", "filterable": True}, **schema},
-        distance_metric=str(metadata["distance_metric"]),
-    )
     first = _card_read(ledger, resource, 4, allow_missing=True)
     second = _card_read(ledger, resource, 5, allow_missing=True)
     if (first is None) != (second is None):
@@ -1261,7 +1241,9 @@ def _target_verification_read(
             vector_encoding="float", consistency=dict(STRONG_CONSISTENCY),
         ),
     )
-    return response["rows"]
+    rows = response["rows"]
+    ledger.record_raw_target_rows(slot, rows)
+    return rows
 
 
 def _validate_target_rows(actual: Sequence[JsonObject], expected: Sequence[JsonObject]) -> None:
@@ -1300,43 +1282,63 @@ def _card_read(
         ),
     )
     rows = response["rows"]
+    ledger.record_raw_card_rows(slot, rows)
     if len(rows) > 1:
         raise ExperimentalBaselineError("exact card read returned duplicate rows")
     if not rows:
         if allow_missing:
-            ledger.record_card(slot, None)
             return None
         raise ExperimentalBaselineError("exact card read returned no row")
-    card = card_from_remote_row(rows[0], region=REGION)
-    ledger.record_card(slot, card)
-    return card
+    return card_from_remote_row(rows[0], region=REGION)
 
 
-def _target_row_projection(row: JsonObject) -> JsonObject:
-    attributes = {key: value for key, value in row.items() if key != "vector"}
-    return {
-        "id": row.get("id"),
-        "attributes_sha256": stable_hash(attributes),
-        "vector_sha256": stable_hash(row.get("vector")),
-        "row_sha256": stable_hash(row),
+def _sanitize_provider_projection(value: object) -> Any:
+    """Copy provider evidence while redacting secret-bearing keys and non-JSON values."""
+
+    if isinstance(value, Mapping):
+        safe: JsonObject = {}
+        for raw_key, item in value.items():
+            key = str(raw_key)
+            if re.search(r"secret|token|credential|api.?key|header|account", key, re.IGNORECASE):
+                safe[key] = "<redacted>"
+            else:
+                safe[key] = _sanitize_provider_projection(item)
+        return safe
+    if isinstance(value, (list, tuple)):
+        return [_sanitize_provider_projection(item) for item in value]
+    if value is None or isinstance(value, (bool, int, str)):
+        return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else "<redacted>"
+    return "<redacted>"
+
+
+def _raw_schema_distance_projection(payload: Mapping[str, Any]) -> JsonObject:
+    projection = {
+        "namespace_absent_present": "namespace_absent" in payload,
+        "namespace_absent": _sanitize_provider_projection(payload.get("namespace_absent")),
+        "schema_present": "schema" in payload,
+        "schema": _sanitize_provider_projection(payload.get("schema")),
+        "distance_metric_present": "distance_metric" in payload,
+        "distance_metric": _sanitize_provider_projection(payload.get("distance_metric")),
     }
+    return {**projection, "raw_projection_sha256": stable_hash(projection)}
 
 
-def _card_row_projection(card: NamespaceCard | None) -> JsonObject:
-    if card is None:
-        return {"present": False}
-    value = card_to_dict(card, include_vector=True)
-    return {
-        "present": True,
-        "id": remote_card_id(card.namespace),
-        "namespace": card.namespace,
-        "card_revision": card.card_revision,
-        "attributes_sha256": stable_hash({
-            key: item for key, item in value.items() if key != "vector"
-        }),
-        "vector_sha256": stable_hash(value.get("vector")),
-        "row_sha256": stable_hash(value),
-    }
+def _raw_row_projection(row: object) -> JsonObject:
+    raw = _sanitize_provider_projection(row)
+    projection: JsonObject = {"raw_row_sha256": stable_hash(raw)}
+    if isinstance(raw, Mapping):
+        attributes = {key: value for key, value in raw.items() if key != "vector"}
+        projection.update({
+            "id": raw.get("id"),
+            "namespace": raw.get("namespace"),
+            "card_revision": raw.get("card_revision"),
+            "attributes_sha256": stable_hash(attributes),
+            "vector_present": "vector" in raw,
+            "vector_sha256": stable_hash(raw.get("vector")) if "vector" in raw else None,
+        })
+    return projection
 
 
 def _validate_content_metadata(

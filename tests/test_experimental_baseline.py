@@ -57,6 +57,7 @@ from buoy_search.plan_artifacts import (
     ChunkManifestRecord,
     ManifestDocument,
     build_generic_site_row,
+    stable_hash,
 )
 from buoy_search.plan_diff import DesiredChunkDiffRecord, IncrementalPlanDiff
 from buoy_search.remote_catalog import (
@@ -77,6 +78,10 @@ APPROVAL_RECORD_PATH = (
     / ".10x/evidence/.storage/2026-07-20-experimental-buoy-baseline-approval-a.json"
 )
 APPROVAL_RECORD_SHA256 = "46a44e9440425ef73c66e69d64d7e83a7c098ce0fa3f85f2caf7f8d7685cc5ec"
+CACHE_MANIFEST_PATH = (
+    Path(__file__).resolve().parents[1]
+    / ".10x/evidence/.storage/2026-07-20-bge-small-en-v1.5-cache-manifest.json"
+)
 APPROVAL_PROVENANCE = {
     "source_system": "pi",
     "conversation_id": "runtime-id-not-exposed",
@@ -384,6 +389,7 @@ class FakeCatalog:
         self.mismatched_verify = False
         self.unstable_preflight = False
         self.duplicate_rows = False
+        self.include_distance_field = False
         self.query_calls = 0
 
     def metadata(self, **kwargs: object) -> object:
@@ -405,6 +411,9 @@ class FakeCatalog:
             rows[0]["title"] = "mismatch"
         if self.duplicate_rows and rows:
             rows.append(copy.deepcopy(rows[0]))
+        if self.include_distance_field:
+            for row in rows:
+                row["$dist"] = 0.25
         return response(rows=rows)
 
     def write(self, **kwargs: object) -> object:
@@ -545,6 +554,7 @@ class Harness:
 class ExperimentalBaselineTests(unittest.TestCase):
     def test_absent_target_exact_success_uses_fixed_slots_and_order(self) -> None:
         harness = Harness(absent=True)
+        harness.catalog.include_distance_field = True
         result = harness.execute()
 
         self.assertTrue(result["success"])
@@ -572,29 +582,53 @@ class ExperimentalBaselineTests(unittest.TestCase):
             result["reloaded_applied_state_hash"],
             experimental_baseline.applied_state_hash(harness.prepared.next_state),
         )
+        raw_metadata = result["raw_schema_distance_projections"]
+        absent_projection = {
+            "namespace_absent_present": True,
+            "namespace_absent": True,
+            "schema_present": False,
+            "schema": None,
+            "distance_metric_present": False,
+            "distance_metric": None,
+        }
+        self.assertEqual(raw_metadata["target_preflight"], {
+            **absent_projection,
+            "raw_projection_sha256": stable_hash(absent_projection),
+        })
+        self.assertEqual(raw_metadata["catalog_preflight"]["schema"], catalog_metadata()["schema"])
+        self.assertEqual(raw_metadata["catalog_preflight"]["distance_metric"], DISTANCE_METRIC)
         self.assertEqual(
-            result["observed_schemas_and_distances"]["target_preflight"],
-            {"namespace_absent": True, "schema": None, "distance_metric": None},
+            raw_metadata["catalog_preflight"]["raw_projection_sha256"],
+            stable_hash({
+                key: value for key, value in raw_metadata["catalog_preflight"].items()
+                if key != "raw_projection_sha256"
+            }),
         )
+        self.assertEqual(raw_metadata["target_postwrite"]["schema"], {
+            "id": {"type": "string", "filterable": True},
+            **CONTENT_SCHEMA,
+        })
+        self.assertEqual(raw_metadata["target_postwrite"]["distance_metric"], DISTANCE_METRIC)
+
+        raw_targets = result["raw_target_row_projections"]
+        self.assertEqual(len(raw_targets["22"]), CONTENT_ROWS)
+        self.assertEqual(raw_targets["22"], raw_targets["23"])
         self.assertEqual(
-            result["observed_schemas_and_distances"]["catalog_preflight"]["distance_metric"],
-            DISTANCE_METRIC,
+            [item["raw_row_sha256"] for item in raw_targets["22"]],
+            [stable_hash(row) for row in harness.target.written],
         )
-        self.assertEqual(
-            result["observed_schemas_and_distances"]["target_postwrite"]["distance_metric"],
-            DISTANCE_METRIC,
-        )
-        self.assertEqual(len(result["target_row_projections"]["22"]), CONTENT_ROWS)
-        self.assertEqual(
-            result["target_row_projections"]["22"],
-            result["target_row_projections"]["23"],
-        )
-        self.assertEqual(result["card_row_projections"]["4"], {"present": False})
-        self.assertEqual(result["card_row_projections"]["5"], {"present": False})
-        self.assertEqual(
-            result["card_row_projections"]["25"],
-            result["card_row_projections"]["26"],
-        )
+        raw_cards = result["raw_card_row_projections"]
+        self.assertEqual(raw_cards["4"], [])
+        self.assertEqual(raw_cards["5"], [])
+        self.assertEqual(raw_cards["25"], raw_cards["26"])
+        raw_card = {**harness.catalog.card_row, "$dist": 0.25}
+        self.assertEqual(raw_cards["25"][0]["raw_row_sha256"], stable_hash(raw_card))
+        self.assertEqual(raw_cards["25"][0]["attributes_sha256"], stable_hash({
+            key: value for key, value in raw_card.items() if key != "vector"
+        }))
+        self.assertEqual(harness.attempt_count, 25)
+        self.assertEqual(harness.target.query_calls, 2)
+        self.assertEqual(harness.catalog.query_calls, 4)
         serialized = json.dumps(result)
         self.assertNotIn("tpuf_", serialized)
         self.assertNotIn("provider-request-identity", serialized)
@@ -633,57 +667,30 @@ class ExperimentalBaselineTests(unittest.TestCase):
             ["acquire-lock", "validate-local-preconditions", "release-lock"],
         )
 
-    def test_cache_preflight_uses_canonical_manifest_and_markdown_mit_statement(self) -> None:
-        canonical_entries = [
-            {"path": "a", "bytes": 1, "sha256": "0" * 64},
-            {"path": "b/c", "bytes": 2, "sha256": "f" * 64},
-        ]
-        self.assertEqual(
-            experimental_baseline._canonical_cache_manifest_hash(canonical_entries),
-            "b2693856d8ba01e34c2cfd532b5e31ad6adbb36389dff3c2fb8e0b958e2b268c",
-        )
-        self.assertEqual(
-            CACHE_MANIFEST_HASH,
-            "5f783ebce23b6ac957d2741399b46e19502b1751acfd3c744b8c41103b138f35",
-        )
-
-        readme = (
-            "---\nlicense: mit\n---\n"
-            "FlagEmbedding is licensed under the [MIT License](https://opensource.org/license/mit).\n"
+    def test_checked_in_cache_manifest_canonical_serialization_matches_pin(self) -> None:
+        raw = CACHE_MANIFEST_PATH.read_bytes()
+        entries = json.loads(raw)
+        self.assertEqual(len(entries), 12)
+        self.assertEqual(sum(entry["bytes"] for entry in entries), 267_599_430)
+        self.assertEqual([entry["path"] for entry in entries], sorted(
+            entry["path"] for entry in entries
+        ))
+        self.assertTrue(all(set(entry) == {"path", "bytes", "sha256"} for entry in entries))
+        canonical = json.dumps(
+            entries, ensure_ascii=False, sort_keys=True, separators=(",", ":")
         ).encode("utf-8")
-        files = {"README.md": readme}
-        files.update({f"nested/{index:02d}.bin": bytes([index]) for index in range(11)})
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "refs").mkdir()
-            (root / "refs/main").write_text(MODEL_REVISION, encoding="utf-8")
-            snapshot = root / "snapshots" / MODEL_REVISION
-            for relative, data in files.items():
-                path = snapshot / relative
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(data)
-            entries = [
-                {
-                    "path": relative,
-                    "bytes": len(files[relative]),
-                    "sha256": hashlib.sha256(files[relative]).hexdigest(),
-                }
-                for relative in sorted(files)
-            ]
-            manifest_hash = hashlib.sha256(json.dumps(
-                entries, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-            ).encode("utf-8")).hexdigest()
-            with (
-                mock.patch.object(experimental_baseline, "CACHE_MANIFEST_HASH", manifest_hash),
-                mock.patch.object(
-                    experimental_baseline, "README_HASH", hashlib.sha256(readme).hexdigest()
-                ),
-            ):
-                attestation = experimental_baseline.validate_model_cache(root)
-        self.assertEqual(attestation.manifest_sha256, manifest_hash)
-        self.assertEqual(attestation.license, "mit")
-        self.assertTrue(attestation.license_statement_present)
-        self.assertEqual(attestation.file_count, 12)
+        self.assertEqual(raw, canonical)
+        self.assertEqual(hashlib.sha256(canonical).hexdigest(), CACHE_MANIFEST_HASH)
+        self.assertEqual(
+            experimental_baseline._canonical_cache_manifest_hash(entries),
+            CACHE_MANIFEST_HASH,
+        )
+        self.assertTrue(experimental_baseline._readme_has_markdown_mit_statement(
+            "FlagEmbedding is licensed under the [MIT License](https://opensource.org/license/mit)."
+        ))
+        self.assertFalse(experimental_baseline._readme_has_markdown_mit_statement(
+            "FlagEmbedding uses some other license."
+        ))
 
     def test_nonempty_target_aborts_with_zero_writes_and_no_pending(self) -> None:
         harness = Harness(absent=False)
@@ -809,17 +816,25 @@ class ExperimentalBaselineTests(unittest.TestCase):
         with self.assertRaises(ExperimentalBaselineError) as raised:
             harness.execute()
         evidence = raised.exception.evidence
-        self.assertEqual(len(evidence["target_row_projections"]["22"]), CONTENT_ROWS)
+        raw_targets = evidence["raw_target_row_projections"]
+        self.assertEqual(len(raw_targets["22"]), CONTENT_ROWS)
+        self.assertEqual(raw_targets["22"], raw_targets["23"])
         self.assertEqual(
-            evidence["target_row_projections"]["22"],
-            evidence["target_row_projections"]["23"],
+            [item["raw_row_sha256"] for item in raw_targets["22"]],
+            [stable_hash(row) for row in harness.target.written],
         )
-        self.assertTrue(evidence["card_row_projections"]["25"]["present"])
-        self.assertNotIn("26", evidence["card_row_projections"])
+        raw_cards = evidence["raw_card_row_projections"]
         self.assertEqual(
-            evidence["observed_schemas_and_distances"]["target_postwrite"]["distance_metric"],
-            DISTANCE_METRIC,
+            raw_cards["25"][0]["raw_row_sha256"], stable_hash(harness.catalog.card_row)
         )
+        self.assertNotIn("26", raw_cards)
+        self.assertEqual(
+            evidence["raw_schema_distance_projections"]["target_postwrite"]["schema"],
+            {"id": {"type": "string", "filterable": True}, **CONTENT_SCHEMA},
+        )
+        self.assertEqual(harness.attempt_count, 26)
+        self.assertEqual(harness.target.query_calls, 3)
+        self.assertEqual(harness.catalog.query_calls, 3)
         self.assertFalse(evidence["local_state_committed"])
         self.assertIsNone(evidence["reloaded_applied_state_hash"])
         self.assertEqual(harness.state_reload_count, 0)
