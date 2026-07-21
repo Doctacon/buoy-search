@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-20
 Updated: 2026-07-20
-Relates-To: .10x/tickets/2026-07-20-shape-deterministic-token-budget-subdivision.md, .10x/specs/deterministic-treatment-token-budget-subdivision.md, .10x/tickets/2026-07-19-evaluate-python-syntax-chunking.md
+Relates-To: .10x/tickets/done/2026-07-20-shape-deterministic-token-budget-subdivision.md, .10x/specs/deterministic-treatment-token-budget-subdivision.md, .10x/tickets/2026-07-19-evaluate-python-syntax-chunking.md
 
 # Deterministic Token-Budget Subdivision Shaping Evidence
 
@@ -72,6 +72,10 @@ It challenges treating the requested mechanism as a complete C6 fix. Exactly 366
 
 ## Validation boundary and residual risk
 
-This is record-only shaping evidence. It does not prove implementation correctness, all-corpus unsplittable-line absence, final row/storage counts, package behavior on both CI runtimes, or namespace readiness. The proposed algorithm, inherited-breadcrumb rule, complete-plan failure scope, and source-only boundary remain unratified. Independent review and explicit confirm-or-correct ratification are required before active-spec or implementation work.
+This is record-only shaping evidence. It does not prove implementation correctness, all-corpus unsplittable-line absence, final row/storage counts, package behavior on both CI runtimes, or namespace readiness. At the time of this observation, the proposed algorithm, inherited-breadcrumb rule, complete-plan failure scope, and source-only boundary remained unratified.
 
 No model/dependency download or install, model construction/inference, credential/provider access, namespace/retrieval/catalog/applied-state/default operation, delete, evaluation, promotion, active-spec/source/test/CI/forecast/token-report/validator mutation, or live plan/apply occurred.
+
+## Subsequent review and ratification
+
+Independent review later passed PR #76 pre-ratification head `581d9ec79ed5426dbc174e0373805c674d79184c`, and the user ratified the exact reviewed source-only contract unchanged. Current authority and provenance are `.10x/specs/deterministic-treatment-token-budget-subdivision.md`, `.10x/reviews/2026-07-20-deterministic-token-budget-subdivision-contract-review.md`, and `.10x/evidence/2026-07-20-deterministic-token-budget-subdivision-contract-ratification.md`. This subsequent activation does not strengthen the bounded observations above or resolve the 366 prose plan rows.
