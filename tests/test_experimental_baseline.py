@@ -57,6 +57,7 @@ from buoy_search.plan_artifacts import (
     ChunkManifestRecord,
     ManifestDocument,
     build_generic_site_row,
+    stable_hash,
 )
 from buoy_search.plan_diff import DesiredChunkDiffRecord, IncrementalPlanDiff
 from buoy_search.remote_catalog import (
@@ -77,6 +78,10 @@ APPROVAL_RECORD_PATH = (
     / ".10x/evidence/.storage/2026-07-20-experimental-buoy-baseline-approval-a.json"
 )
 APPROVAL_RECORD_SHA256 = "46a44e9440425ef73c66e69d64d7e83a7c098ce0fa3f85f2caf7f8d7685cc5ec"
+CACHE_MANIFEST_PATH = (
+    Path(__file__).resolve().parents[1]
+    / ".10x/evidence/.storage/2026-07-20-bge-small-en-v1.5-cache-manifest.json"
+)
 APPROVAL_PROVENANCE = {
     "source_system": "pi",
     "conversation_id": "runtime-id-not-exposed",
@@ -384,6 +389,7 @@ class FakeCatalog:
         self.mismatched_verify = False
         self.unstable_preflight = False
         self.duplicate_rows = False
+        self.include_distance_field = False
         self.query_calls = 0
 
     def metadata(self, **kwargs: object) -> object:
@@ -405,6 +411,9 @@ class FakeCatalog:
             rows[0]["title"] = "mismatch"
         if self.duplicate_rows and rows:
             rows.append(copy.deepcopy(rows[0]))
+        if self.include_distance_field:
+            for row in rows:
+                row["$dist"] = 0.25
         return response(rows=rows)
 
     def write(self, **kwargs: object) -> object:
@@ -455,6 +464,7 @@ class Harness:
         self.fail_remove = False
         self.fail_create_after_effect = False
         self.fail_commit_after_effect = False
+        self.state_reload_count = 0
         self.attempt_count = 0
         self.fail_attempt: int | None = None
         self.failure: BaseException | None = None
@@ -505,6 +515,13 @@ class Harness:
             self.events.append("validate-local-preconditions")
             self.assert_same(verified, self.verified)
 
+        def reload_state_hash(_prepared: PreparedBaseline) -> str | None:
+            self.events.append("reload-state")
+            self.state_reload_count += 1
+            if not self.committed:
+                return None
+            return experimental_baseline.applied_state_hash(self.prepared.next_state)
+
         return LocalEffects(
             lock=lock,
             validate_preconditions=validate,
@@ -512,7 +529,7 @@ class Harness:
             commit_state=commit,
             remove_pending=remove,
             pending_exists=lambda: self.pending,
-            state_matches=lambda _prepared: self.committed,
+            reload_state_hash=reload_state_hash,
         )
 
     def execute(self) -> dict[str, object]:
@@ -537,6 +554,7 @@ class Harness:
 class ExperimentalBaselineTests(unittest.TestCase):
     def test_absent_target_exact_success_uses_fixed_slots_and_order(self) -> None:
         harness = Harness(absent=True)
+        harness.catalog.include_distance_field = True
         result = harness.execute()
 
         self.assertTrue(result["success"])
@@ -559,6 +577,58 @@ class ExperimentalBaselineTests(unittest.TestCase):
         self.assertLess(harness.events.index("commit-state"), harness.events.index("remove-pending"))
         self.assertTrue(harness.committed)
         self.assertTrue(harness.removed)
+        self.assertEqual(harness.state_reload_count, 1)
+        self.assertEqual(
+            result["reloaded_applied_state_hash"],
+            experimental_baseline.applied_state_hash(harness.prepared.next_state),
+        )
+        raw_metadata = result["raw_schema_distance_projections"]
+        absent_projection = {
+            "namespace_absent_present": True,
+            "namespace_absent": True,
+            "schema_present": False,
+            "schema": None,
+            "distance_metric_present": False,
+            "distance_metric": None,
+        }
+        self.assertEqual(raw_metadata["target_preflight"], {
+            **absent_projection,
+            "raw_projection_sha256": stable_hash(absent_projection),
+        })
+        self.assertEqual(raw_metadata["catalog_preflight"]["schema"], catalog_metadata()["schema"])
+        self.assertEqual(raw_metadata["catalog_preflight"]["distance_metric"], DISTANCE_METRIC)
+        self.assertEqual(
+            raw_metadata["catalog_preflight"]["raw_projection_sha256"],
+            stable_hash({
+                key: value for key, value in raw_metadata["catalog_preflight"].items()
+                if key != "raw_projection_sha256"
+            }),
+        )
+        self.assertEqual(raw_metadata["target_postwrite"]["schema"], {
+            "id": {"type": "string", "filterable": True},
+            **CONTENT_SCHEMA,
+        })
+        self.assertEqual(raw_metadata["target_postwrite"]["distance_metric"], DISTANCE_METRIC)
+
+        raw_targets = result["raw_target_row_projections"]
+        self.assertEqual(len(raw_targets["22"]), CONTENT_ROWS)
+        self.assertEqual(raw_targets["22"], raw_targets["23"])
+        self.assertEqual(
+            [item["raw_row_sha256"] for item in raw_targets["22"]],
+            [stable_hash(row) for row in harness.target.written],
+        )
+        raw_cards = result["raw_card_row_projections"]
+        self.assertEqual(raw_cards["4"], [])
+        self.assertEqual(raw_cards["5"], [])
+        self.assertEqual(raw_cards["25"], raw_cards["26"])
+        raw_card = {**harness.catalog.card_row, "$dist": 0.25}
+        self.assertEqual(raw_cards["25"][0]["raw_row_sha256"], stable_hash(raw_card))
+        self.assertEqual(raw_cards["25"][0]["attributes_sha256"], stable_hash({
+            key: value for key, value in raw_card.items() if key != "vector"
+        }))
+        self.assertEqual(harness.attempt_count, 25)
+        self.assertEqual(harness.target.query_calls, 2)
+        self.assertEqual(harness.catalog.query_calls, 4)
         serialized = json.dumps(result)
         self.assertNotIn("tpuf_", serialized)
         self.assertNotIn("provider-request-identity", serialized)
@@ -596,6 +666,31 @@ class ExperimentalBaselineTests(unittest.TestCase):
             harness.events,
             ["acquire-lock", "validate-local-preconditions", "release-lock"],
         )
+
+    def test_checked_in_cache_manifest_canonical_serialization_matches_pin(self) -> None:
+        raw = CACHE_MANIFEST_PATH.read_bytes()
+        entries = json.loads(raw)
+        self.assertEqual(len(entries), 12)
+        self.assertEqual(sum(entry["bytes"] for entry in entries), 267_599_430)
+        self.assertEqual([entry["path"] for entry in entries], sorted(
+            entry["path"] for entry in entries
+        ))
+        self.assertTrue(all(set(entry) == {"path", "bytes", "sha256"} for entry in entries))
+        canonical = json.dumps(
+            entries, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+        self.assertEqual(raw, canonical)
+        self.assertEqual(hashlib.sha256(canonical).hexdigest(), CACHE_MANIFEST_HASH)
+        self.assertEqual(
+            experimental_baseline._canonical_cache_manifest_hash(entries),
+            CACHE_MANIFEST_HASH,
+        )
+        self.assertTrue(experimental_baseline._readme_has_markdown_mit_statement(
+            "FlagEmbedding is licensed under the [MIT License](https://opensource.org/license/mit)."
+        ))
+        self.assertFalse(experimental_baseline._readme_has_markdown_mit_statement(
+            "FlagEmbedding uses some other license."
+        ))
 
     def test_nonempty_target_aborts_with_zero_writes_and_no_pending(self) -> None:
         harness = Harness(absent=False)
@@ -714,6 +809,36 @@ class ExperimentalBaselineTests(unittest.TestCase):
         self.assertTrue(harness.pending)
         self.assertFalse(raised.exception.evidence["card_success"])
         self.assertEqual(raised.exception.evidence["delete_attempts"], 0)
+
+    def test_late_partial_failure_preserves_prior_remote_projections(self) -> None:
+        harness = Harness(absent=False)
+        harness.fail_attempt = 26
+        with self.assertRaises(ExperimentalBaselineError) as raised:
+            harness.execute()
+        evidence = raised.exception.evidence
+        raw_targets = evidence["raw_target_row_projections"]
+        self.assertEqual(len(raw_targets["22"]), CONTENT_ROWS)
+        self.assertEqual(raw_targets["22"], raw_targets["23"])
+        self.assertEqual(
+            [item["raw_row_sha256"] for item in raw_targets["22"]],
+            [stable_hash(row) for row in harness.target.written],
+        )
+        raw_cards = evidence["raw_card_row_projections"]
+        self.assertEqual(
+            raw_cards["25"][0]["raw_row_sha256"], stable_hash(harness.catalog.card_row)
+        )
+        self.assertNotIn("26", raw_cards)
+        self.assertEqual(
+            evidence["raw_schema_distance_projections"]["target_postwrite"]["schema"],
+            {"id": {"type": "string", "filterable": True}, **CONTENT_SCHEMA},
+        )
+        self.assertEqual(harness.attempt_count, 26)
+        self.assertEqual(harness.target.query_calls, 3)
+        self.assertEqual(harness.catalog.query_calls, 3)
+        self.assertFalse(evidence["local_state_committed"])
+        self.assertIsNone(evidence["reloaded_applied_state_hash"])
+        self.assertEqual(harness.state_reload_count, 0)
+        self.assertEqual(evidence["delete_attempts"], 0)
 
     def test_pending_removal_failure_reports_committed_state_and_retained_pending(self) -> None:
         harness = Harness()
