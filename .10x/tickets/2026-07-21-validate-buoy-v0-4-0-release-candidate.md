@@ -33,6 +33,7 @@ Main/develop ancestry changes; PR #80 merge; tag/Release creation; publication; 
 - `.10x/specs/buoy-ci-and-github-releases.md`
 - `docs/releasing.md`
 - `CHANGELOG.md`
+- `.10x/evidence/2026-07-21-buoy-v0-4-0-release-candidate.md`
 
 ## Evidence expectations
 
@@ -45,3 +46,4 @@ None.
 ## Progress and notes
 
 - 2026-07-21: Opened from the user's explicit v0.4.0 release request. Read-only preflight found version metadata already at 0.4.0 and the changelog still under Unreleased. No validation workflow, artifact build, source edit, tag, release, merge, or external product operation occurred.
+- 2026-07-21: Prepared the pending 0.4.0 changelog from the complete post-0.3.0 range and added focused release-note assertions. Separate locked CPython 3.11.5 and 3.13.0 suites passed 518 tests each; ranking/C6 validators, lock/diff checks, clean build/inventory, tag/assets dry checks, clean install, and digest-verified released-0.3.0 same-environment upgrade passed. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-0-release-candidate.md`. No tag, Release, branch ancestry, PyPI, Turbopuffer, live product, or user-state operation occurred. Ticket remains open pending independent review and exact-head hosted checks.

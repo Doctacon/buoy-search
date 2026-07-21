@@ -4,6 +4,13 @@ Notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [0.4.0] - pending
+
+### Added
+
+- Retrieval results now return the automatic tags already stored on indexed chunks.
+- GitHub repository planning supports explicit `fixed-80-python-breadcrumbs` and `python-ast` experiment arms with exact line citations, deterministic fallback, and fail-closed 512-token source subdivision.
+
 ### Changed
 
 - Plain interactive apply now shows complete local preflight and prompts `Apply this plan? [y/N]`; `--dry-run` is explicit prompt-free preflight, `--approve` remains prompt-free automation, and plain non-interactive apply is rejected before plan work.
@@ -11,6 +18,12 @@ Notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Retrieval without CLI `--namespace` defaults to authenticated live-namespace discovery intersected with fixed remote `buoy-routing-catalog-v1`; repeatable CLI `--namespace` is the sole bypass, `TURBOPUFFER_NAMESPACE` is ignored, and `--auto-route` remains a compatibility no-op.
 - Catalog lifecycle, approved-apply registration, and recovery now use conditional remote cards with explicit permissions, stable reads, preview-first removal, safe rebase, and operator-approved exact-revision acceptance.
 - Local catalog path options and `BUOY_CATALOG_PATH` were removed. `catalog migrate-local` imports a validated legacy schema-v1 file without modifying it; the bound local cutover catalog is deleted only after post-integration verification.
+- Applied-state authority is DuckDB-only; obsolete JSON state is ignored without migration or deletion.
+
+### Fixed
+
+- Website crawling stays on the exact requested hostname and bounds sitemap/robots reads, redirects, gzip expansion, and malformed compressed responses before parsing.
+- MarkItDown ingestion again removes C0 and C1 control characters while preserving tabs, line feeds, and carriage returns.
 
 ### Removed
 
