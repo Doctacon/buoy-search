@@ -142,6 +142,7 @@ class ReleaseAutomationTests(unittest.TestCase):
         self.assertEqual(project["license"], "Apache-2.0")
         self.assertEqual(project["version"], "0.4.0")
         self.assertEqual(project["scripts"], {"buoy": "buoy_search.cli:main"})
+        self.assertIn("transformers==5.12.1", project["dependencies"])
         self.assertIn("Development Status :: 4 - Beta", project["classifiers"])
         self.assertIn("Programming Language :: Python :: 3.11", project["classifiers"])
         self.assertIn("Programming Language :: Python :: 3.13", project["classifiers"])
@@ -153,6 +154,7 @@ class ReleaseAutomationTests(unittest.TestCase):
 
     def test_changelog_records_pending_and_verified_releases(self) -> None:
         changelog = (ROOT / "CHANGELOG.md").read_text()
+        self.assertIn("## [0.4.0] - pending", changelog)
         self.assertIn("## [0.3.0] - 2026-07-16", changelog)
         self.assertIn(
             "[0.3.0]: https://github.com/Doctacon/buoy-search/releases/tag/v0.3.0",
@@ -163,6 +165,10 @@ class ReleaseAutomationTests(unittest.TestCase):
         self.assertIn("Replace only the executable name with `buoy`", changelog)
         self.assertIn("does not delete user-created shell aliases", changelog)
         for release_note in (
+            "Retrieval results now return the automatic tags",
+            "`fixed-80-python-breadcrumbs` and `python-ast` experiment arms",
+            "Website crawling stays on the exact requested hostname",
+            "MarkItDown ingestion again removes C0 and C1 control characters",
             "Opt-in float16 corpus and query embedding inference",
             "Read-only `buoy namespaces` discovery",
             "Explicit repeatable `--namespace` retrieval",

@@ -239,6 +239,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "scrapling", extra = ["fetchers"] },
     { name = "sentence-transformers" },
+    { name = "transformers" },
     { name = "turbopuffer" },
 ]
 
@@ -251,6 +252,7 @@ requires-dist = [
     { name = "pyyaml" },
     { name = "scrapling", extras = ["fetchers"], specifier = "==0.4.9" },
     { name = "sentence-transformers" },
+    { name = "transformers", specifier = "==5.12.1" },
     { name = "turbopuffer" },
 ]
 
