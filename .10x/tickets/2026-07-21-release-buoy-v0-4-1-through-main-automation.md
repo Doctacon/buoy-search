@@ -1,4 +1,4 @@
-Status: open
+Status: active
 Created: 2026-07-21
 Updated: 2026-07-21
 Parent: None
@@ -65,3 +65,6 @@ None.
 ## Progress and notes
 
 - 2026-07-21: User explicitly requested exercising the new process by moving current develop changes to main and selected stable version 0.4.1. Read-only inspection found main `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d`, develop `3d5f700ed87feedfae76eeeb226d03a9bff12b18`, project version 0.4.0, empty Unreleased, no pending newer section, and a release-automation/governance-only main delta. No version, branch, tag, Release, asset, provider, or hosted configuration state changed during shaping.
+- 2026-07-21: Preparation began from exact current develop `99f7685469571cec6f3a23f95801dcb649924059` in isolated branch/worktree `work/prepare-v0-4-1`. Scope is limited to the ratified 0.4.1 version authorities, pending changelog, local validation evidence, and a protected pull request to develop; no main, release, registry, provider, or hosted-configuration mutation is authorized.
+- 2026-07-21: Project/module/lock now agree on stable 0.4.1; the changelog has empty Unreleased, the exact current pending section and ratified Changed meaning, and corrected comparison links. The initial complete 3.11 suite exposed two stale 0.4.0 static assertions; those were narrowly updated to the ratified current version/changelog while preserving verified 0.4.0 history. Release policy/version/changelog checks, lock check, complete locked 3.11 and 3.13 suites (534 tests each), deterministic byte-identical double build, repository artifact inspection, and clean-wheel CLI/help/exact-tokenizer smoke all pass. Evidence: `.10x/evidence/2026-07-21-buoy-v0-4-1-preparation.md`.
+- 2026-07-21: PR #92 exact-head CI `29870237282` passed all protected develop checks. Independent review passed exact head `2b008edd2618286bb56f7693ca9204959ed81edf` with no blockers. Review: `.10x/reviews/2026-07-21-buoy-v0-4-1-preparation-review.md`. No main/tag/Release/PyPI/Turbopuffer/configuration mutation occurred.
