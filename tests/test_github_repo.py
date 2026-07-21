@@ -15,6 +15,11 @@ from buoy_search.chunker import parse_markdown_file, process_corpus
 from buoy_search.plan_artifacts import build_generic_site_row, build_plan_artifacts, write_plan_artifacts
 from buoy_search.plan_diff import diff_manifest_against_state
 from buoy_search.repo_syntax_chunking import RepoSyntaxChunkingError, chunk_source, source_payload
+from buoy_search.treatment_token_budget import (
+    TreatmentTokenBudgetError,
+    exact_token_count,
+    load_pinned_tokenizer,
+)
 from buoy_search.github_repo import (
     GitHubRepoError,
     GitHubRepoMetadata,
@@ -681,6 +686,138 @@ class GitHubRepoAcquisitionTests(unittest.TestCase):
             self.assertEqual(corpus.stats.repo_source_chunks, 1)
             self.assertNotIn("Symbol breadcrumbs:", plan.chunks[1].content)
             self.assertEqual(plan.chunks[1].section_path, "broken.py > Lines 1-2")
+
+    def test_token_budget_subdivision_has_golden_boundaries_counts_coverage_and_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source_lines = ["def owner():"] + [
+                f"    value_{index} = \"{' '.join(['alpha'] * 20)}\""
+                for index in range(79)
+            ]
+            source_text = "\n".join(source_lines)
+            remote = create_local_git_repo(root / "remote", files={"owner.py": source_text})
+            acquisition = acquire_from_local_remote(root, remote)
+            corpus = build_github_repo_corpus(acquisition, root / "pages")
+
+            first = process_syntax_repo_corpus(
+                corpus,
+                arm="fixed-80-python-breadcrumbs",
+                limit_chunks=100,
+                target_tokens=300,
+                overlap_sentences=2,
+            )
+            corpus.stats.repo_header_chunks = 0
+            corpus.stats.repo_source_chunks = 0
+            second = process_syntax_repo_corpus(
+                corpus,
+                arm="fixed-80-python-breadcrumbs",
+                limit_chunks=100,
+                target_tokens=300,
+                overlap_sentences=2,
+            )
+
+            self.assertEqual(first.chunks, second.chunks)
+            source_chunks = first.chunks[1:]
+            self.assertEqual(
+                [chunk.section_path for chunk in source_chunks],
+                [
+                    "owner.py > Lines 1-19",
+                    "owner.py > Lines 20-37",
+                    "owner.py > Lines 38-55",
+                    "owner.py > Lines 56-73",
+                    "owner.py > Lines 74-80",
+                ],
+            )
+            self.assertEqual([chunk.chunk_index for chunk in source_chunks], [1, 2, 3, 4, 5])
+            tokenizer = load_pinned_tokenizer()
+            self.assertEqual(
+                [exact_token_count(tokenizer, chunk.embedding_text) for chunk in source_chunks],
+                [506, 501, 501, 501, 215],
+            )
+            self.assertTrue(all(chunk.content.startswith("Symbol breadcrumbs: owner\n\n") for chunk in source_chunks))
+            reconstructed: list[str] = []
+            for chunk in source_chunks:
+                payload = chunk.content.split("```python\n", 1)[1].rsplit("\n```", 1)[0]
+                reconstructed.extend(payload.split("\n"))
+            self.assertEqual(reconstructed, source_lines)
+
+            first_rows = build_plan_artifacts(
+                indexing_plan=first,
+                base_url=acquisition.source.repo_root_url,
+                out_dir=root / "first-plan",
+                crawl_options={"repo_chunking_arm": "fixed-80-python-breadcrumbs"},
+            ).manifest.chunks
+            second_rows = build_plan_artifacts(
+                indexing_plan=second,
+                base_url=acquisition.source.repo_root_url,
+                out_dir=root / "second-plan",
+                crawl_options={"repo_chunking_arm": "fixed-80-python-breadcrumbs"},
+            ).manifest.chunks
+            self.assertEqual(
+                [(row.row_id, row.section_path, row.content) for row in first_rows],
+                [(row.row_id, row.section_path, row.content) for row in second_rows],
+            )
+
+    def test_unsplittable_513_token_line_aborts_complete_plan_with_sanitized_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            secret_line = " ".join(["alpha"] * 487)
+            remote = create_local_git_repo(root / "remote", files={"huge.py": secret_line})
+            acquisition = acquire_from_local_remote(root, remote)
+            corpus = build_github_repo_corpus(acquisition, root / "pages")
+
+            with self.assertRaises(TreatmentTokenBudgetError) as raised:
+                process_syntax_repo_corpus(
+                    corpus,
+                    arm="python-ast",
+                    limit_chunks=10,
+                    target_tokens=300,
+                    overlap_sentences=2,
+                )
+
+            message = str(raised.exception)
+            self.assertIn("repository=owner/repo", message)
+            self.assertIn("arm=python-ast", message)
+            self.assertIn("path=huge.py", message)
+            self.assertIn("line=1 tokens=513", message)
+            self.assertIn("max=512", message)
+            self.assertNotIn("alpha", message)
+            self.assertFalse((root / "plan.json").exists())
+            self.assertFalse((root / "manifest.json").exists())
+            self.assertFalse((root / "chunks.jsonl").exists())
+
+    def test_header_and_prose_overages_are_independent_fail_closed_gates(self) -> None:
+        class SelectiveTokenizer:
+            model_max_length = 512
+
+            def __init__(self, marker: str) -> None:
+                self.marker = marker
+
+            def __call__(self, text: str, **_kwargs: object) -> dict[str, object]:
+                return {"length": [513 if self.marker in text else 10]}
+
+        cases = (
+            ({"app.py": "value = 1"}, "Repository file:", "class=header"),
+            ({"README.md": "# Docs\n\nprose marker"}, "prose marker", "class=prose"),
+        )
+        for files, marker, expected_class in cases:
+            with self.subTest(row_class=expected_class), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                remote = create_local_git_repo(root / "remote", files=files)
+                acquisition = acquire_from_local_remote(root, remote)
+                corpus = build_github_repo_corpus(acquisition, root / "pages")
+                with patch(
+                    "buoy_search.github_repo.load_pinned_tokenizer",
+                    return_value=SelectiveTokenizer(marker),
+                ):
+                    with self.assertRaisesRegex(TreatmentTokenBudgetError, expected_class):
+                        process_syntax_repo_corpus(
+                            corpus,
+                            arm="python-ast",
+                            limit_chunks=10,
+                            target_tokens=300,
+                            overlap_sentences=2,
+                        )
 
     def test_python_aware_plan_refuses_partial_max_chunk_coverage(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
