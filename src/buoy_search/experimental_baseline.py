@@ -218,7 +218,7 @@ class LocalEffects:
     commit_state: Callable[[PreparedBaseline], None]
     remove_pending: Callable[[], None]
     pending_exists: Callable[[], bool]
-    state_matches: Callable[[PreparedBaseline], bool]
+    reload_state_hash: Callable[[PreparedBaseline], str | None]
 
 
 @dataclass(frozen=True)
@@ -274,10 +274,22 @@ SLOTS: tuple[Slot, ...] = (
 @dataclass
 class _Ledger:
     attempts: dict[int, Attempt] = field(default_factory=dict)
+    raw_schema_distance_projections: JsonObject = field(default_factory=dict)
+    raw_target_row_projections: JsonObject = field(default_factory=dict)
+    raw_card_row_projections: JsonObject = field(default_factory=dict)
     physical_attempts: int = 0
     write_row_positions: int = 0
     returned_row_positions: int = 0
     delete_attempts: int = 0
+
+    def record_raw_schema_distance(self, phase: str, payload: Mapping[str, Any]) -> None:
+        self.raw_schema_distance_projections[phase] = _raw_schema_distance_projection(payload)
+
+    def record_raw_target_rows(self, slot: int, rows: Sequence[object]) -> None:
+        self.raw_target_row_projections[str(slot)] = [_raw_row_projection(row) for row in rows]
+
+    def record_raw_card_rows(self, slot: int, rows: Sequence[object]) -> None:
+        self.raw_card_row_projections[str(slot)] = [_raw_row_projection(row) for row in rows]
 
     def invoke(
         self,
@@ -387,8 +399,18 @@ class _Ledger:
             "write_row_positions": self.write_row_positions,
             "returned_row_positions": self.returned_row_positions,
             "delete_attempts": self.delete_attempts,
+            "raw_schema_distance_projections": self.raw_schema_distance_projections,
+            "raw_target_row_projections": self.raw_target_row_projections,
+            "raw_card_row_projections": self.raw_card_row_projections,
             "slots": mapped,
         }
+
+
+def _canonical_cache_manifest_hash(entries: Sequence[JsonObject]) -> str:
+    manifest_bytes = json.dumps(
+        entries, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    return hashlib.sha256(manifest_bytes).hexdigest()
 
 
 def validate_model_cache(cache_root: Path) -> CacheAttestation:
@@ -402,14 +424,18 @@ def validate_model_cache(cache_root: Path) -> CacheAttestation:
     if not snapshot.is_dir():
         raise ExperimentalBaselineError("immutable model snapshot is missing")
     entries: list[JsonObject] = []
-    for path in sorted((item for item in snapshot.rglob("*") if item.is_file()), key=lambda item: str(item.relative_to(snapshot))):
+    paths = sorted(
+        (item for item in snapshot.rglob("*") if item.is_file()),
+        key=lambda item: item.relative_to(snapshot).as_posix(),
+    )
+    for path in paths:
         data = path.read_bytes()
         entries.append({
-            "path": str(path.relative_to(snapshot)),
-            "size": len(data),
+            "path": path.relative_to(snapshot).as_posix(),
+            "bytes": len(data),
             "sha256": hashlib.sha256(data).hexdigest(),
         })
-    manifest_hash = stable_hash(entries)
+    manifest_hash = _canonical_cache_manifest_hash(entries)
     readme = snapshot / "README.md"
     readme_bytes = readme.read_bytes()
     readme_text = readme_bytes.decode("utf-8")
@@ -418,11 +444,17 @@ def validate_model_cache(cache_root: Path) -> CacheAttestation:
         manifest_sha256=manifest_hash,
         readme_sha256=hashlib.sha256(readme_bytes).hexdigest(),
         license="mit" if re.search(r"(?m)^license:\s*mit\s*$", readme_text) else "unknown",
-        license_statement_present="FlagEmbedding is licensed under the MIT License" in readme_text,
+        license_statement_present=_readme_has_markdown_mit_statement(readme_text),
         file_count=len(entries),
     )
     validate_cache_attestation(attestation)
     return attestation
+
+
+def _readme_has_markdown_mit_statement(value: str) -> bool:
+    return bool(re.search(
+        r"FlagEmbedding is licensed under the \[MIT License\]\([^)]+\)", value
+    ))
 
 
 def validate_cache_attestation(value: CacheAttestation) -> None:
@@ -745,7 +777,9 @@ def _execute_locked(
 ) -> JsonObject:
     ledger = _Ledger()
     pending_created = False
+    state_commit_attempted = False
     state_committed = False
+    reloaded_applied_state_hash: str | None = None
     card_verified = False
     provider_attested = False
     try:
@@ -795,10 +829,11 @@ def _execute_locked(
             )
 
         metadata = ledger.invoke(21, lambda: provider.target.metadata())
+        ledger.record_raw_schema_distance("target_postwrite", metadata)
         _validate_content_metadata(metadata, allow_absent=False)
         first_rows = _target_verification_read(ledger, provider.target, 22)
-        second_rows = _target_verification_read(ledger, provider.target, 23)
         _validate_target_rows(first_rows, prepared.rows)
+        second_rows = _target_verification_read(ledger, provider.target, 23)
         _validate_target_rows(second_rows, prepared.rows)
         if first_rows != second_rows:
             raise ExperimentalBaselineError("target verification order/content changed between strong reads")
@@ -836,8 +871,12 @@ def _execute_locked(
         if ledger.physical_attempts not in {25, 26}:
             raise ExperimentalBaselineError("successful request count is outside the fixed ledger")
 
+        state_commit_attempted = True
         local_effects.commit_state(prepared)
-        state_committed = local_effects.state_matches(prepared)
+        reloaded_applied_state_hash = local_effects.reload_state_hash(prepared)
+        state_committed = (
+            reloaded_applied_state_hash == applied_state_hash(prepared.next_state)
+        )
         if not state_committed:
             raise ExperimentalBaselineError("local applied-state commit could not be verified")
         local_effects.remove_pending()
@@ -853,6 +892,7 @@ def _execute_locked(
             "catalog_namespace": REMOTE_CATALOG_NAMESPACE,
             "content_rows_verified": CONTENT_ROWS,
             "card_revision": prepared.card.card_revision,
+            "reloaded_applied_state_hash": reloaded_applied_state_hash,
             "local_state_committed": True,
             "remote_card_verified": True,
             "pending_retained": False,
@@ -861,14 +901,17 @@ def _execute_locked(
         })
         return evidence
     except ExperimentalBaselineError as exc:
-        pending_created, state_committed = _observe_local_effects(
+        pending_created, state_committed, reloaded_applied_state_hash = _observe_local_effects(
             local_effects, prepared=locals().get("prepared"),
+            observe_state=state_commit_attempted,
             pending_default=pending_created, state_default=state_committed,
+            state_hash_default=reloaded_applied_state_hash,
         )
         evidence = exc.evidence or ledger.evidence()
         evidence["provider_attested"] = provider_attested
         evidence["pending_retained"] = pending_created
         evidence["local_state_committed"] = state_committed
+        evidence["reloaded_applied_state_hash"] = reloaded_applied_state_hash
         evidence["remote_card_verified"] = card_verified
         evidence["card_success"] = card_verified
         evidence["simulation"] = simulation
@@ -876,15 +919,18 @@ def _execute_locked(
         exc.evidence = evidence
         raise
     except BaseException as exc:
-        pending_created, state_committed = _observe_local_effects(
+        pending_created, state_committed, reloaded_applied_state_hash = _observe_local_effects(
             local_effects, prepared=locals().get("prepared"),
+            observe_state=state_commit_attempted,
             pending_default=pending_created, state_default=state_committed,
+            state_hash_default=reloaded_applied_state_hash,
         )
         evidence = ledger.evidence()
         evidence.update({
             "provider_attested": provider_attested,
             "pending_retained": pending_created,
             "local_state_committed": state_committed,
+            "reloaded_applied_state_hash": reloaded_applied_state_hash,
             "remote_card_verified": card_verified,
             "card_success": card_verified,
             "simulation": simulation,
@@ -1094,7 +1140,7 @@ class _LiveLocalEffects:
     def pending_exists(self) -> bool:
         return self.pending_path.exists() or self.pending_path.is_symlink()
 
-    def state_matches(self, prepared: PreparedBaseline) -> bool:
+    def reload_state_hash(self, _prepared: PreparedBaseline) -> str | None:
         try:
             current = load_applied_state(
                 site_id=SITE_ID,
@@ -1103,30 +1149,37 @@ class _LiveLocalEffects:
                 state_root=self.verified.state_root,
             )
         except Exception:
-            return False
-        return applied_state_hash(current) == applied_state_hash(prepared.next_state)
+            return None
+        return applied_state_hash(current)
 
 
 def _observe_local_effects(
     effects: LocalEffects,
     *,
     prepared: object,
+    observe_state: bool,
     pending_default: bool,
     state_default: bool,
-) -> tuple[bool, bool]:
+    state_hash_default: str | None,
+) -> tuple[bool, bool, str | None]:
     try:
         pending = effects.pending_exists()
     except BaseException:
         pending = pending_default
-    try:
-        committed = effects.state_matches(prepared) if isinstance(prepared, PreparedBaseline) else state_default
-    except BaseException:
-        committed = state_default
-    return pending, committed
+    state_hash = state_hash_default
+    committed = state_default
+    if observe_state and isinstance(prepared, PreparedBaseline):
+        try:
+            state_hash = effects.reload_state_hash(prepared)
+            committed = state_hash == applied_state_hash(prepared.next_state)
+        except BaseException:
+            pass
+    return pending, committed, state_hash
 
 
 def _target_preflight(ledger: _Ledger, resource: NamespaceResource) -> bool:
     metadata = ledger.invoke(1, lambda: resource.metadata())
+    ledger.record_raw_schema_distance("target_preflight", metadata)
     if metadata.get("namespace_absent") is True:
         if "schema" in metadata or "distance_metric" in metadata:
             raise ExperimentalBaselineError("target namespace absence result is ambiguous")
@@ -1148,6 +1201,7 @@ def _catalog_preflight(
     ledger: _Ledger, resource: NamespaceResource, intended: NamespaceCard
 ) -> NamespaceCard | None:
     metadata = ledger.invoke(3, lambda: resource.metadata())
+    ledger.record_raw_schema_distance("catalog_preflight", metadata)
     validate_remote_schema(metadata)
     if metadata.get("distance_metric") != DISTANCE_METRIC:
         raise ExperimentalBaselineError("catalog namespace distance_metric is missing or mismatched")
@@ -1187,7 +1241,9 @@ def _target_verification_read(
             vector_encoding="float", consistency=dict(STRONG_CONSISTENCY),
         ),
     )
-    return response["rows"]
+    rows = response["rows"]
+    ledger.record_raw_target_rows(slot, rows)
+    return rows
 
 
 def _validate_target_rows(actual: Sequence[JsonObject], expected: Sequence[JsonObject]) -> None:
@@ -1226,6 +1282,7 @@ def _card_read(
         ),
     )
     rows = response["rows"]
+    ledger.record_raw_card_rows(slot, rows)
     if len(rows) > 1:
         raise ExperimentalBaselineError("exact card read returned duplicate rows")
     if not rows:
@@ -1235,18 +1292,70 @@ def _card_read(
     return card_from_remote_row(rows[0], region=REGION)
 
 
-def _validate_content_metadata(payload: Mapping[str, Any], *, allow_absent: bool) -> None:
+def _sanitize_provider_projection(value: object) -> Any:
+    """Copy provider evidence while redacting secret-bearing keys and non-JSON values."""
+
+    if isinstance(value, Mapping):
+        safe: JsonObject = {}
+        for raw_key, item in value.items():
+            key = str(raw_key)
+            if re.search(r"secret|token|credential|api.?key|header|account", key, re.IGNORECASE):
+                safe[key] = "<redacted>"
+            else:
+                safe[key] = _sanitize_provider_projection(item)
+        return safe
+    if isinstance(value, (list, tuple)):
+        return [_sanitize_provider_projection(item) for item in value]
+    if value is None or isinstance(value, (bool, int, str)):
+        return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else "<redacted>"
+    return "<redacted>"
+
+
+def _raw_schema_distance_projection(payload: Mapping[str, Any]) -> JsonObject:
+    projection = {
+        "namespace_absent_present": "namespace_absent" in payload,
+        "namespace_absent": _sanitize_provider_projection(payload.get("namespace_absent")),
+        "schema_present": "schema" in payload,
+        "schema": _sanitize_provider_projection(payload.get("schema")),
+        "distance_metric_present": "distance_metric" in payload,
+        "distance_metric": _sanitize_provider_projection(payload.get("distance_metric")),
+    }
+    return {**projection, "raw_projection_sha256": stable_hash(projection)}
+
+
+def _raw_row_projection(row: object) -> JsonObject:
+    raw = _sanitize_provider_projection(row)
+    projection: JsonObject = {"raw_row_sha256": stable_hash(raw)}
+    if isinstance(raw, Mapping):
+        attributes = {key: value for key, value in raw.items() if key != "vector"}
+        projection.update({
+            "id": raw.get("id"),
+            "namespace": raw.get("namespace"),
+            "card_revision": raw.get("card_revision"),
+            "attributes_sha256": stable_hash(attributes),
+            "vector_present": "vector" in raw,
+            "vector_sha256": stable_hash(raw.get("vector")) if "vector" in raw else None,
+        })
+    return projection
+
+
+def _validate_content_metadata(
+    payload: Mapping[str, Any], *, allow_absent: bool
+) -> JsonObject | None:
     if payload.get("namespace_absent") is True:
         if allow_absent:
-            return
+            return None
         raise ExperimentalBaselineError("target namespace unexpectedly absent")
-    schema = payload.get("schema")
-    if _normalize_content_schema(schema) != _normalize_content_schema({
+    schema = _normalize_content_schema(payload.get("schema"))
+    if schema != _normalize_content_schema({
         "id": {"type": "string", "filterable": True}, **CONTENT_SCHEMA,
     }):
         raise ExperimentalBaselineError("target namespace schema mismatch")
     if payload.get("distance_metric") != DISTANCE_METRIC:
         raise ExperimentalBaselineError("target namespace distance_metric is missing or mismatched")
+    return schema
 
 
 def _normalize_content_schema(value: object) -> JsonObject:
