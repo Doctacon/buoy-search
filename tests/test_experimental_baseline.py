@@ -455,6 +455,7 @@ class Harness:
         self.fail_remove = False
         self.fail_create_after_effect = False
         self.fail_commit_after_effect = False
+        self.state_reload_count = 0
         self.attempt_count = 0
         self.fail_attempt: int | None = None
         self.failure: BaseException | None = None
@@ -505,6 +506,13 @@ class Harness:
             self.events.append("validate-local-preconditions")
             self.assert_same(verified, self.verified)
 
+        def reload_state_hash(_prepared: PreparedBaseline) -> str | None:
+            self.events.append("reload-state")
+            self.state_reload_count += 1
+            if not self.committed:
+                return None
+            return experimental_baseline.applied_state_hash(self.prepared.next_state)
+
         return LocalEffects(
             lock=lock,
             validate_preconditions=validate,
@@ -512,7 +520,7 @@ class Harness:
             commit_state=commit,
             remove_pending=remove,
             pending_exists=lambda: self.pending,
-            state_matches=lambda _prepared: self.committed,
+            reload_state_hash=reload_state_hash,
         )
 
     def execute(self) -> dict[str, object]:
@@ -559,6 +567,34 @@ class ExperimentalBaselineTests(unittest.TestCase):
         self.assertLess(harness.events.index("commit-state"), harness.events.index("remove-pending"))
         self.assertTrue(harness.committed)
         self.assertTrue(harness.removed)
+        self.assertEqual(harness.state_reload_count, 1)
+        self.assertEqual(
+            result["reloaded_applied_state_hash"],
+            experimental_baseline.applied_state_hash(harness.prepared.next_state),
+        )
+        self.assertEqual(
+            result["observed_schemas_and_distances"]["target_preflight"],
+            {"namespace_absent": True, "schema": None, "distance_metric": None},
+        )
+        self.assertEqual(
+            result["observed_schemas_and_distances"]["catalog_preflight"]["distance_metric"],
+            DISTANCE_METRIC,
+        )
+        self.assertEqual(
+            result["observed_schemas_and_distances"]["target_postwrite"]["distance_metric"],
+            DISTANCE_METRIC,
+        )
+        self.assertEqual(len(result["target_row_projections"]["22"]), CONTENT_ROWS)
+        self.assertEqual(
+            result["target_row_projections"]["22"],
+            result["target_row_projections"]["23"],
+        )
+        self.assertEqual(result["card_row_projections"]["4"], {"present": False})
+        self.assertEqual(result["card_row_projections"]["5"], {"present": False})
+        self.assertEqual(
+            result["card_row_projections"]["25"],
+            result["card_row_projections"]["26"],
+        )
         serialized = json.dumps(result)
         self.assertNotIn("tpuf_", serialized)
         self.assertNotIn("provider-request-identity", serialized)
@@ -596,6 +632,58 @@ class ExperimentalBaselineTests(unittest.TestCase):
             harness.events,
             ["acquire-lock", "validate-local-preconditions", "release-lock"],
         )
+
+    def test_cache_preflight_uses_canonical_manifest_and_markdown_mit_statement(self) -> None:
+        canonical_entries = [
+            {"path": "a", "bytes": 1, "sha256": "0" * 64},
+            {"path": "b/c", "bytes": 2, "sha256": "f" * 64},
+        ]
+        self.assertEqual(
+            experimental_baseline._canonical_cache_manifest_hash(canonical_entries),
+            "b2693856d8ba01e34c2cfd532b5e31ad6adbb36389dff3c2fb8e0b958e2b268c",
+        )
+        self.assertEqual(
+            CACHE_MANIFEST_HASH,
+            "5f783ebce23b6ac957d2741399b46e19502b1751acfd3c744b8c41103b138f35",
+        )
+
+        readme = (
+            "---\nlicense: mit\n---\n"
+            "FlagEmbedding is licensed under the [MIT License](https://opensource.org/license/mit).\n"
+        ).encode("utf-8")
+        files = {"README.md": readme}
+        files.update({f"nested/{index:02d}.bin": bytes([index]) for index in range(11)})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "refs").mkdir()
+            (root / "refs/main").write_text(MODEL_REVISION, encoding="utf-8")
+            snapshot = root / "snapshots" / MODEL_REVISION
+            for relative, data in files.items():
+                path = snapshot / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(data)
+            entries = [
+                {
+                    "path": relative,
+                    "bytes": len(files[relative]),
+                    "sha256": hashlib.sha256(files[relative]).hexdigest(),
+                }
+                for relative in sorted(files)
+            ]
+            manifest_hash = hashlib.sha256(json.dumps(
+                entries, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")).hexdigest()
+            with (
+                mock.patch.object(experimental_baseline, "CACHE_MANIFEST_HASH", manifest_hash),
+                mock.patch.object(
+                    experimental_baseline, "README_HASH", hashlib.sha256(readme).hexdigest()
+                ),
+            ):
+                attestation = experimental_baseline.validate_model_cache(root)
+        self.assertEqual(attestation.manifest_sha256, manifest_hash)
+        self.assertEqual(attestation.license, "mit")
+        self.assertTrue(attestation.license_statement_present)
+        self.assertEqual(attestation.file_count, 12)
 
     def test_nonempty_target_aborts_with_zero_writes_and_no_pending(self) -> None:
         harness = Harness(absent=False)
@@ -714,6 +802,28 @@ class ExperimentalBaselineTests(unittest.TestCase):
         self.assertTrue(harness.pending)
         self.assertFalse(raised.exception.evidence["card_success"])
         self.assertEqual(raised.exception.evidence["delete_attempts"], 0)
+
+    def test_late_partial_failure_preserves_prior_remote_projections(self) -> None:
+        harness = Harness(absent=False)
+        harness.fail_attempt = 26
+        with self.assertRaises(ExperimentalBaselineError) as raised:
+            harness.execute()
+        evidence = raised.exception.evidence
+        self.assertEqual(len(evidence["target_row_projections"]["22"]), CONTENT_ROWS)
+        self.assertEqual(
+            evidence["target_row_projections"]["22"],
+            evidence["target_row_projections"]["23"],
+        )
+        self.assertTrue(evidence["card_row_projections"]["25"]["present"])
+        self.assertNotIn("26", evidence["card_row_projections"])
+        self.assertEqual(
+            evidence["observed_schemas_and_distances"]["target_postwrite"]["distance_metric"],
+            DISTANCE_METRIC,
+        )
+        self.assertFalse(evidence["local_state_committed"])
+        self.assertIsNone(evidence["reloaded_applied_state_hash"])
+        self.assertEqual(harness.state_reload_count, 0)
+        self.assertEqual(evidence["delete_attempts"], 0)
 
     def test_pending_removal_failure_reports_committed_state_and_retained_pending(self) -> None:
         harness = Harness()
