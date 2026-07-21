@@ -30,7 +30,7 @@ Can Buoy remove committed release-version/changelog preparation and make one lab
   - `uv sync --locked` installed VCS development version `0.4.1.dev70+g5ce5c1155.d20260721`;
   - exact build produced wheel SHA-256 `366444fbac08c2a2fa87e438efff7b3bb391d3a6129d148b8e58a64ba7ca238b` and sdist SHA-256 `5433fc2f7a1a545ca7de218db5c261b1a164154c7ffeb099d7a77f80ff2464ef` with exact 0.4.1 names;
   - `uv lock --check` remained valid after a new commit;
-  - generated `_version.py` was untracked, confirming the required ignore/build lifecycle.
+  - generated `_version.py` was untracked but the disposable experiment had not added the intended `.gitignore` rule; implementation must add and verify that rule separately while preserving the proven install/build lifecycle.
 - The generated version file is refreshed only on install/build. Clean workflows must run locked sync/build before importing from source, and the generated file must not be tracked.
 - GitHub can recover the exact merged release PR from the resulting merge commit. Main-push validation can require exactly one associated closed/merged PR with exact merge SHA, base `main`, head `develop`, same repository, and exactly one release label.
 - GitHub native queued auto-merge is available but disabled. Review found mutable-label and concurrent-event authority risks in using queued auto-merge. A safer design is a final no-checkout job in the readiness workflow: after all four jobs pass, refetch exact current metadata, recompute the plan, and immediately merge with `gh pr merge --merge --match-head-commit`, embedding immutable plan trailers.

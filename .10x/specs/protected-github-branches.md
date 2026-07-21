@@ -45,7 +45,7 @@ The sole exception is the exact one-time v0.4 squash-topology bridge in `.10x/de
 
 ### Release integration
 
-Given a same-repository labeled `develop -> main` pull request, GitHub MUST block merge until all four readiness checks validate the exact prospective merge result. Main strict freshness is not required. Release integration MUST use a merge commit, never squash or rebase, so develop remains in main ancestry. The exact no-checkout final controller in `.10x/specs/develop-to-main-release-readiness.md` performs method `MERGE` only after all required jobs pass; mutable queued auto-merge remains disabled. The automatic main-push workflow revalidates the resulting two-parent exact main commit and merged-PR label before mutation.
+Given a same-repository labeled `develop -> main` pull request, GitHub MUST block merge until all four readiness checks validate the exact prospective merge result. Main strict freshness is not required. Release integration MUST use a merge commit, never squash or rebase, so develop remains in main ancestry. The exact no-checkout final controller in `.10x/specs/develop-to-main-release-readiness.md` performs method `MERGE` only after all required jobs pass; mutable queued auto-merge remains disabled. The automatic main-push workflow revalidates the resulting two-parent exact main commit, exact associated PR identity, and immutable merge-plan trailers before mutation; mutable post-merge PR labels are diagnostic only.
 
 ### Direct push
 

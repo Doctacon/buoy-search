@@ -23,9 +23,15 @@ Independent review confirmed label/SemVer calculations, hatch-vcs feasibility, v
 - Restated retained package identity/compatibility, exact v0.4 legacy pins/digests, state machine, permissions, triggers, tests, protection, and portability in active specs.
 - Added raw disposable hatch-vcs experiment configuration, commands, lock diff, versions, and artifact hashes to research.
 
+## Final rereview findings and response
+
+Final rereview confirmed the initial four blockers resolved, then found two narrow active-contract gaps: duplicate-per-SHA wording named only annotated tags, and protected-branch text still referred to mutable merged-PR labels. It also noted the disposable experiment had not tested the intended ignore rule.
+
+The main-push contract now rejects every different stable tag ref—including lightweight—and every Release/partial state targeting the same SHA. Protected-branch authority now names exact associated PR identity plus immutable merge trailers and makes later labels diagnostic only. Research now states the ignore-rule limit truthfully; the package spec/ticket retain explicit implementation and verification.
+
 ## Verdict
 
-Concerns are addressed on the PR branch; final independent rereview remains before integration.
+Targeted corrections are complete; final bounded rereview remains before integration.
 
 ## Residual risk
 

@@ -24,7 +24,7 @@ Before mutation, exact `GITHUB_SHA` MUST:
   - `Buoy-Release-Base-Tag: <stable base tag>`
   - `Buoy-Release-PR: <associated PR number>`
   - `Buoy-Release-Head: <second-parent SHA>`;
-- have no other stable annotated tag or GitHub Release—whether current or legacy version—whose exact peel/target commit is `GITHUB_SHA`.
+- have no other stable tag ref—annotated or lightweight—and no other GitHub Release, including partial/mismatched state, whose exact peel/direct target/Release target commit is `GITHUB_SHA`.
 
 Current mutable PR labels are diagnostic only after merge and MUST NOT determine release identity. Any duplicate/malformed/conflicting trailer, ambiguous PR, squash/rebase topology, different PR/head, or existing different stable release/tag for the same SHA fails before build publication or mutation.
 
