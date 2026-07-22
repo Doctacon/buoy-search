@@ -72,8 +72,7 @@ The legacy checker now requires `SETUPTOOLS_SCM_PRETEND_VERSION` for dynamic pro
 
 ## Limits
 
-- The candidate was not pushed and hosted CI was not observed.
-- No independent review had been recorded when this evidence was written.
+- This local evidence does not itself prove hosted CI or independent review; those are recorded separately in `.10x/evidence/2026-07-21-tag-derived-package-versioning-hosted-ci.md` and `.10x/reviews/2026-07-21-tag-derived-package-versioning-final-review.md`.
 - Hashes identify the pre-commit candidate built with the then-current HEAD timestamp. Any later source or commit-timestamp change requires a fresh deterministic pair for release authority.
 - Existing readiness/main-push workflows and `scripts/release_automation.py` still encode the prior static release process; their replacement belongs to the plan's later executable children and was intentionally excluded here.
 - The warnings emitted by two plan-cleanup negative tests and the lxml deprecation warning were pre-existing, non-failing test output.
