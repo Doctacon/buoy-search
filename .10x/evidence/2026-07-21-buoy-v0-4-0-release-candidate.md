@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-21
 Updated: 2026-07-21
-Relates-To: .10x/tickets/done/2026-07-21-validate-buoy-v0-4-0-release-candidate.md, .10x/tickets/2026-07-21-buoy-v0-4-0-release-plan.md
+Relates-To: .10x/tickets/done/2026-07-21-validate-buoy-v0-4-0-release-candidate.md, .10x/tickets/done/2026-07-21-buoy-v0-4-0-release-plan.md
 
 # Buoy v0.4.0 Release Candidate Validation
 
@@ -52,7 +52,7 @@ A fresh CPython 3.13 environment installed 0.3.0 and proved version 0.3.0 plus b
 
 ## What this supports
 
-This supports the code-level 0.4.0 candidate criteria in `.10x/specs/buoy-release-validation.md`, including complete supported-Python tests, exact version/artifact/launcher behavior, preserved blocked-experiment truth, clean install, and released-wheel upgrade behavior. Existing tests cover CLI parser/help/version, removed-variable ordering/streams/non-dispatch, retained state roots, dual-root refusal, explicit roots, DuckDB loading, old-plan preflight, fixture autoresearch, repository eval datasets, documentation links, workflow/static release policy, and distribution exclusions.
+This supports the code-level 0.4.0 candidate criteria in `.10x/specs/superseded/buoy-v0-4-release-validation.md`, including complete supported-Python tests, exact version/artifact/launcher behavior, preserved blocked-experiment truth, clean install, and released-wheel upgrade behavior. Existing tests cover CLI parser/help/version, removed-variable ordering/streams/non-dispatch, retained state roots, dual-root refusal, explicit roots, DuckDB loading, old-plan preflight, fixture autoresearch, repository eval datasets, documentation links, workflow/static release policy, and distribution exclusions.
 
 ## Limits and side effects
 

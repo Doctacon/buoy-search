@@ -22,7 +22,7 @@ Repair annotated-tag validation to use authoritative remote GitHub metadata, bum
 ## References
 
 - `.10x/decisions/superseded/github-only-release-automation-v0-2-1.md`
-- `.10x/specs/buoy-ci-and-github-releases.md`
+- `.10x/specs/superseded/buoy-ci-and-github-releases.md`
 - `.10x/evidence/2026-07-14-buoy-v0-2-0-release-attempt.md`
 
 ## Progress and notes

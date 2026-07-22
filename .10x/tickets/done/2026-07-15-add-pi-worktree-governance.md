@@ -46,7 +46,7 @@ Create a bounded `work/establish-protected-development-flow` branch from bootstr
 - `.10x/decisions/superseded/protected-development-and-github-release-governance.md`
 - `.10x/specs/pi-worktree-development-flow.md`
 - `.10x/specs/protected-github-branches.md`
-- `.10x/specs/buoy-ci-and-github-releases.md`
+- `.10x/specs/superseded/buoy-ci-and-github-releases.md`
 - `.10x/tickets/done/2026-07-15-establish-protected-development-workflow.md`
 - `.10x/tickets/done/2026-07-15-bootstrap-protected-develop-branch.md`
 - Pi context-file documentation inspected during shaping: `/Users/crlough/.bun/install/global/node_modules/@earendil-works/pi-coding-agent/docs/usage.md`

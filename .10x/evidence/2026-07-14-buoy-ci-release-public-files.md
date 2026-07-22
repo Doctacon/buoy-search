@@ -1,7 +1,7 @@
 Status: recorded
 Created: 2026-07-14
 Updated: 2026-07-14
-Relates-To: .10x/tickets/done/2026-07-14-add-buoy-ci-release-and-public-files.md, .10x/specs/buoy-ci-and-github-releases.md, .10x/specs/buoy-public-project-surface.md
+Relates-To: .10x/tickets/done/2026-07-14-add-buoy-ci-release-and-public-files.md, .10x/specs/superseded/buoy-ci-and-github-releases.md, .10x/specs/buoy-public-project-surface.md
 
 # Buoy CI, Release Workflow, and Public Files Validation
 

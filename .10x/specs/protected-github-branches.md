@@ -6,7 +6,7 @@ Updated: 2026-07-21
 
 ## Purpose and scope
 
-Define GitHub and CI enforcement for the long-lived `develop` integration branch and `main` release branch in `Doctacon/buoy-search`.
+Define GitHub and CI enforcement for the long-lived `develop` integration branch and `main` release branch in `Doctacon/buoy`.
 
 ## Completed branch bootstrap
 
@@ -16,16 +16,11 @@ Define GitHub and CI enforcement for the long-lived `develop` integration branch
 
 ## Required protection
 
-Both `main` and `develop` MUST:
+Both `main` and `develop` MUST require pull requests, zero fixed approving reviews, administrator enforcement without bypass, and branch-deletion denial.
 
-- require changes to arrive through a pull request;
-- require zero approving reviews;
-- require `Python 3.11`, `Python 3.13`, and `Build distributions` checks from GitHub Actions;
-- require the pull request branch to incorporate the latest target branch before merge;
-- apply protection to repository administrators without bypass;
-- disallow branch deletion.
+`develop` MUST require strict app-bound `Python 3.11`, `Python 3.13`, and `Build distributions`; disallow force pushes; and disable last-push approval.
 
-`develop` MUST disallow force pushes and MUST NOT require last-push approval. `main` retains the user-ratified hosted exceptions: force pushes are allowed and last-push approval is required. Neither exception authorizes a release or agent workflow to use force push or bypass a pull request.
+`main` MUST require the four app-bound checks governed by `.10x/specs/develop-to-main-release-readiness.md`; use `strict=false`; allow force pushes under the user's retained hosted setting; and disable last-push approval. The force-push capability is not authorized for any agent/workflow/release path.
 
 Protection MUST NOT require code-owner review, signed commits, linear history, deployment success, conversation resolution, or additional checks unless separately ratified.
 
@@ -36,7 +31,7 @@ Protection MUST NOT require code-owner review, signed commits, linear history, d
 - every pull request; and
 - pushes to `main` and `develop`.
 
-It MUST retain the existing read-only permissions, locked dependency installation, Python 3.11 and 3.13 test jobs, single build job, pinned actions, concurrency behavior, no-secret boundary, and repository-native commands governed by `.10x/specs/buoy-ci-and-github-releases.md`.
+It MUST retain read-only permissions, locked dependencies, Python 3.11/3.13 tests, one build, pinned actions, concurrency, no secrets, and repository-native commands. Release PR and publication behavior are governed by `.10x/specs/develop-to-main-release-readiness.md` and `.10x/specs/main-push-automatic-github-release.md`.
 
 Static tests MUST assert the exact push branch set so the checked-in workflow cannot silently stop validating either long-lived branch.
 
@@ -46,9 +41,11 @@ Static tests MUST assert the exact push branch set so the checked-in workflow ca
 
 Given a `work/*` branch based on `develop`, when its pull request targets `develop`, then GitHub MUST block merge until all required checks pass on a head that incorporates current `develop`. The integration session MUST squash-merge the task pull request.
 
+The sole exception is the exact one-time v0.4 squash-topology bridge in `.10x/decisions/one-time-v0-4-squash-topology-bridge.md`. That protected, tree-identical bridge PR MUST use a merge commit so exact main ancestry survives integration. This exception is pinned, migration-only, and MUST NOT authorize merge commits for any other `work/* -> develop` task.
+
 ### Release integration
 
-Given reviewed release-ready `develop`, when its pull request targets `main`, then GitHub MUST block merge until all required checks pass on a head that incorporates current `main`. The release session MUST use a merge commit rather than squash or rebase so `develop` remains an ancestor of released `main`.
+Given a same-repository labeled `develop -> main` pull request, GitHub MUST block merge until all four readiness checks validate the exact prospective merge result. Main strict freshness is not required. Release integration MUST use a merge commit, never squash or rebase, so develop remains in main ancestry. The exact no-checkout final controller in `.10x/specs/develop-to-main-release-readiness.md` performs method `MERGE` only after all required jobs pass; mutable queued auto-merge remains disabled. The automatic main-push workflow revalidates the resulting two-parent exact main commit, exact associated PR identity, and immutable merge-plan trailers before mutation; mutable post-merge PR labels are diagnostic only.
 
 ### Direct push
 
@@ -56,20 +53,20 @@ Given any ordinary or administrator credential, direct pushes to `develop` MUST 
 
 ## Release compatibility
 
-- `main` remains the source of reviewed release tags.
-- `.github/workflows/release.yml` remains tag-only and MUST NOT gain branch mutation behavior.
-- Existing GitHub-only, annotated-tag, protected-environment, provenance, no-PyPI, and immutable-tag constraints remain unchanged.
+- `main` is the source of automatic stable-SemVer release tags.
+- `.github/workflows/release.yml` triggers only on main pushes and MAY create only the new annotated version tag governed by the active automatic-release specification.
+- GitHub-only, provenance, no-PyPI, and immutable-tag constraints remain; the release-environment approval is removed.
 
 ## Acceptance criteria
 
 - Remote `origin/develop` exists at the ratified bootstrap commit before ordinary integration.
-- GitHub reports the ratified common protection plus the exact branch-specific force-push/last-push settings.
-- Task integration uses squash merge; release integration uses a merge commit.
-- Required status checks, strict base freshness, pull-request requirement, zero approvals, administrator enforcement, and deletion denial are observable on both branches; develop force-push denial and main force-push allowance/last-push approval are also observable.
+- GitHub reports the ratified common protection plus exact branch-specific checks/freshness/force-push/last-push settings.
+- Task integration uses squash merge except for the completed exact one-time v0.4 tree-identical bridge; release integration uses the final merge controller plus prospective-merge readiness and exact-main revalidation, not recurring ancestry ceremony.
+- Develop strict checks and main non-strict four-check policy, pull requests, zero fixed approvals, administrator enforcement, deletion denial, develop force-push denial, retained main force-push allowance, and last-push approval disabled are observable.
 - CI source and static tests include both push branches.
 - A pull request from the implementation branch to `develop` runs all three required checks and cannot merge until they pass.
 - No launcher, local hook, or Pi extension is added.
 
 ## External side effects
 
-The historical bootstrap authority to create/push `develop` and configure initial protection is consumed. Current authority permits only bounded `work/*` branch pushes and creation/merge of governing pull requests under the active branch-specific settings. It does not authorize direct or force pushes to long-lived branches, protection mutation, bypass, tags, releases, package publication, repository transfer/rename, secrets, environment changes, or Turbopuffer operations.
+The historical bootstrap authority is consumed. The separately bounded simple-release implementation ticket may replace main's required checks, set `strict=false`, disable last-push approval, and delete the unused release environment only after repository workflow proof. Otherwise current authority permits bounded work-branch/PR operations only and does not authorize direct/force pushes, bypass, unrelated protection mutation, tags/releases outside the automatic workflow, package registries, transfer/rename, secrets, or Turbopuffer.
