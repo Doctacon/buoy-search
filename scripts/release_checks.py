@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import re
 import sys
@@ -31,7 +32,14 @@ def generated_version() -> str:
 def project_version() -> str:
     with (ROOT / "pyproject.toml").open("rb") as handle:
         project = tomllib.load(handle)["project"]
-    return str(project["version"]) if "version" in project else generated_version()
+    if "version" in project:
+        return str(project["version"])
+    version = os.environ.get("SETUPTOOLS_SCM_PRETEND_VERSION")
+    if not version:
+        raise ValueError(
+            "dynamic package validation requires SETUPTOOLS_SCM_PRETEND_VERSION"
+        )
+    return version
 
 
 def module_version() -> str:
@@ -44,11 +52,16 @@ def module_version() -> str:
     raise ValueError("src/buoy_search/__init__.py does not expose __version__")
 
 
-def verify_tag(tag: str) -> None:
+def validated_version() -> str:
     project = project_version()
     module = module_version()
     if module != project:
-        raise ValueError(f"package version mismatch: pyproject={project!r}, module={module!r}")
+        raise ValueError(f"package version mismatch: project={project!r}, module={module!r}")
+    return project
+
+
+def verify_tag(tag: str) -> None:
+    project = validated_version()
     expected = f"v{project}"
     if tag != expected:
         raise ValueError(f"release tag mismatch: expected {expected!r}, received {tag!r}")
@@ -65,7 +78,7 @@ def verify_remote_annotated_tag(tag: str, object_type: str) -> None:
 
 
 def verify_assets(dist: Path) -> list[str]:
-    version = project_version()
+    version = validated_version()
     expected = {
         f"buoy_search-{version}-py3-none-any.whl",
         f"buoy_search-{version}.tar.gz",

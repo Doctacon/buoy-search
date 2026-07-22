@@ -58,6 +58,18 @@ The clean editable check used a detached disposable worktree at the same source 
 
 This supports the ticket's dynamic metadata, generated module, lock, development version, exact override, deterministic artifact, inventory, clean-install, CLI, tokenizer, historical changelog, and local Python 3.11/3.13 validation criteria.
 
+## Review-finding repair observation
+
+The repair candidate adds three executable regressions in `tests/test_dynamic_version.py`:
+
+- a disposable local Git clone is installed editable without an override and must report a PEP 440 development version containing the checked-out commit, with installed metadata, generated module, and `buoy --version` agreement;
+- an exact `SETUPTOOLS_SCM_PRETEND_VERSION=0.4.1` build must produce the exact wheel/sdist filenames and metadata, exact generated modules in both archives, and an installed wheel whose metadata, module, and CLI all report 0.4.1;
+- a temporary dynamic project proves the legacy checker rejects a missing override and a stale generated version that disagrees with the override, while accepting exact authority/module agreement.
+
+The legacy checker now requires `SETUPTOOLS_SCM_PRETEND_VERSION` for dynamic projects and validates the generated module against it before either tag or asset validation. It no longer derives both sides of its comparison from one ignored generated file.
+
+`uv lock --check` passed. Sequential Python 3.11 and Python 3.13 runs each passed all 538 tests, then the ranking and C6 validators with the same hashes recorded above. An initial parallel cross-version attempt was invalid because both commands replaced the same shared `.venv`; Python 3.11 nevertheless completed successfully, and Python 3.13 was then explicitly synced and rerun sequentially to a clean pass. No product, workflow, provider, GitHub, tag, Release, or publication behavior was mutated.
+
 ## Limits
 
 - The candidate was not pushed and hosted CI was not observed.

@@ -881,7 +881,7 @@ class ReleaseAutomationTests(unittest.TestCase):
             (ROOT / "CHANGELOG.md").read_text(),
         )
 
-    def test_legacy_release_check_cli_rejects_dynamic_mismatch_without_git_side_effects(self) -> None:
+    def test_legacy_release_check_cli_fails_closed_without_override_or_git_side_effects(self) -> None:
         before = subprocess.run(
             ["git", "show-ref", "--tags"], cwd=ROOT, text=True, capture_output=True, check=False
         ).stdout
@@ -896,7 +896,7 @@ class ReleaseAutomationTests(unittest.TestCase):
             ["git", "show-ref", "--tags"], cwd=ROOT, text=True, capture_output=True, check=False
         ).stdout
         self.assertEqual(result.returncode, 2)
-        self.assertIn("release tag mismatch", result.stderr)
+        self.assertIn("requires SETUPTOOLS_SCM_PRETEND_VERSION", result.stderr)
         self.assertEqual(before, after)
 
 
