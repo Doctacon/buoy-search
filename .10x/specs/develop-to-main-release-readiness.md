@@ -2,88 +2,104 @@ Status: active
 Created: 2026-07-21
 Updated: 2026-07-21
 
-# Develop-to-Main Release Readiness
+# Label-Driven Develop-to-Main Release Readiness
 
-## Purpose and authority
+## Purpose and scope
 
-Replace release ancestry syncs and conversational preflights with four mechanically required GitHub checks on every pull request targeting `main`. The user ratified this repaired contract after independent review.
+Make one same-repository `develop -> main` PR the complete release-control surface: one explicit SemVer label, four deterministic checks, merge-commit auto-merge, and no version/changelog preparation.
 
-The only supported release PR source is branch `develop` in `Doctacon/buoy`. Main does **not** require strict base freshness or main-as-ancestor; the checks validate GitHub's exact prospective merge commit. Develop retains its existing strict ordinary CI protection.
+This specification supersedes `.10x/specs/superseded/develop-to-main-release-readiness-static-version.md` for future releases and restates every retained normative guarantee below.
 
-## Required workflow and checks
+## PR and label contract
 
-`.github/workflows/release-readiness.yml` MUST trigger only for pull requests targeting `main` and expose exactly:
+The workflow MUST trigger only for pull requests targeting `main`. The PR MUST be non-draft with exact head `Doctacon/buoy:develop` and base `Doctacon/buoy:main`.
+
+Exactly one label MUST exist from:
+
+- `release:patch`
+- `release:minor`
+- `release:major`
+
+Missing or multiple release labels fail. Other non-release labels are allowed. Labeled/unlabeled/synchronize/reopen events rerun readiness.
+
+## Version derivation
+
+Let `B` be the highest stable `vMAJOR.MINOR.PATCH` annotated tag whose exact complete GitHub Release/provenance state is valid and whose peeled commit is reachable from current base main. Any higher stable tag that is lightweight, partial, mismatched, or not base-reachable fails closed instead of being ignored.
+
+The target version increments `B` using the exact release label:
+
+- patch: `M.m.(p+1)`
+- minor: `M.(m+1).0`
+- major: `(M+1).0.0`
+
+Core identifiers MUST have no leading zeros. The target annotated tag and Release MUST both be absent.
+
+## Prospective merge validation
+
+GitHub's exact prospective merge commit MUST be checked out and have ordered parents `[current base main, exact head develop]`. Its tree is the candidate.
+
+Policy MUST verify:
+
+- exact repository/branches/parents;
+- exact one-label version plan and base-tag authority;
+- dynamic project version metadata uses pinned `hatch-vcs==0.5.0` and no committed static project/module/lock release version;
+- `CHANGELOG.md` is frozen history through v0.4.0 with future notes delegated to canonical GitHub Releases;
+- canonical repository `Doctacon/buoy`, exact legacy v0.4 exception, no PyPI/Turbopuffer release behavior;
+- target tag/Release absence and no partial state.
+
+## Required checks
+
+The workflow MUST emit these exact GitHub Actions check-run job names, each app-bound under ID 15368:
 
 1. `Release readiness / Policy`
 2. `Release readiness / Python 3.11`
 3. `Release readiness / Python 3.13`
 4. `Release readiness / Distribution`
 
-Main protection MUST require exactly these app-bound release checks, PRs, zero fixed approvals, administrator enforcement, deletion denial, `strict=false`, and `require_last_push_approval=false`. The user's previously retained main force-push allowance remains unchanged; repository workflows and agents MUST NOT use it. Develop keeps strict `Python 3.11`, `Python 3.13`, and `Build distributions` checks, force-push denial, and no last-push approval.
+Main protection requires exactly those app-bound contexts with `strict=false`, pull requests, zero fixed approvals, administrator enforcement, deletion denial, retained force-push allowance, and last-push approval disabled. Develop protection remains strict on its ordinary three app-bound checks with force-push/deletion denial. Missing/skipped/cancelled/stale/failed release checks block merge.
 
-## Prospective merge-result validation
+Python jobs independently use locked dependencies, validate frozen ranking/C6 contracts, and run the complete suite without secrets, model/provider/live retrieval/apply/eval, or mutation.
 
-GitHub's pull-request merge ref MUST be checked out. Policy MUST verify:
+Distribution builds once with locked backend/dependencies, `SETUPTOOLS_SCM_PRETEND_VERSION=<target>`, `SOURCE_DATE_EPOCH` equal to prospective merge commit timestamp, `PYTHONHASHSEED=0`, `TZ=UTC`, and `LC_ALL=C`. It verifies exact target-version wheel/sdist names and metadata, clean install, CLI/help/version, bundled tokenizer, inventory, and absence of internal/legacy artifacts.
 
-- head repository and branch are exactly `Doctacon/buoy:develop`;
-- checkout is GitHub's prospective merge commit with exact current base-main and head-develop parents;
-- project, module, and lock agree on stable `MAJOR.MINOR.PATCH` only—no prerelease/build suffix;
-- `CHANGELOG.md` has empty `Unreleased`, exactly current `## [X.Y.Z] - pending`, and every older released section has an ISO date;
-- authoritative remote annotated tag and GitHub Release `vX.Y.Z` are both absent;
-- repository policy contains no PyPI/Turbopuffer release behavior.
+## Automatic merge controller
 
-A previously released unchanged version fails. Every main merge intended to publish therefore includes an explicit version bump and pending changelog section.
+The readiness workflow uses per-PR concurrency with `cancel-in-progress: true` and explicitly triggers on opened, reopened, synchronize, ready-for-review, labeled, and unlabeled events. Label changes therefore cancel stale runs and start a fresh complete readiness run.
 
-## Python checks
+A final `Automatic merge` job MUST depend on successful completion of all four required jobs. It MUST:
 
-Python 3.11 and 3.13 independently use locked dependencies, validate the frozen ranking contract, validate the intentionally blocked C6 forecast without claiming readiness, and run the complete tests/docs. They use read-only permissions, no secrets, and perform no model download/inference, provider call, live retrieval/apply/eval, namespace operation, or mutation.
+- run only for the exact same-repository non-draft `develop -> main` PR;
+- check out and execute no PR/repository code;
+- have exact job permissions `contents: write` and `pull-requests: write`, with every other permission absent; validation jobs retain only `contents: read` and `pull-requests: read`;
+- authoritatively refetch current PR head/base/repository/draft/mergeability/labels immediately before merging;
+- require current head/base to equal the event and validated prospective-merge identities;
+- recompute base tag/label/target and require equality with Policy's immutable plan output;
+- call native `gh pr merge --merge --match-head-commit <exact-head>` with no admin bypass;
+- set deterministic merge subject `Release Buoy <target> (#<pr>)` and body trailers exactly:
+  - `Buoy-Release-Label: <release label>`
+  - `Buoy-Release-Version: <target>`
+  - `Buoy-Release-Base-Tag: <base tag>`
+  - `Buoy-Release-PR: <number>`
+  - `Buoy-Release-Head: <exact head SHA>`;
+- treat the label/plan observed and written by this controller as merge-time immutable release authority; later PR metadata changes cannot alter it;
+- make no tag, Release, package, provider, protection, environment, or configuration mutation.
 
-## Distribution check
+The controller performs the merge only after all required checks pass; no repository `allow_auto_merge` setting or mutable queued auto-merge request is used. Invalid current labels cannot reach this job. A concurrent metadata/head change causes `--match-head-commit` or identity revalidation to fail without merge. Human manual merging is unsupported for release PRs because it would lack the exact trailers; main-push validation fails before mutation.
 
-After Python passes, Distribution MUST build once from the prospective merge result with deterministic inputs:
+## Tests and portability
 
-- `SOURCE_DATE_EPOCH` equal to the prospective merge commit timestamp;
-- `PYTHONHASHSEED=0`, `TZ=UTC`, and `LC_ALL=C`;
-- locked build backend/dependencies.
+Repository-local executable tests MUST cover event triggers/concurrency, exact job names/permissions/action SHA pins, branch/repository/parent checks, every label/SemVer/tag-authority vector, dynamic metadata/frozen changelog, target absence/partial state, deterministic target build, clean artifact smoke, labeled/unlabeled stale-run behavior, no-checkout final job, metadata reinspection, exact head matching, immutable trailers, and forbidden mutation/provider/registry behavior.
 
-It MUST verify exact versioned wheel/sdist names and metadata; absence of `.10x/**`, `turbo-search`, and `legacy_main`; exact `buoy` entry point; required data; normal fresh wheel install; `buoy --version`, both help paths; and mandatory loading/smoke-counting of the current exact bundled tokenizer.
-
-It publishes nothing and retains artifacts only within the workflow run for diagnostics.
-
-## Protection transition
-
-Implementation order is mandatory:
-
-1. land repository workflow/scripts/tests/docs on `develop` through ordinary protected CI;
-2. verify workflow syntax and deterministic dry harness locally/hosted;
-3. update main protection to the exact four checks, `strict=false`, and last-push approval false;
-4. leave develop protection unchanged;
-5. record API readback.
-
-No passing release-readiness run is expected until a future version-bump `develop -> main` PR. Protection may name the four contexts before that first release PR; that PR is the first end-to-end proof.
-
-## One-time v0.4 squash-topology transition
-
-The accepted v0.4.0 squash promotion left exact main `c49dc0582bf3f06a16eafdcca0707d1e64e1c58d` outside develop ancestry. PR #93 proved GitHub cannot construct the first prospective merge ref because both lineages independently changed release files.
-
-Before PR #93 may proceed, the repository MUST perform the sole exception defined by `.10x/decisions/one-time-v0-4-squash-topology-bridge.md`: one protected merge-commit-preserving bridge of that exact main commit into then-current develop whose tree is byte-identical to its develop parent. It MUST make no source/version/changelog/workflow/product/release/provider/configuration change, use no direct/force push or protection weakening, and prove exact tree identity plus main ancestry after integration.
-
-This is migration cleanup for the already-accepted v0.4 topology, not release ceremony. It MUST NOT be repeated or generalized. After the bridge, PR #93 and all future releases follow the normal exact `develop -> main` readiness flow.
-
-## Failure behavior
-
-Any missing/skipped/cancelled/stale/failed check blocks merge. Failure is diagnostic-only and never modifies tag, Release, branch, protection, environment, registry, Turbopuffer, or user state.
-
-## Portability
-
-GitHub Actions is the explicit user-required managed-platform exception. Release-critical logic MUST live in repository-local standard Python/shell with deterministic tests. Full-SHA-pinned open-source actions are used where possible. A documented migration path MUST map each check to local commands and a self-hosted Git forge/runner: invoke the same scripts on a prospective merge commit, enforce their statuses, then publish standard wheel/sdist/tag/release objects. No proprietary package registry or GitHub-only data format enters artifacts.
+Release-critical calculations and merge-plan construction MUST remain repository-local standard Python/shell. GitHub is the explicit managed-platform exception. Documentation MUST map prospective-merge checks and final merge control to a self-hosted forge/runner using the same scripts, merge commit, labels, and trailers. No GitHub-only format enters package artifacts.
 
 ## Acceptance scenarios
 
-- New stable version, pending changelog, exact develop head, passing merge result: four checks pass.
-- Non-develop head, existing version, prerelease, stale/malformed changelog, incompatible clean install, or failed test: relevant check fails without mutation.
-- Main does not contain develop ancestry: prospective merge result is validated without ancestry-sync ceremony.
+- Exact patch label over released v0.4.0 computes 0.4.1; four checks pass; final controller revalidates and merge-commits with exact immutable trailers.
+- Minor/major labels reset lower identifiers correctly.
+- Missing/multiple labels, draft/cross-repo/wrong branches, ambiguous tag authority, existing/partial target, wrong dynamic metadata, wrong job names, or failed validation block without mutation.
+- Adding/removing a release label cancels stale readiness and cannot merge while invalid.
+- Automatic merge job runs only after all four checks, never checks out code, uses exact named permissions, and fails on stale head/base/plan.
 
 ## Explicit exclusions
 
-Choosing/bumping the next version; merging main; creating a tag/Release; PyPI; Turbopuffer; force push; release environment; recurring ancestry-sync mechanics beyond the exact one-time v0.4 transition above; product changes.
+Committed release-version bump; pending changelog sections; squash/rebase/manual/admin-bypass release merge; mutable queued auto-merge; `pull_request_target`; tag/Release creation during PR checks; PyPI; Turbopuffer; force push; environment approval; manual workflow dispatch; recurring ancestry bridge; product behavior changes.
