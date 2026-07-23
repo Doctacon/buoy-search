@@ -291,7 +291,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Maximum pages/files/documents to process. Defaults: "
-            f"websites and DuckDB relations={DEFAULT_CRAWL_MAX_PAGES}, GitHub repos={DEFAULT_GITHUB_REPO_MAX_FILES}."
+            f"websites and database relations={DEFAULT_CRAWL_MAX_PAGES}, GitHub repos={DEFAULT_GITHUB_REPO_MAX_FILES}."
         ),
     )
     crawl_parser.add_argument(
@@ -478,7 +478,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Maximum pages/files/documents to process. Defaults: "
-            f"websites and DuckDB relations={DEFAULT_CRAWL_MAX_PAGES}, GitHub repos={DEFAULT_GITHUB_REPO_MAX_FILES}."
+            f"websites and database relations={DEFAULT_CRAWL_MAX_PAGES}, GitHub repos={DEFAULT_GITHUB_REPO_MAX_FILES}."
         ),
     )
     plan_parser.add_argument(
