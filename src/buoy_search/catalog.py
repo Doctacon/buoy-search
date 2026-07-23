@@ -39,6 +39,18 @@ DATABASE_SOURCE_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 DATABASE_RELATION_PATTERN = re.compile(
     r"^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*){0,2}$"
 )
+BIGQUERY_RELATION_PATTERN = re.compile(
+    r"^[a-z](?:[a-z0-9-]*[a-z0-9])?\.[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$"
+)
+SNOWFLAKE_RELATION_PATTERN = re.compile(
+    r"^[A-Z_][A-Z0-9_]*\.[A-Z_][A-Z0-9_]*\.[A-Z_][A-Z0-9_]*$"
+)
+DATABASE_SCHEMES = {"duckdb", "bigquery", "snowflake"}
+DATABASE_LOW_LEVEL_KINDS = {
+    "duckdb_relation": "duckdb",
+    "bigquery_relation": "bigquery",
+    "snowflake_relation": "snowflake",
+}
 SEMANTIC_ORIGINS = {"generated", "manual"}
 EMBEDDING_PRECISIONS = {"float32", "float16"}
 CARD_FIELDS = {
@@ -349,7 +361,7 @@ def _validate_source_uri(
                 "file://<source-id> or pdf://<source-id> URI"
             )
         return uri
-    if parsed.scheme == "duckdb" and source_kind in {None, "database"}:
+    if parsed.scheme in DATABASE_SCHEMES and source_kind in {None, "database"}:
         if (
             not parsed.netloc
             or parsed.path
@@ -362,18 +374,19 @@ def _validate_source_uri(
         ):
             raise CatalogError(
                 f"namespace {namespace!r} field source_uri must be "
-                "duckdb://<source-id> with a safe lowercase slug authority and no "
+                "duckdb://<source-id>, bigquery://<source-id>, or "
+                "snowflake://<source-id> with a safe lowercase slug authority and no "
                 "credentials, port, path, query, or fragment"
             )
         return uri
     if source_kind in {"website", "github_repo"}:
         allowed = "HTTP(S)"
     elif source_kind == "database":
-        allowed = "duckdb"
+        allowed = "duckdb, bigquery, or snowflake"
     elif source_kind == "document":
         allowed = "HTTP(S), file, or pdf"
     else:
-        allowed = "HTTP(S), file, pdf, or duckdb"
+        allowed = "HTTP(S), file, pdf, duckdb, bigquery, or snowflake"
     raise CatalogError(
         f"namespace {namespace!r} field source_uri uses unsupported scheme {parsed.scheme!r}; "
         f"{source_kind or 'generated source'} requires {allowed}"
@@ -799,21 +812,32 @@ def generated_semantics(
     if len(kinds) > 1:
         raise CatalogError(f"verified source metadata has contradictory source_kind values: {sorted(kinds)}")
     raw_kind = next(iter(kinds), None)
-    if raw_kind not in {None, "github_repo", "pdf", "local_file", "duckdb_relation"}:
+    if raw_kind not in {
+        None,
+        "github_repo",
+        "pdf",
+        "local_file",
+        *DATABASE_LOW_LEVEL_KINDS,
+    }:
         raise CatalogError(f"unsupported verified source_kind {raw_kind!r}")
     parsed = urlsplit(uri)
-    if parsed.scheme == "duckdb" and raw_kind != "duckdb_relation":
-        raise CatalogError(
-            "verified DuckDB source metadata requires source_kind 'duckdb_relation'"
-        )
+    if parsed.scheme in DATABASE_SCHEMES:
+        expected_kind = f"{parsed.scheme}_relation"
+        if raw_kind != expected_kind:
+            raise CatalogError(
+                f"verified {parsed.scheme} source metadata requires source_kind {expected_kind!r}"
+            )
     github = _github_identity(uri)
     if raw_kind == "github_repo":
         if github is None:
             raise CatalogError("github_repo metadata contradicts the verified repository-root base_url")
         source_kind = "github_repo"
-    elif raw_kind == "duckdb_relation":
-        if parsed.scheme != "duckdb":
-            raise CatalogError("duckdb_relation metadata contradicts the verified non-duckdb base_url")
+    elif raw_kind in DATABASE_LOW_LEVEL_KINDS:
+        expected_scheme = DATABASE_LOW_LEVEL_KINDS[raw_kind]
+        if parsed.scheme != expected_scheme:
+            raise CatalogError(
+                f"{raw_kind} metadata contradicts the verified non-{expected_scheme} base_url"
+            )
         source_kind = "database"
     elif raw_kind in {"pdf", "local_file"}:
         expected_scheme = "pdf" if raw_kind == "pdf" else "file"
@@ -850,28 +874,52 @@ def generated_semantics(
         aliases = []
         tags = ["website"]
     elif source_kind == "database":
-        source_id = _consistent_metadata(metadata, "duckdb_source_id")
-        relation = _consistent_metadata(metadata, "duckdb_relation")
+        backend = parsed.scheme
+        generic_backend = _consistent_metadata(metadata, "database_backend")
+        generic_source_id = _consistent_metadata(metadata, "database_source_id")
+        generic_relation = _consistent_metadata(metadata, "database_relation")
+        if generic_backend is None and raw_kind == "duckdb_relation":
+            source_id = _consistent_metadata(metadata, "duckdb_source_id")
+            relation = _consistent_metadata(metadata, "duckdb_relation")
+        else:
+            source_id = generic_source_id
+            relation = generic_relation
+            if generic_backend != backend:
+                raise CatalogError(
+                    "database_backend metadata contradicts the verified database base_url"
+                )
         if source_id is None or DATABASE_SOURCE_ID_PATTERN.fullmatch(source_id) is None:
             raise CatalogError(
-                "duckdb_relation source metadata requires one consistent valid duckdb_source_id"
+                f"{raw_kind} source metadata requires one consistent valid database_source_id"
             )
-        if relation is None or DATABASE_RELATION_PATTERN.fullmatch(relation) is None:
+        relation_pattern = {
+            "duckdb": DATABASE_RELATION_PATTERN,
+            "bigquery": BIGQUERY_RELATION_PATTERN,
+            "snowflake": SNOWFLAKE_RELATION_PATTERN,
+        }[backend]
+        if relation is None or relation_pattern.fullmatch(relation) is None:
             raise CatalogError(
-                "duckdb_relation source metadata requires one consistent valid duckdb_relation"
+                f"{raw_kind} source metadata requires one consistent valid database_relation"
             )
         if source_id != parsed.netloc:
             raise CatalogError(
-                "duckdb_source_id metadata contradicts the verified DuckDB base_url"
+                "database_source_id metadata contradicts the verified database base_url"
             )
+        display_backend = {
+            "duckdb": "DuckDB",
+            "bigquery": "BigQuery",
+            "snowflake": "Snowflake",
+        }[backend]
         title = f"{source_id} ({relation})"
-        summary = f"DuckDB document relation {relation} from logical source {source_id}."
+        summary = (
+            f"{display_backend} document relation {relation} from logical source {source_id}."
+        )
         aliases = normalize_semantic_values(
             [source_id, *([relation] if canonical_text(relation) != canonical_text(source_id) else [])],
             field="aliases",
         )
         tags = normalize_semantic_values(
-            ["database", "duckdb", f"relation {relation}", f"source {source_id}"],
+            ["database", backend, f"relation {relation}", f"source {source_id}"],
             field="tags",
         )
     else:

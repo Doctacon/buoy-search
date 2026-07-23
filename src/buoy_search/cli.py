@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import asdict, replace
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -66,13 +67,7 @@ from buoy_search.crawler import (
     detect_source,
 )
 from buoy_search.github_repo import GitHubRepoError, crawl_github_repo, crawl_github_repo_with_plan
-from buoy_search.duckdb_relation import (
-    DuckDBRelationError,
-    DuckDBRelationSource,
-    crawl_duckdb_relation,
-    crawl_duckdb_relation_with_plan,
-    duckdb_relation_source,
-)
+from buoy_search.database_relation import DatabaseRelationError
 from buoy_search.repo_syntax_chunking import REPO_CHUNKING_ARMS
 from buoy_search.evals import (
     build_dry_run_eval_report,
@@ -195,38 +190,73 @@ def should_show_progress(args: argparse.Namespace) -> bool:
 
 def add_database_source_arguments(command_parser: argparse.ArgumentParser) -> None:
     command_parser.add_argument(
+        "--database-backend",
+        choices=("duckdb", "bigquery", "snowflake"),
+        default=None,
+        help="Database relation backend. DuckDB is inferred for backward-compatible local-path commands.",
+    )
+    command_parser.add_argument(
         "--relation",
         "--table",
         dest="relation",
         default=None,
-        help="DuckDB table or view (one to three dot-separated ordinary identifiers); --table is an alias.",
+        help="One already-shaped database table or view; BigQuery and Snowflake require three components.",
     )
     command_parser.add_argument(
         "--source-id",
         default=None,
-        help="Stable DuckDB source ID matching lowercase letters/digits separated by single hyphens.",
+        help="Stable logical database source ID matching lowercase letters/digits separated by single hyphens.",
     )
     command_parser.add_argument(
         "--id-column",
         default=None,
-        help="DuckDB document ID column (default: document_id).",
+        help="Document ID column (default: document_id).",
     )
     command_parser.add_argument(
         "--content-column",
         default=None,
-        help="DuckDB document content column (default: content).",
+        help="Document content column (default: content).",
     )
     command_parser.add_argument(
         "--title-column",
         default=None,
-        help="DuckDB title column; otherwise auto-detect title and fall back to document ID.",
+        help="Title column; otherwise auto-detect title and fall back to document ID.",
+    )
+    command_parser.add_argument(
+        "--bigquery-project",
+        default=None,
+        help="BigQuery query-job/billing project (uses Application Default Credentials).",
+    )
+    command_parser.add_argument(
+        "--bigquery-location",
+        default=None,
+        help="BigQuery job location.",
+    )
+    command_parser.add_argument(
+        "--bigquery-maximum-bytes-billed",
+        type=positive_int,
+        default=None,
+        metavar="BYTES",
+        help="BigQuery dry-run and query billing cap in bytes.",
+    )
+    command_parser.add_argument(
+        "--snowflake-connection",
+        default=None,
+        help="Snowflake named connection profile (credentials remain in Snowflake configuration).",
+    )
+    command_parser.add_argument(
+        "--source-query-timeout",
+        type=positive_float,
+        default=None,
+        metavar="SECONDS",
+        help="BigQuery or Snowflake source query timeout in seconds.",
     )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="buoy",
-        description="Local site/repository/document/DuckDB RAG utilities. Planning is local-only by default unless explicitly documented otherwise.",
+        description="Plan website, repository, document, DuckDB, BigQuery, and Snowflake sources. Planning is local-only with respect to turbopuffer; remote warehouses authenticate only to the source.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
@@ -234,20 +264,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     crawl_parser = subparsers.add_parser(
         "crawl",
-        help="crawl a website, public GitHub repo, local document, or DuckDB relation and chunk locally; always dry-run",
+        help="crawl a website, repository, local document, or one DuckDB/BigQuery/Snowflake relation; always dry-run",
         description=(
-            "Crawl a public website with Scrapling, ingest a public GitHub repository via git, "
-            "convert one local document file with MarkItDown, or scan one DuckDB relation read-only, "
-            "generate a local Markdown corpus, and chunk it for namespace planning. This command "
-            "is local-only with respect to turbopuffer: it does not read turbopuffer credentials, "
-            "embed text, create namespaces, or call turbopuffer."
+            "Crawl a public website, ingest a public GitHub repository or local document, or read "
+            "one document-shaped DuckDB, BigQuery, or Snowflake table/view. Remote database sources "
+            "use source credentials and APIs only; this command never reads turbopuffer credentials "
+            "or writes to turbopuffer."
         ),
     )
     crawl_parser.add_argument(
         "--base-url",
-        required=True,
+        required=False,
         metavar="SOURCE",
-        help="Absolute http(s) URL, public GitHub repo URL, supported local document filepath, or DuckDB database filepath to crawl.",
+        help="Website/repository/local document source or DuckDB filepath; omit for BigQuery and Snowflake.",
     )
     add_database_source_arguments(crawl_parser)
     crawl_parser.add_argument(
@@ -400,20 +429,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     plan_parser = subparsers.add_parser(
         "plan",
-        help="crawl a website, public GitHub repo, local document, or DuckDB relation and write local review/apply plan artifacts; no live writes",
+        help="plan a website, repository, local document, or one DuckDB/BigQuery/Snowflake relation; no turbopuffer writes",
         description=(
-            "Crawl a public website with Scrapling, ingest a public GitHub repository via git, "
-            "convert one local document file with MarkItDown, or scan one DuckDB relation read-only, "
-            "generate a local Markdown corpus, chunk it, compare it to local applied state, and "
-            "write reviewable plan artifacts. This command is local-only with respect to turbopuffer: "
-            "it does not read turbopuffer credentials, embed text, create namespaces, or call turbopuffer."
+            "Materialize one source into reviewable local plan artifacts. BigQuery uses Application "
+            "Default Credentials and Snowflake uses a named connection during planning only. Source "
+            "warehouse API calls occur, but turbopuffer credentials are not read and turbopuffer is not called."
         ),
     )
     plan_parser.add_argument(
         "url",
         nargs="?",
         metavar="SOURCE",
-        help="Absolute http(s) URL, public GitHub repo URL, supported local document filepath, or DuckDB database filepath to crawl and plan.",
+        help="Website/repository/local document source or DuckDB filepath; omit for BigQuery and Snowflake.",
     )
     plan_parser.add_argument(
         "--base-url",
@@ -959,6 +986,13 @@ def nonnegative_int(value: str) -> int:
     return parsed
 
 
+def positive_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed) or parsed <= 0:
+        raise argparse.ArgumentTypeError("must be a finite value greater than zero")
+    return parsed
+
+
 def nonnegative_float(value: str) -> float:
     parsed = float(value)
     if parsed < 0:
@@ -1020,31 +1054,108 @@ def _print_json(payload: dict[str, object]) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True))
 
 
+DATABASE_RELATION_KINDS = {"duckdb_relation", "bigquery_relation", "snowflake_relation"}
+
+
+def _is_database_source(source: object) -> bool:
+    return getattr(source, "kind", None) in DATABASE_RELATION_KINDS
+
+
 def source_from_cli_args(args: argparse.Namespace, requested_source: str | None) -> object:
     database_flags = {
+        "--database-backend": args.database_backend,
         "--source-id": args.source_id,
         "--id-column": args.id_column,
         "--content-column": args.content_column,
         "--title-column": args.title_column,
+        "--bigquery-project": args.bigquery_project,
+        "--bigquery-location": args.bigquery_location,
+        "--bigquery-maximum-bytes-billed": args.bigquery_maximum_bytes_billed,
+        "--snowflake-connection": args.snowflake_connection,
+        "--source-query-timeout": args.source_query_timeout,
     }
     if args.relation is None:
         supplied = [flag for flag, value in database_flags.items() if value is not None]
         if supplied:
-            raise ValueError(f"{', '.join(supplied)} require --relation to activate DuckDB database mode.")
+            raise ValueError(
+                f"{', '.join(supplied)} require --relation to activate database relation mode."
+            )
         if requested_source is None:
             raise ValueError("source URL/path is required.")
         return detect_source(requested_source)
-    if requested_source is None:
-        raise ValueError("DuckDB database filepath is required when --relation is used.")
+
+    backend = args.database_backend or "duckdb"
     if args.source_id is None:
-        raise ValueError("--source-id is required when --relation activates DuckDB database mode.")
-    return duckdb_relation_source(
-        requested_source,
+        raise ValueError("--source-id is required when --relation activates database relation mode.")
+    if backend != "bigquery":
+        supplied = [
+            flag
+            for flag, value in {
+                "--bigquery-project": args.bigquery_project,
+                "--bigquery-location": args.bigquery_location,
+                "--bigquery-maximum-bytes-billed": args.bigquery_maximum_bytes_billed,
+            }.items()
+            if value is not None
+        ]
+        if supplied:
+            raise ValueError(f"{', '.join(supplied)} are supported only with --database-backend bigquery.")
+    if backend != "snowflake" and args.snowflake_connection is not None:
+        raise ValueError(
+            "--snowflake-connection is supported only with --database-backend snowflake."
+        )
+    if backend == "duckdb" and args.source_query_timeout is not None:
+        raise ValueError(
+            "--source-query-timeout is supported only with BigQuery or Snowflake database backends."
+        )
+
+    id_column = "document_id" if args.id_column is None else args.id_column
+    content_column = "content" if args.content_column is None else args.content_column
+    operation = str(args.command or "plan")
+    if backend == "duckdb":
+        if requested_source is None:
+            raise ValueError("DuckDB database filepath is required when --relation is used.")
+        from buoy_search.duckdb_relation import duckdb_relation_source
+
+        return duckdb_relation_source(
+            requested_source,
+            relation=args.relation,
+            source_id=args.source_id,
+            id_column=id_column,
+            content_column=content_column,
+            title_column=args.title_column,
+        )
+    if requested_source is not None:
+        raise ValueError(
+            f"A local source path/--base-url is not accepted with --database-backend {backend}."
+        )
+    if backend == "bigquery":
+        from buoy_search.bigquery_relation import bigquery_relation_source
+
+        return bigquery_relation_source(
+            relation=args.relation,
+            source_id=args.source_id,
+            id_column=id_column,
+            content_column=content_column,
+            title_column=args.title_column,
+            query_project=args.bigquery_project,
+            location=args.bigquery_location,
+            maximum_bytes_billed=args.bigquery_maximum_bytes_billed,
+            query_timeout=args.source_query_timeout or 300.0,
+            operation=operation,
+        )
+    if args.snowflake_connection is None:
+        raise ValueError("--snowflake-connection is required for Snowflake database mode.")
+    from buoy_search.snowflake_relation import snowflake_relation_source
+
+    return snowflake_relation_source(
         relation=args.relation,
         source_id=args.source_id,
-        id_column=args.id_column or "document_id",
-        content_column=args.content_column or "content",
+        connection_name=args.snowflake_connection,
+        id_column=id_column,
+        content_column=content_column,
         title_column=args.title_column,
+        query_timeout=args.source_query_timeout or 300.0,
+        operation=operation,
     )
 
 
@@ -1056,8 +1167,19 @@ def _apply_source_cap_defaults(args: argparse.Namespace, source: object) -> None
 
 
 def crawl_source(source: object, options: CrawlOptions) -> dict[str, object]:
-    if isinstance(source, DuckDBRelationSource):
-        return crawl_duckdb_relation(source, options)
+    source_kind = getattr(source, "kind", None)
+    if source_kind == "duckdb_relation":
+        from buoy_search.duckdb_relation import crawl_duckdb_relation
+
+        return crawl_duckdb_relation(source, options)  # type: ignore[arg-type]
+    if source_kind == "bigquery_relation":
+        from buoy_search.bigquery_relation import crawl_bigquery_relation
+
+        return crawl_bigquery_relation(source, options)  # type: ignore[arg-type]
+    if source_kind == "snowflake_relation":
+        from buoy_search.snowflake_relation import crawl_snowflake_relation
+
+        return crawl_snowflake_relation(source, options)  # type: ignore[arg-type]
     if isinstance(source, GitHubRepoSource):
         return crawl_github_repo(source, options)
     if isinstance(source, (PdfSource, LocalFileSource)):
@@ -1066,8 +1188,19 @@ def crawl_source(source: object, options: CrawlOptions) -> dict[str, object]:
 
 
 def crawl_source_with_plan(source: object, options: CrawlOptions) -> CrawlExecution:
-    if isinstance(source, DuckDBRelationSource):
-        return crawl_duckdb_relation_with_plan(source, options)  # type: ignore[return-value]
+    source_kind = getattr(source, "kind", None)
+    if source_kind == "duckdb_relation":
+        from buoy_search.duckdb_relation import crawl_duckdb_relation_with_plan
+
+        return crawl_duckdb_relation_with_plan(source, options)  # type: ignore[arg-type,return-value]
+    if source_kind == "bigquery_relation":
+        from buoy_search.bigquery_relation import crawl_bigquery_relation_with_plan
+
+        return crawl_bigquery_relation_with_plan(source, options)  # type: ignore[arg-type,return-value]
+    if source_kind == "snowflake_relation":
+        from buoy_search.snowflake_relation import crawl_snowflake_relation_with_plan
+
+        return crawl_snowflake_relation_with_plan(source, options)  # type: ignore[arg-type,return-value]
     if isinstance(source, GitHubRepoSource):
         return crawl_github_repo_with_plan(source, options)
     if isinstance(source, (PdfSource, LocalFileSource)):
@@ -1088,7 +1221,7 @@ def _run_crawl(args: argparse.Namespace) -> int:
 
     _apply_source_cap_defaults(args, source)
     out_dir = args.out_dir if args.out_dir is not None else (
-        source.default_out_dir if isinstance(source, DuckDBRelationSource) else default_out_dir(base_url)
+        source.default_out_dir if _is_database_source(source) else default_out_dir(base_url)
     )
     progress = OneLineProgress(enabled=should_show_progress(args))
     progress.update(f"crawl: preparing {base_url}", force=True)
@@ -1118,7 +1251,11 @@ def _run_crawl(args: argparse.Namespace) -> int:
     )
     try:
         summary = crawl_source(source, options)
-    except (RuntimeError, GitHubRepoError, DuckDBRelationError) as exc:
+    except (
+        RuntimeError,
+        GitHubRepoError,
+        DatabaseRelationError,
+    ) as exc:
         progress.finish()
         print(str(exc), file=sys.stderr)
         return 2
@@ -1154,7 +1291,7 @@ def _run_plan(args: argparse.Namespace) -> int:
     _apply_source_cap_defaults(args, source)
     out_dir = args.out_dir if args.out_dir is not None else (
         source.default_out_dir
-        if isinstance(source, DuckDBRelationSource)
+        if _is_database_source(source)
         else default_out_dir(base_url).with_name(f"{default_out_dir(base_url).name}-plan")
     )
     progress = OneLineProgress(enabled=should_show_progress(args))
@@ -1226,7 +1363,16 @@ def _run_plan(args: argparse.Namespace) -> int:
         publication_started_at = observe_monotonic()
         write_plan_artifacts(artifacts, out_dir)
         publication_seconds = elapsed_since(publication_started_at)
-    except (RuntimeError, GitHubRepoError, DuckDBRelationError, OSError, ValueError, AppliedStateError, PlanDiffError, json.JSONDecodeError) as exc:
+    except (
+        RuntimeError,
+        GitHubRepoError,
+        DatabaseRelationError,
+        OSError,
+        ValueError,
+        AppliedStateError,
+        PlanDiffError,
+        json.JSONDecodeError,
+    ) as exc:
         progress.finish()
         print(str(exc), file=sys.stderr)
         return 2
@@ -1287,17 +1433,29 @@ def plan_crawl_options(args: argparse.Namespace, crawl_summary: dict[str, object
     }
     if args.repo_chunking_arm is not None:
         options["repo_chunking_arm"] = args.repo_chunking_arm
-    if crawl_summary and crawl_summary.get("source_kind") == "duckdb_relation":
+    if crawl_summary and crawl_summary.get("source_kind") in {
+        "duckdb_relation",
+        "bigquery_relation",
+        "snowflake_relation",
+    }:
         options.update(
             {
-                "source_kind": "duckdb_relation",
-                "duckdb_source_id": crawl_summary["duckdb_source_id"],
-                "duckdb_relation": crawl_summary["duckdb_relation"],
+                "source_kind": crawl_summary["source_kind"],
+                "database_backend": crawl_summary["database_backend"],
+                "database_source_id": crawl_summary["database_source_id"],
+                "database_relation": crawl_summary["database_relation"],
                 "id_column": crawl_summary["id_column"],
                 "content_column": crawl_summary["content_column"],
                 "title_column": crawl_summary["title_column"],
             }
         )
+        if crawl_summary.get("source_kind") == "duckdb_relation":
+            options.update(
+                {
+                    "duckdb_source_id": crawl_summary["duckdb_source_id"],
+                    "duckdb_relation": crawl_summary["duckdb_relation"],
+                }
+            )
     return options
 
 
@@ -1323,9 +1481,16 @@ def plan_summary(
         {
             "command": "plan",
             "dry_run": True,
-            "credentials_required": False,
+            "credentials_required": bool(crawl_summary.get("source_credentials_required", False)),
+            "source_credentials_required": bool(
+                crawl_summary.get("source_credentials_required", False)
+            ),
+            "source_api_calls_occurred": bool(
+                crawl_summary.get("source_api_calls_occurred", False)
+            ),
+            "turbopuffer_credentials_required": False,
             "turbopuffer_api_calls": False,
-            "api_calls_occurred": False,
+            "api_calls_occurred": bool(crawl_summary.get("source_api_calls_occurred", False)),
             "namespace": plan_dict["namespace"],
             "namespace_candidate": plan_dict["namespace_candidate"],
             "site_id": plan_dict["site_id"],
@@ -1366,7 +1531,9 @@ def plan_catalog_registration_preview(
         plan_schema_version=artifacts.plan.schema_version,
         source_metadata=metadata,
     )
-    ranking = ranking_defaults_for_namespace(manifest.namespace)
+    ranking = ranking_defaults_for_namespace(
+        manifest.namespace, source_kind=semantics.source_kind
+    )
     return {
         "catalog_namespace": REMOTE_CATALOG_NAMESPACE,
         "namespace": manifest.namespace,
@@ -1747,7 +1914,7 @@ def _run_evals(args: argparse.Namespace) -> int:
 
 def print_crawl_text(payload: dict[str, object]) -> None:
     source_kind = payload.get("source_kind", "website")
-    print("Source crawl dry-run (no credentials, embeddings, or turbopuffer API calls):")
+    print("Source crawl dry-run (no turbopuffer credentials, embeddings, or turbopuffer API calls):")
     print(f"  source_kind: {source_kind}")
     print(f"  base_url: {payload['base_url']}")
     if source_kind == "github_repo":
@@ -1767,8 +1934,11 @@ def print_crawl_text(payload: dict[str, object]) -> None:
             "  file: "
             f"{payload.get('file_filename')} ({payload.get('file_extension')}; {str(payload.get('file_sha256', ''))[:16]})"
         )
-    if source_kind == "duckdb_relation":
-        print(f"  relation: {payload.get('duckdb_relation')} (source_id={payload.get('duckdb_source_id')})")
+    if source_kind in DATABASE_RELATION_KINDS:
+        print(
+            f"  relation: {payload.get('database_relation')} "
+            f"(backend={payload.get('database_backend')}; source_id={payload.get('database_source_id')})"
+        )
         print(
             "  documents: "
             f"selected={payload.get('documents_selected')}; "
@@ -1780,7 +1950,7 @@ def print_crawl_text(payload: dict[str, object]) -> None:
     print(f"  strategy: {payload['crawl_strategy']}")
     if source_kind in {"pdf", "local_file"}:
         print(f"  documents_converted: {payload.get('documents_converted', payload.get('pages_scraped'))}; chunks_generated: {payload['chunks_generated']}")
-    elif source_kind == "duckdb_relation":
+    elif source_kind in DATABASE_RELATION_KINDS:
         print(f"  documents_generated: {payload.get('documents_generated')}; chunks_generated: {payload['chunks_generated']}")
     else:
         print(f"  pages_scraped: {payload['pages_scraped']}; chunks_generated: {payload['chunks_generated']}")
@@ -1795,7 +1965,7 @@ def print_crawl_text(payload: dict[str, object]) -> None:
 
 def print_plan_text(payload: dict[str, object]) -> None:
     source_kind = payload.get("source_kind", "website")
-    print("Source RAG plan (local-only; no credentials, embeddings, or turbopuffer API calls):")
+    print("Source RAG plan (no turbopuffer credentials, embeddings, or turbopuffer API calls):")
     print(f"  source_kind: {source_kind}")
     print(f"  base_url: {payload['base_url']}")
     if source_kind == "github_repo":
@@ -1815,8 +1985,11 @@ def print_plan_text(payload: dict[str, object]) -> None:
             "  file: "
             f"{payload.get('file_filename')} ({payload.get('file_extension')}; {str(payload.get('file_sha256', ''))[:16]})"
         )
-    if source_kind == "duckdb_relation":
-        print(f"  relation: {payload.get('duckdb_relation')} (source_id={payload.get('duckdb_source_id')})")
+    if source_kind in DATABASE_RELATION_KINDS:
+        print(
+            f"  relation: {payload.get('database_relation')} "
+            f"(backend={payload.get('database_backend')}; source_id={payload.get('database_source_id')})"
+        )
         print(
             "  documents: "
             f"selected={payload.get('documents_selected')}; "
@@ -1829,7 +2002,7 @@ def print_plan_text(payload: dict[str, object]) -> None:
     print(f"  embedding_precision: {payload['embedding_precision']}")
     if source_kind in {"pdf", "local_file"}:
         print(f"  documents_converted: {payload.get('documents_converted', payload.get('pages_scraped'))}; chunks_generated: {payload['chunks_generated']}")
-    elif source_kind == "duckdb_relation":
+    elif source_kind in DATABASE_RELATION_KINDS:
         print(f"  documents_generated: {payload.get('documents_generated')}; chunks_generated: {payload['chunks_generated']}")
     else:
         print(f"  pages_scraped: {payload['pages_scraped']}; chunks_generated: {payload['chunks_generated']}")
@@ -1879,10 +2052,10 @@ def print_limit_summary(payload: dict[str, object]) -> None:
     source_kind = payload.get("source_kind", "website")
     chunk_limit_reached = bool(payload.get("chunk_limit_reached", limit_reached))
     if max_pages is not None or max_chunks is not None:
-        label = "max_documents" if source_kind == "duckdb_relation" else "max_pages"
+        label = "max_documents" if source_kind in DATABASE_RELATION_KINDS else "max_pages"
         print(f"  caps: {label}={max_pages}; max_chunks={max_chunks}; chunk_limit_reached={chunk_limit_reached}")
     warnings: list[str] = []
-    if source_kind == "duckdb_relation":
+    if source_kind in DATABASE_RELATION_KINDS:
         if payload.get("document_limit_reached"):
             warnings.append("document cap")
     elif max_pages is not None and payload.get("pages_scraped") == max_pages:
@@ -2219,6 +2392,15 @@ def print_eval_text(payload: dict[str, object]) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if (
+        getattr(args, "command", None) == "crawl"
+        and getattr(args, "base_url", None) is None
+        and not (
+            getattr(args, "relation", None) is not None
+            and getattr(args, "database_backend", None) in {"bigquery", "snowflake"}
+        )
+    ):
+        parser.error("the following arguments are required: --base-url")
     if not hasattr(args, "func"):
         parser.print_help()
         return 0

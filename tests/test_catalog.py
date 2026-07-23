@@ -401,6 +401,32 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
             ["database", "duckdb", "relation analytics.calls", "source gong-calls"],
         )
 
+        for backend, raw_kind, relation in (
+            ("duckdb", "duckdb_relation", "analytics.calls"),
+            ("bigquery", "bigquery_relation", "source-project.corpus.calls"),
+            ("snowflake", "snowflake_relation", "ANALYTICS.CORPUS.CALLS"),
+        ):
+            with self.subTest(backend=backend):
+                generated = generated_semantics(
+                    base_url=f"{backend}://gong-calls",
+                    site_id=f"{backend}-gong-calls",
+                    plan_schema_version=1,
+                    source_metadata=[
+                        {
+                            "source_kind": raw_kind,
+                            "database_backend": backend,
+                            "database_source_id": "gong-calls",
+                            "database_relation": relation,
+                            "database_document_id": "call-1",
+                        }
+                    ],
+                )
+                self.assertEqual(generated.source_kind, "database")
+                self.assertEqual(generated.source_uri, f"{backend}://gong-calls")
+                self.assertEqual(generated.title, f"gong-calls ({relation})")
+                self.assertIn("database", generated.tags)
+                self.assertIn(backend, generated.tags)
+
         for raw_kind, filename_key, filename, base_url in (
             ("pdf", "pdf_filename", "Research Notes.pdf", "pdf://opaque-source-id"),
             ("local_file", "file_filename", "Research Notes.csv", "file://opaque-source-id"),
@@ -454,6 +480,8 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
             ("document", "file://stable-source-id"),
             ("document", "pdf://stable-source-id"),
             ("database", "duckdb://stable-source-id"),
+            ("database", "bigquery://stable-source-id"),
+            ("database", "snowflake://stable-source-id"),
         ):
             with self.subTest(valid=source_uri):
                 card = prepare_card(
@@ -465,17 +493,18 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
     def test_database_source_uri_validation_fails_closed_on_shape_and_kind_mismatches(self) -> None:
         invalid = (
             ("database", "duckdb://user@gong-calls"),
-            ("database", "duckdb://gong-calls:1234"),
-            ("database", "duckdb://gong-calls/"),
+            ("database", "bigquery://gong-calls:1234"),
+            ("database", "snowflake://gong-calls/"),
             ("database", "duckdb://gong-calls/document-1"),
-            ("database", "duckdb://gong-calls?mode=read-only"),
-            ("database", "duckdb://gong-calls#fragment"),
+            ("database", "bigquery://gong-calls?mode=read-only"),
+            ("database", "snowflake://gong-calls#fragment"),
             ("database", "duckdb://Gong-calls"),
-            ("database", "duckdb://gong_calls"),
+            ("database", "bigquery://gong_calls"),
             ("database", "https://example.com/database"),
             ("database", "file://gong-calls"),
             ("website", "duckdb://gong-calls"),
-            ("document", "duckdb://gong-calls"),
+            ("website", "bigquery://gong-calls"),
+            ("document", "snowflake://gong-calls"),
         )
         for source_kind, source_uri in invalid:
             with self.subTest(source_kind=source_kind, source_uri=source_uri), self.assertRaises(CatalogError):
@@ -504,6 +533,56 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
                     source_metadata=source_metadata,
                 )
 
+        for backend, wrong_kind in (
+            ("bigquery", "snowflake_relation"),
+            ("snowflake", "bigquery_relation"),
+        ):
+            with self.subTest(backend=backend), self.assertRaisesRegex(
+                CatalogError, f"requires source_kind '{backend}_relation'"
+            ):
+                generated_semantics(
+                    base_url=f"{backend}://gong-calls",
+                    site_id=f"{backend}-gong-calls",
+                    plan_schema_version=1,
+                    source_metadata=[{"source_kind": wrong_kind}],
+                )
+
+    def test_manual_database_semantics_survive_generated_refresh(self) -> None:
+        existing = make_card(
+            namespace="customer-conversations",
+            source_kind="database",
+            source_uri="bigquery://gong-calls",
+            site_id="bigquery-gong-calls",
+            title="Customer calls",
+            summary="Curated sales conversation corpus.",
+            aliases=["calls"],
+            tags=["sales"],
+            last_plan_id="plan-old",
+            last_apply_id="apply-old",
+        )
+        incoming = make_card(
+            namespace="customer-conversations",
+            source_kind="database",
+            source_uri="bigquery://gong-calls",
+            site_id="bigquery-gong-calls",
+            semantic_origin="generated",
+            title="gong-calls (source-project.corpus.calls)",
+            summary="BigQuery document relation source-project.corpus.calls from logical source gong-calls.",
+            aliases=["gong-calls"],
+            tags=["bigquery", "database"],
+            last_plan_id="plan-new",
+            last_apply_id="apply-new",
+        )
+
+        merged = merge_system_card(existing, incoming)
+
+        self.assertEqual(merged.title, "Customer calls")
+        self.assertEqual(merged.summary, "Curated sales conversation corpus.")
+        self.assertEqual(merged.aliases, ["calls"])
+        self.assertEqual(merged.tags, ["sales"])
+        self.assertEqual(merged.semantic_origin, "manual")
+        self.assertEqual((merged.last_plan_id, merged.last_apply_id), ("plan-new", "apply-new"))
+
     def test_generated_metadata_contradictions_and_unsupported_inputs_fail(self) -> None:
         cases = [
             ({"base_url": "https://example.com", "source_metadata": [{"source_kind": "github_repo"}]}, "contradicts"),
@@ -518,8 +597,8 @@ class CatalogMergeAndGeneratedSemanticsTests(unittest.TestCase):
             ({"base_url": "file://source", "source_metadata": [{"source_kind": None}]}, "source_kind must be a string"),
             ({"base_url": "https://example.com", "source_metadata": [{"source_kind": "duckdb_relation"}]}, "contradicts"),
             ({"base_url": "duckdb://gong-calls", "source_metadata": [{"source_kind": "duckdb_relation", "duckdb_source_id": "other", "duckdb_relation": "calls"}]}, "contradicts"),
-            ({"base_url": "duckdb://gong-calls", "source_metadata": [{"source_kind": "duckdb_relation", "duckdb_source_id": "gong-calls", "duckdb_relation": "bad-name"}]}, "valid duckdb_relation"),
-            ({"base_url": "duckdb://gong-calls", "source_metadata": [{"source_kind": "duckdb_relation"}]}, "requires one consistent valid duckdb_source_id"),
+            ({"base_url": "duckdb://gong-calls", "source_metadata": [{"source_kind": "duckdb_relation", "duckdb_source_id": "gong-calls", "duckdb_relation": "bad-name"}]}, "valid database_relation"),
+            ({"base_url": "duckdb://gong-calls", "source_metadata": [{"source_kind": "duckdb_relation"}]}, "requires one consistent valid database_source_id"),
         ]
         for values, message in cases:
             with self.subTest(values=values), self.assertRaisesRegex(CatalogError, message):

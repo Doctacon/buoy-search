@@ -6,7 +6,7 @@ This is the detailed reference for turning a source into a reviewed, incremental
 
 Indexing has three gates:
 
-1. `plan` crawls or converts the source, chunks it, compares it with local state, and writes review artifacts. It does not read credentials, load embeddings, or contact turbopuffer.
+1. `plan` crawls, converts, or reads the source, chunks it, compares it with local state, and writes review artifacts. BigQuery and Snowflake planning authenticate only to the source warehouse; no planning mode reads turbopuffer credentials, loads embeddings, or contacts turbopuffer.
 2. `apply --dry-run` verifies the saved artifacts and recomputes the diff without prompting, credentials, models, or API calls.
 3. Plain interactive `apply` displays that complete preflight and prompts `Apply this plan? [y/N]`; only exact `y`/`yes` loads the local embedding model and writes reviewed rows. `apply --approve` bypasses the prompt for automation.
 
@@ -54,58 +54,127 @@ PDF namespaces use `pdf-<filename>-<sha16>-v1`; other files use `file-<ext>-<fil
 
 Directories, archives, OCR, image captioning, audio/video transcription, remote file URLs, plugins, and page/slide/sheet/cell-level citations are not supported.
 
-### DuckDB document relations
+### Database document relations
 
-DuckDB mode reads one already-shaped table or view. Upstream extraction and transformation belong in dlt, dbt, SQLMesh, or SQL; Buoy owns validation, deterministic Markdown materialization, shared chunking, diffing, planning, and synchronization.
+DuckDB, BigQuery, and Snowflake all consume the same already-shaped document relation. Buoy does **not** run dlt, dbt, SQLMesh, API extraction, or source-system normalization. Any number of normalized upstream tables may feed the final model, but one Buoy command reads exactly one final table or view. Buoy then owns validation, reviewable Markdown materialization, shared chunking, diffing, planning, and the existing apply path.
 
-The canonical command is:
+Install only the remote adapter you need; ordinary Buoy and DuckDB installs do not include either cloud SDK:
 
 ```bash
+uv sync --extra bigquery
+uv sync --extra snowflake
+```
+
+Commands:
+
+```bash
+# Backward-compatible implicit DuckDB selection
 uv run buoy plan ./knowledge.duckdb \
   --relation analytics.documents \
   --source-id product-docs
+
+# Explicit DuckDB is equivalent
+uv run buoy plan ./knowledge.duckdb --database-backend duckdb \
+  --relation analytics.documents --source-id product-docs
+
+# BigQuery uses Application Default Credentials
+uv run buoy plan --database-backend bigquery \
+  --relation source-project.corpus.documents \
+  --source-id product-docs \
+  --bigquery-project billing-project \
+  --bigquery-location US \
+  --bigquery-maximum-bytes-billed 1000000000 \
+  --source-query-timeout 300
+
+# Snowflake uses a named connector connection
+uv run buoy plan --database-backend snowflake \
+  --relation ANALYTICS.CORPUS.DOCUMENTS \
+  --source-id product-docs \
+  --snowflake-connection analytics \
+  --source-query-timeout 300
 ```
 
-`--table` is an alias for `--relation`, and `crawl` accepts the same database arguments. Supplying `--relation` activates database mode, so the database filepath and `--source-id` are then required. The source ID must be a lowercase ASCII slug such as `product-docs`. Relation names may contain one to three ordinary identifier components; mapped column names must be ordinary single identifiers.
+`crawl` accepts the same backend, relation, mapping, authentication-location, cost, and timeout controls. DuckDB requires its local filepath. BigQuery and Snowflake reject a local source path. `--table` remains an alias for `--relation`. Every database command requires a strict lowercase slug `--source-id` and one relation.
 
-#### Upstream SQL model and row contract
+#### Relation and row contract
 
-One row represents one logical document. The default required columns are `document_id` and `content`; `title` is optional:
+One row is one **logical document**, not one final vector row. Required columns are `document_id` and `content`; `title` is optional. Use `--id-column`, `--content-column`, or `--title-column` for different ordinary single identifier names. Buoy does not accept expressions or arbitrary SQL.
+
+IDs and content are converted to text. IDs must be globally non-null, nonblank, and unique after conversion. Null or blank content is skipped and counted; a relation with no nonblank content fails. Without an explicit title mapping, Buoy auto-detects `title`; missing, null, or blank titles fall back to the text ID. Rows are selected deterministically by converted ID. `--max-pages` caps documents returned to Buoy and `--max-chunks` caps generated chunks; a long logical document may become multiple chunks and vector rows.
+
+A Gong-style upstream transformation can join any number of normalized tables before Buoy reads the one final relation. DuckDB can use `STRING_AGG` and `CHR(10)`:
 
 ```sql
-CREATE VIEW analytics.documents AS
+CREATE OR REPLACE VIEW corpus.gong_call_documents AS
 SELECT
-  CAST(source_record_id AS VARCHAR) AS document_id,
-  rendered_markdown AS content,
-  title
-FROM transformed_documents;
+    CAST(c.call_id AS VARCHAR) AS document_id,
+    c.title,
+    STRING_AGG(
+        CONCAT('[', s.start_time_label, '] ', s.speaker_name, ': ', s.transcript_text),
+        CHR(10) ORDER BY s.start_seconds
+    ) AS content
+FROM normalized.gong_calls c
+JOIN normalized.gong_transcript_segments s ON c.call_id = s.call_id
+GROUP BY c.call_id, c.title;
 ```
 
-Use `--id-column`, `--content-column`, or `--title-column` when the already-shaped relation uses different ordinary identifier names. Without `--title-column`, Buoy auto-detects `title`; absent, null, or blank titles fall back to the text document ID. IDs are converted to text and must remain nonblank and unique. Null or blank content is skipped and counted, and a relation with no nonblank documents fails. `--max-pages` caps source documents in this mode; `--max-chunks` still caps generated chunks.
+BigQuery expresses the ordered aggregation separately:
 
-Self-contained tables and views are supported. An ordinary view may select from relations stored in the same DuckDB database. A persisted view that reads an external file or database, or requires extension loading, is not supported: Buoy keeps external access, extension autoinstall, and extension autoload disabled. Materialize the final relation as a table in the DuckDB database upstream before planning instead.
+```sql
+CREATE OR REPLACE VIEW `source-project.corpus.gong_call_documents` AS
+SELECT
+    CAST(c.call_id AS STRING) AS document_id,
+    c.title,
+    STRING_AGG(
+        CONCAT('[', s.start_time_label, '] ', s.speaker_name, ': ', s.transcript_text),
+        '\n' ORDER BY s.start_seconds
+    ) AS content
+FROM `source-project.normalized.gong_calls` AS c
+JOIN `source-project.normalized.gong_transcript_segments` AS s USING (call_id)
+GROUP BY c.call_id, c.title;
+```
 
-Buoy validates and quotes every relation and column identifier, opens one read-only DuckDB connection, and scans in deterministic document-ID order. It does not install or load extensions.
+Snowflake uses `LISTAGG ... WITHIN GROUP`:
 
-#### Identity, chunks, and safety boundary
+```sql
+CREATE OR REPLACE VIEW CORPUS.GONG_CALL_DOCUMENTS AS
+SELECT
+    CAST(c.call_id AS VARCHAR) AS document_id,
+    c.title,
+    LISTAGG(
+        CONCAT('[', s.start_time_label, '] ', s.speaker_name, ': ', s.transcript_text),
+        CHR(10)
+    ) WITHIN GROUP (ORDER BY s.start_seconds) AS content
+FROM NORMALIZED.GONG_CALLS AS c
+JOIN NORMALIZED.GONG_TRANSCRIPT_SEGMENTS AS s ON c.call_id = s.call_id
+GROUP BY c.call_id, c.title;
+```
 
-For `--source-id product-docs`, stable identities are:
+#### Backend safety, authentication, and cost
 
-| Identity | Value |
-| --- | --- |
-| Base source URI | `duckdb://product-docs` |
-| Source/state ID | `duckdb-product-docs` |
-| Default namespace | `duckdb-product-docs-v1` |
-| Default output | `artifacts/site-crawls/duckdb-product-docs` |
-| Document URI | `duckdb://product-docs/<percent-encoded-document-id>` |
+DuckDB supports one to three ordinary relation components. It opens one read-only connection with external access, extension autoinstall/autoload, and community extensions disabled. Self-contained tables and views over in-database relations work; persisted views that read external files/databases or need extensions do not. Materialize those upstream first.
 
-The database path, file hash, physical row order, and current database contents do not affect those identities. The path is not written into plan artifacts. A document ID determines its stable page filename and logical URI; changing its title or content does not change that URI.
+BigQuery requires `project.dataset.table_or_view`, supports project IDs containing hyphens, inspects tables or views with the official client, and uses its normal Application Default Credentials path. Buoy accepts no credential JSON, tokens, or keys. Before executing each exact generated read-only query, it performs an official dry run and reports `bigquery_estimated_bytes_processed`. `--bigquery-maximum-bytes-billed` rejects an estimate above the cap before execution and is bound to actual jobs. Available executed-job diagnostics include total bytes, cache hit, and job ID. `--max-pages` limits returned documents, **not necessarily BigQuery bytes scanned**.
 
-Each selected row becomes reviewable Markdown in `pages/` and then enters the same `process_corpus()` pipeline as other sources. A long document may produce multiple chunks. Those chunks retain the same logical document URI, and `duckdb-` namespaces use the document/page retrieval defaults so results aggregate by document rather than applying repository-code ranking.
+Snowflake requires `database.schema.table_or_view` using the v1 ordinary-identifier subset `[A-Za-z_][A-Za-z0-9_]*`. Lowercase input is canonicalized to Snowflake's normal uppercase resolution behavior; `$` names and quoted case-sensitive identifiers are v1 non-goals. Authentication comes only from `snowflake.connector.connect(connection_name=...)`, so the named profile owns account, user, role, warehouse, password/key/OAuth/SSO settings. Buoy applies a source-specific query tag, applies `--source-query-timeout`, fetches bounded batches, and closes/rolls back the read-only connection reliably.
 
-Only `plan` and `crawl` read DuckDB. `apply --dry-run` and approved `apply` consume integrity-verified saved artifacts only: deleting, moving, renaming, or changing the database after planning does not affect saved-plan verification or application.
+Remote `plan` and `crawl` require source credentials and make source warehouse API calls. They never read turbopuffer credentials, load embeddings, or call/write turbopuffer. Only `plan` and `crawl` connect to any database. After a plan is saved, `apply --dry-run` and approved `apply` consume integrity-verified artifacts only: source file removal, credential removal, profile changes, or relation changes cannot alter the reviewed plan.
 
-V1 intentionally excludes arbitrary SQL supplied to Buoy, joins or transformations inside Buoy, arbitrary metadata mapping, source URLs, timestamps, CDC, watermarks, and non-DuckDB databases.
+#### Stable identity and fixed provenance
+
+For source ID `product-docs` the identities differ only by backend:
+
+| Backend | Base URI | Source/state ID | Default namespace | Document URI |
+| --- | --- | --- | --- | --- |
+| DuckDB | `duckdb://product-docs` | `duckdb-product-docs` | `duckdb-product-docs-v1` | `duckdb://product-docs/<encoded-id>` |
+| BigQuery | `bigquery://product-docs` | `bigquery-product-docs` | `bigquery-product-docs-v1` | `bigquery://product-docs/<encoded-id>` |
+| Snowflake | `snowflake://product-docs` | `snowflake-product-docs` | `snowflake-product-docs-v1` | `snowflake://product-docs/<encoded-id>` |
+
+Credentials, credential paths, DuckDB paths, BigQuery billing project/location/job ID, Snowflake connection name/account/user/role/warehouse, physical row order, row counts, and relation contents never affect logical identity or serialize as source configuration. Stable document IDs determine percent-encoded URIs and hash-derived page filenames.
+
+Every new database page, manifest record, chunk, and turbopuffer content row retains the fixed provenance fields `database_backend`, `database_source_id`, `database_relation`, and `database_document_id`. New DuckDB pages also retain legacy `duckdb_*` provenance for compatibility; existing saved DuckDB plans without generic fields remain supported.
+
+V1 excludes arbitrary user SQL, Buoy-configured joins, multiple input relations per command, API/dlt/dbt/SQLMesh orchestration, source-specific Gong/Chorus behavior, arbitrary metadata JSON, dynamic turbopuffer schemas, CDC, watermarks, incremental warehouse predicates, BigQuery Storage API, Snowflake pandas/Arrow ingestion, other databases, credential CLI arguments, custom transcript/speaker chunking, and taxonomy/ontology features.
 
 ## Plan artifacts
 

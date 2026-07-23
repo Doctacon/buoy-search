@@ -50,6 +50,10 @@ GENERIC_SITE_TURBOPUFFER_SCHEMA = {
     "pdf_filename": {"type": "string"},
     "pdf_sha256": {"type": "string"},
     "pdf_source_id": {"type": "string"},
+    "database_backend": {"type": "string"},
+    "database_source_id": {"type": "string"},
+    "database_relation": {"type": "string"},
+    "database_document_id": {"type": "string"},
 }
 SOURCE_METADATA_ROW_FIELDS = (
     "source_kind",
@@ -67,6 +71,10 @@ SOURCE_METADATA_ROW_FIELDS = (
     "pdf_filename",
     "pdf_sha256",
     "pdf_source_id",
+    "database_backend",
+    "database_source_id",
+    "database_relation",
+    "database_document_id",
 )
 
 JsonObject = dict[str, Any]

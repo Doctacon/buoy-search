@@ -14,6 +14,7 @@ from buoy_search.chunker import parse_markdown_file, process_corpus
 from buoy_search.crawler import CrawlOptions, default_out_dir, namespace_candidate, source_id_for_url, validate_base_url
 from buoy_search.duckdb_relation import (
     DuckDBRelationError,
+    DuckDBScanResult,
     SAFE_DUCKDB_CONFIG,
     crawl_duckdb_relation,
     duckdb_relation_source,
@@ -62,6 +63,17 @@ class DuckDBRelationTests(unittest.TestCase):
                 with self.subTest(relation=invalid):
                     with self.assertRaises(ValueError):
                         duckdb_relation_source(first, relation=invalid, source_id="gong-calls")
+
+    def test_scan_result_preserves_rows_scanned_constructor_compatibility(self) -> None:
+        result = DuckDBScanResult(
+            documents=[],
+            rows_scanned=7,
+            documents_skipped_empty=2,
+            documents_skipped_limit=3,
+            title_column=None,
+        )
+        self.assertEqual(result.rows_scanned, 7)
+        self.assertEqual(result.rows_discovered, 7)
 
     def test_table_and_view_scan_mapped_columns_titles_empty_rows_and_cap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -291,8 +303,15 @@ class DuckDBRelationTests(unittest.TestCase):
             )
 
             self.assertEqual(summary["source_kind"], "duckdb_relation")
+            self.assertEqual(summary["database_backend"], "duckdb")
+            self.assertEqual(summary["database_source_id"], "knowledge-base")
+            self.assertEqual(summary["database_relation"], "docs")
+            self.assertEqual(summary["rows_discovered"], 2)
             self.assertEqual(summary["rows_scanned"], 2)
             self.assertEqual(summary["documents_selected"], 2)
+            self.assertFalse(summary["source_credentials_required"])
+            self.assertFalse(summary["source_api_calls_occurred"])
+            self.assertFalse(summary["turbopuffer_credentials_required"])
             self.assertTrue(summary["title_column_detected"])
             self.assertEqual(summary["namespace_candidate"], "duckdb-knowledge-base-v1")
             page_files = sorted((out_dir / "pages").glob("*.md"))
@@ -314,6 +333,10 @@ class DuckDBRelationTests(unittest.TestCase):
             self.assertNotIn(str(database), serialized)
             self.assertIn('url: "duckdb://knowledge-base/alpha"', serialized)
             self.assertIn('source_kind: "duckdb_relation"', serialized)
+            self.assertIn('database_backend: "duckdb"', serialized)
+            self.assertIn('database_source_id: "knowledge-base"', serialized)
+            self.assertIn('database_relation: "docs"', serialized)
+            self.assertIn('database_document_id: "alpha"', serialized)
             self.assertIn('duckdb_source_id: "knowledge-base"', serialized)
             self.assertIn('duckdb_relation: "docs"', serialized)
             self.assertIn('duckdb_document_id: "alpha"', serialized)
@@ -456,12 +479,26 @@ class DuckDBRelationTests(unittest.TestCase):
                 ["CREATE TABLE docs(document_id VARCHAR, content VARCHAR)", "INSERT INTO docs VALUES ('  ', 'body')"],
                 "null or blank document ID",
             ),
+            "unicode-blank-id": (
+                [
+                    "CREATE TABLE docs(document_id VARCHAR, content VARCHAR)",
+                    "INSERT INTO docs VALUES (chr(9) || chr(12288), 'body')",
+                ],
+                "null or blank document ID",
+            ),
             "duplicate-id": (
                 ["CREATE TABLE docs(document_id INTEGER, content VARCHAR)", "INSERT INTO docs VALUES (1, 'a'), (1, 'b')"],
                 "duplicate document ID",
             ),
             "empty-content": (
                 ["CREATE TABLE docs(document_id VARCHAR, content VARCHAR)", "INSERT INTO docs VALUES ('a', NULL), ('b', '  ')"],
+                "no nonblank documents",
+            ),
+            "unicode-empty-content": (
+                [
+                    "CREATE TABLE docs(document_id VARCHAR, content VARCHAR)",
+                    "INSERT INTO docs VALUES ('a', chr(10) || chr(160) || chr(12288))",
+                ],
                 "no nonblank documents",
             ),
         }
@@ -491,6 +528,60 @@ class DuckDBRelationTests(unittest.TestCase):
             self.assertIn("Could not read DuckDB relation 'missing'", str(raised.exception))
             self.assertIn("Table with name missing does not exist", str(raised.exception))
             self.assertNotIn("Materialize the final relation", str(raised.exception))
+
+    def test_global_validation_uses_aggregate_queries_and_limited_document_fetch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            database = Path(tmp) / "documents.duckdb"
+            with duckdb.connect(str(database)) as connection:
+                connection.execute("CREATE TABLE docs(document_id INTEGER, content VARCHAR)")
+                connection.execute(
+                    "INSERT INTO docs SELECT value, "
+                    "CASE WHEN value % 1000 = 0 THEN ' ' ELSE 'body ' || value END "
+                    "FROM range(5000) AS values(value)"
+                )
+            source = duckdb_relation_source(database, relation="docs", source_id="bounded-docs")
+            real_connect = duckdb.connect
+            statements: list[str] = []
+
+            class TrackingConnection:
+                def __init__(self, connection):
+                    self.connection = connection
+
+                def __enter__(self):
+                    self.connection.__enter__()
+                    return self
+
+                def __exit__(self, *args):
+                    return self.connection.__exit__(*args)
+
+                def execute(self, sql, *args):
+                    statements.append(sql)
+                    self.connection.execute(sql, *args)
+                    return self
+
+                @property
+                def description(self):
+                    return self.connection.description
+
+                def fetchone(self):
+                    return self.connection.fetchone()
+
+                def fetchmany(self, size):
+                    return self.connection.fetchmany(size)
+
+            def tracked_connect(*args, **kwargs):  # noqa: ANN002, ANN003 - test proxy.
+                return TrackingConnection(real_connect(*args, **kwargs))
+
+            with patch("buoy_search.duckdb_relation.duckdb.connect", side_effect=tracked_connect):
+                scan = scan_duckdb_relation(source, max_documents=2, batch_size=1)
+
+            self.assertEqual(scan.rows_discovered, 5000)
+            self.assertEqual(scan.documents_skipped_empty, 5)
+            self.assertEqual(scan.documents_skipped_limit, 4993)
+            self.assertEqual([item.document_id for item in scan.documents], ["1", "10"])
+            selected_queries = [sql for sql in statements if "ORDER BY" in sql and "FROM" in sql]
+            self.assertTrue(any("LIMIT 2" in sql for sql in selected_queries), statements)
+            self.assertFalse(any("LIMIT 2" not in sql and "HAVING COUNT(*)" not in sql for sql in selected_queries))
 
     def test_path_must_exist_and_be_regular_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

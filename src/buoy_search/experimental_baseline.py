@@ -1008,7 +1008,9 @@ def _prepare_live_baseline(verified: VerifiedApplyPlan, cache_root: Path) -> Pre
         plan_schema_version=PLAN_SCHEMA_VERSION,
         source_metadata=verified_source_metadata(verified),
     )
-    ranking = ranking_defaults_for_namespace(TARGET_NAMESPACE)
+    ranking = ranking_defaults_for_namespace(
+        TARGET_NAMESPACE, source_kind=semantics.source_kind
+    )
     common = dict(
         namespace=TARGET_NAMESPACE,
         enabled=True,
@@ -1098,7 +1100,9 @@ class _LiveLocalEffects:
             prior_applied_apply_id=None,
             intended_state_hash=applied_state_hash(prepared.next_state),
             region=REGION,
-            ranking_contract=ranking_defaults_for_namespace(TARGET_NAMESPACE),
+            ranking_contract=ranking_defaults_for_namespace(
+                TARGET_NAMESPACE, source_kind=prepared.card.source_kind
+            ),
         )
         create_pending(self.pending_path, pending)
         confirm_pending(
