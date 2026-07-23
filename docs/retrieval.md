@@ -52,7 +52,9 @@ Runtime configuration uses `TURBOPUFFER_API_KEY`, `TURBOPUFFER_REGION`, `BUOY_EM
 
 Each live namespace query produces an ANN subquery over the normalized local BGE query vector and a BM25 full-text subquery, then fuses them with reciprocal-rank fusion. `--candidates` controls each subquery pool and `--top-k` controls final results. `--doc-kind` filters result categories.
 
-Website and document cards normally use page grouping with `none` profile, pool 20, and `max` aggregation. Repository cards normally use file grouping with `repo-code` profile, pool 100, and `adaptive-sum-3`. Automatic routing uses each card's recorded values; explicit ranking flags override the corresponding field across selected cards. Compare changes with a fixed eval dataset; see [Evaluate search quality](evaluation.md).
+Website, document, and database cards normally use page grouping with `none` profile, pool 20, and `max` aggregation. Repository cards normally use file grouping with `repo-code` profile, pool 100, and `adaptive-sum-3`. Generated plans choose these defaults from the verified source kind, so a DuckDB, BigQuery, or Snowflake plan using a custom namespace such as `customer-conversations` still receives database/document defaults. Prefix fallback recognizes `site-`, `pdf-`, `file-`, `duckdb-`, `bigquery-`, and `snowflake-` when explicit retrieval has no catalog source kind. Existing website, GitHub, PDF, and local-file behavior is unchanged.
+
+Automatic routing uses each card's recorded values; explicit ranking flags override the corresponding field across selected cards. Compare changes with a fixed eval dataset; see [Evaluate search quality](evaluation.md).
 
 ## Retrieval tags
 
