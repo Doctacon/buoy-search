@@ -37,6 +37,28 @@ uv run buoy catalog upsert site-example-com-v1 \
 
 Repeat `--alias` and `--tag` as needed. Add `--disabled` to create a disabled card. Upsert uses the exact cached pinned routing model and conditionally writes the remote card; it does not download or substitute a model.
 
+Database cards keep one high-level manual source kind, `database`, while the logical URI identifies the backend:
+
+```bash
+uv run buoy catalog upsert customer-conversations \
+  --source-kind database \
+  --source-uri bigquery://gong-calls \
+  --site-id bigquery-gong-calls \
+  --title "Customer conversations" \
+  --summary "Reviewed sales call corpus." \
+  --tag database --tag bigquery \
+  --region gcp-us-central1 \
+  --embedding-model BAAI/bge-small-en-v1.5 \
+  --embedding-precision float32 \
+  --plan-schema-version 1 \
+  --ranking-mode page --ranking-profile none \
+  --ranking-pool 20 --ranking-aggregation max
+```
+
+Valid database base URIs are exactly `duckdb://<source-id>`, `bigquery://<source-id>`, and `snowflake://<source-id>` with a safe lowercase slug and no credentials, port, path, query, or fragment. Database schemes are rejected on website, repository, and document cards; HTTP/file/PDF schemes are rejected on database cards.
+
+Approved applies derive generated database cards only from integrity-verified logical metadata. Low-level `duckdb_relation`, `bigquery_relation`, and `snowflake_relation` plans all project to high-level `database`; generated tags include `database` plus the backend. Titles, summaries, aliases, and tags are deterministic and contain no database path, billing project, job ID, connection profile, account, user, role, warehouse, or credential configuration. Legacy saved DuckDB plans containing only `duckdb_source_id` and `duckdb_relation` remain understood. A later generated apply preserves an existing manual card's title, summary, aliases, tags, vector, and enabled state.
+
 ## Enable, disable, or remove
 
 ```bash

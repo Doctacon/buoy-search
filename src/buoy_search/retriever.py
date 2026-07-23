@@ -52,13 +52,21 @@ MISSING_SCHEMA_ATTRIBUTE_RE = re.compile(
 def namespace_uses_website_defaults(namespace: str) -> bool:
     """Return true when a namespace should use document/page ranking defaults."""
 
-    return namespace.startswith(("site-", "pdf-", "file-", "duckdb-"))
+    return namespace.startswith(
+        ("site-", "pdf-", "file-", "duckdb-", "bigquery-", "snowflake-")
+    )
 
 
-def ranking_defaults_for_namespace(namespace: str) -> dict[str, object]:
-    """Return namespace-aware ranking defaults for CLI and experiment runners."""
+def ranking_defaults_for_namespace(
+    namespace: str,
+    *,
+    source_kind: str | None = None,
+) -> dict[str, object]:
+    """Return source-aware defaults, with namespace prefixes as the legacy fallback."""
 
-    if namespace_uses_website_defaults(namespace):
+    if source_kind in {"website", "document", "database"} or (
+        source_kind is None and namespace_uses_website_defaults(namespace)
+    ):
         return {
             "ranking_mode": DEFAULT_WEBSITE_RANKING_MODE,
             "ranking_profile": DEFAULT_WEBSITE_RANKING_PROFILE,

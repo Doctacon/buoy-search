@@ -34,11 +34,11 @@ from buoy_search.chunker import (
     process_corpus,
     sha256_text,
 )
-from buoy_search.duckdb_relation import (
-    DuckDBRelationSource,
-    is_duckdb_base_url,
-    source_id_from_base_url as duckdb_source_id_from_base_url,
-    validate_duckdb_base_url,
+from buoy_search.database_relation import (
+    DatabaseRelationSource,
+    database_identity_from_url,
+    is_database_base_url,
+    validate_database_base_url,
 )
 
 DEFAULT_CRAWL_MAX_PAGES = 3000
@@ -328,7 +328,7 @@ class LocalFileSource:
 
 
 LocalDocumentSource = PdfSource | LocalFileSource
-Source = WebsiteSource | GitHubRepoSource | LocalDocumentSource | DuckDBRelationSource
+Source = WebsiteSource | GitHubRepoSource | LocalDocumentSource | DatabaseRelationSource
 
 
 @dataclass(frozen=True)
@@ -418,8 +418,8 @@ def validate_base_url(url: str) -> str:
     """Return the normalized source base URL or raise ``ValueError``."""
 
     parsed = urlparse(url)
-    if parsed.scheme == "duckdb":
-        return validate_duckdb_base_url(url)
+    if parsed.scheme in {"duckdb", "bigquery", "snowflake"}:
+        return validate_database_base_url(url)
     if parsed.scheme == "pdf":
         if (
             not parsed.netloc
@@ -470,8 +470,9 @@ def origin_from_url(url: str) -> str:
 def namespace_candidate(base_url: str) -> str:
     """Return the deterministic dry-run namespace candidate for a source."""
 
-    if is_duckdb_base_url(base_url):
-        return f"duckdb-{duckdb_source_id_from_base_url(base_url)}-v1"
+    if is_database_base_url(base_url):
+        backend, source_id = database_identity_from_url(base_url)
+        return f"{backend}-{source_id}-v1"
     if is_local_document_base_url(base_url):
         return f"{source_id_for_url(base_url)}-v1"
     source = detect_source(base_url)
@@ -485,8 +486,9 @@ def namespace_candidate(base_url: str) -> str:
 def source_id_for_url(base_url: str) -> str:
     """Return the deterministic local source/site ID for a supported URL or local file path."""
 
-    if is_duckdb_base_url(base_url):
-        return f"duckdb-{duckdb_source_id_from_base_url(base_url)}"
+    if is_database_base_url(base_url):
+        backend, source_id = database_identity_from_url(base_url)
+        return f"{backend}-{source_id}"
     if is_pdf_base_url(base_url):
         return safe_slug(urlparse(validate_base_url(base_url)).netloc, fallback="pdf")
     if is_file_base_url(base_url):
@@ -500,7 +502,7 @@ def source_id_for_url(base_url: str) -> str:
 
 
 def default_out_dir(base_url: str) -> Path:
-    if is_duckdb_base_url(base_url):
+    if is_database_base_url(base_url):
         return DEFAULT_CRAWL_OUT_DIR / source_id_for_url(base_url)
     source = (
         detect_source(base_url) if not is_local_document_base_url(base_url) else None
@@ -645,9 +647,14 @@ def detect_source(url: str) -> Source:
         raise ValueError(
             "pass the local file filepath, not the internal file:// source URI"
         )
-    if is_duckdb_base_url(normalized):
+    if is_database_base_url(normalized):
+        backend, _ = database_identity_from_url(normalized)
+        if backend == "duckdb":
+            raise ValueError(
+                "pass the DuckDB database filepath with --relation, not the internal duckdb:// source URI"
+            )
         raise ValueError(
-            "pass the DuckDB database filepath with --relation, not the internal duckdb:// source URI"
+            f"select {backend} with --database-backend and --relation, not the internal {backend}:// source URI"
         )
     github_source = parse_github_repo_url(normalized)
     if github_source is not None:

@@ -253,7 +253,7 @@ def catalog_registration_preview(
         plan_schema_version=int(verified.plan["schema_version"]),
         source_metadata=verified_source_metadata(verified),
     )
-    ranking = ranking_defaults_for_namespace(namespace)
+    ranking = ranking_defaults_for_namespace(namespace, source_kind=semantics.source_kind)
     return {
         "catalog_namespace": REMOTE_CATALOG_NAMESPACE,
         "namespace": namespace,
@@ -283,7 +283,7 @@ def prospective_card_for_apply(
         source_metadata=verified_source_metadata(verified),
     )
     manual = existing is not None and existing.semantic_origin == "manual"
-    ranking = ranking_defaults_for_namespace(namespace)
+    ranking = ranking_defaults_for_namespace(namespace, source_kind=semantics.source_kind)
     fields = CardFields(
         namespace=namespace,
         enabled=existing.enabled if existing is not None else True,
@@ -415,7 +415,9 @@ def run_approved_apply(
         )
         if next_state.last_apply_id != apply_id:
             raise ApplyPlanError("precomputed apply identity changed before pending creation")
-        ranking = ranking_defaults_for_namespace(namespace)
+        ranking = ranking_defaults_for_namespace(
+            namespace, source_kind=prospective.source_kind
+        )
         pending = build_pending_payload(
             state_root=resolved_state_root,
             applied_state_path=state_path,

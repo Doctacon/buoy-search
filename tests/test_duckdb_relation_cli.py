@@ -11,7 +11,7 @@ import unittest
 import duckdb
 
 from buoy_search.cli import build_parser, main
-from buoy_search.plan_artifacts import PLAN_SCHEMA_VERSION
+from buoy_search.plan_artifacts import PLAN_SCHEMA_VERSION, build_generic_site_row
 
 
 class DuckDBRelationCliTests(unittest.TestCase):
@@ -72,6 +72,10 @@ class DuckDBRelationCliTests(unittest.TestCase):
             self.assertEqual(payload["site_id"], "duckdb-gong-calls")
             self.assertEqual(payload["namespace"], "duckdb-gong-calls-v1")
             self.assertEqual(payload["duckdb_relation"], "calls")
+            self.assertEqual(payload["database_backend"], "duckdb")
+            self.assertEqual(payload["database_source_id"], "gong-calls")
+            self.assertEqual(payload["database_relation"], "calls")
+            self.assertEqual(payload["rows_discovered"], 3)
             self.assertEqual(payload["rows_scanned"], 3)
             self.assertEqual(payload["documents_selected"], 1)
             self.assertEqual(payload["documents_skipped_empty"], 1)
@@ -107,7 +111,24 @@ class DuckDBRelationCliTests(unittest.TestCase):
             self.assertEqual(plan["crawl_options"]["title_column"], "subject")
             self.assertEqual(manifest["base_url"], "duckdb://gong-calls")
             self.assertEqual(manifest["pages"][0]["canonical_url"], "duckdb://gong-calls/call%2Fa")
-            self.assertEqual(manifest["pages"][0]["source_metadata"]["duckdb_document_id"], "call/a")
+            page_metadata = manifest["pages"][0]["source_metadata"]
+            self.assertEqual(page_metadata["duckdb_document_id"], "call/a")
+            self.assertEqual(page_metadata["database_backend"], "duckdb")
+            self.assertEqual(page_metadata["database_source_id"], "gong-calls")
+            self.assertEqual(page_metadata["database_relation"], "calls")
+            self.assertEqual(page_metadata["database_document_id"], "call/a")
+            chunk_metadata = manifest["chunks"][0]["source_metadata"]
+            self.assertEqual(chunk_metadata["database_document_id"], "call/a")
+            row = build_generic_site_row(
+                manifest["chunks"][0],
+                [0.0],
+                plan_id=plan["plan_id"],
+                applied_at="2026-07-22T00:00:00+00:00",
+            )
+            self.assertEqual(row["database_backend"], "duckdb")
+            self.assertEqual(row["database_source_id"], "gong-calls")
+            self.assertEqual(row["database_relation"], "calls")
+            self.assertEqual(row["database_document_id"], "call/a")
             serialized = "\n".join(
                 (out_dir / filename).read_text(encoding="utf-8")
                 for filename in ("plan.json", "manifest.json", "chunks.jsonl", "summary.json")
